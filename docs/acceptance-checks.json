@@ -1,0 +1,525 @@
+{
+  "feature": "share_house_signage_mvp",
+  "checks": [
+    {
+      "id": "check_001",
+      "target": "完成条件1 ログイン",
+      "rule": "受付スタッフが管理画面にログインできる",
+      "expected_result": "正しい資格情報で /admin に入れる",
+      "manual_or_automated": "manual",
+      "verification_method": "本番で Staff アカウントでログイン"
+    },
+    {
+      "id": "check_002",
+      "target": "完成条件2 イベント登録",
+      "rule": "イベント名と開始日時だけで登録できる",
+      "expected_result": "一覧に追加される",
+      "manual_or_automated": "manual",
+      "verification_method": "管理画面で登録"
+    },
+    {
+      "id": "check_003",
+      "target": "完成条件3 反映時間",
+      "rule": "登録後30秒以内にサイネージへ反映",
+      "expected_result": "保存完了から Pi の表示変化まで30秒以内。Pi の同期直後に保存した場合と、500MB 動画の取得中に保存した場合を含め各3回計測し最大値を記録",
+      "manual_or_automated": "manual",
+      "verification_method": "管理画面と Pi を同じ動画に収めて計測"
+    },
+    {
+      "id": "check_004",
+      "target": "完成条件4 大型ディスプレイ表示",
+      "rule": "イベント情報が表示される",
+      "expected_result": "今日のイベントと Upcoming が表示される",
+      "manual_or_automated": "manual",
+      "verification_method": "実機目視"
+    },
+    {
+      "id": "check_005",
+      "target": "完成条件5 動画アップロード",
+      "rule": "動画を R2 へアップロードできる",
+      "expected_result": "500MB の MP4 が一覧に尺とサムネイル付きで出る",
+      "manual_or_automated": "manual",
+      "verification_method": "管理画面でアップロード"
+    },
+    {
+      "id": "check_006",
+      "target": "完成条件6 自動ダウンロード",
+      "rule": "Pi が動画を自動取得する",
+      "expected_result": "/var/lib/sharehouse-signage/videos に sha256 一致のファイルが置かれる",
+      "manual_or_automated": "manual",
+      "verification_method": "sha256sum と DB の値を比較"
+    },
+    {
+      "id": "check_007",
+      "target": "完成条件7 定期再生",
+      "rule": "動画間隔は前の動画の終了から次の開始までの待ち時間",
+      "expected_result": "VIDEO_FINISHED から次の VIDEO_STARTED までが設定値±30秒で3回連続。長さの異なる動画を含む",
+      "manual_or_automated": "manual",
+      "verification_method": "device_logs の時刻差"
+    },
+    {
+      "id": "check_008",
+      "target": "完成条件8 復帰",
+      "rule": "動画終了後にイベント画面へ戻る",
+      "expected_result": "フェードして戻り、デスクトップやエラー画面が見えない",
+      "manual_or_automated": "manual",
+      "verification_method": "実機を動画撮影"
+    },
+    {
+      "id": "check_009",
+      "target": "完成条件9 再起動復旧",
+      "rule": "Pi 再起動後に自動復旧",
+      "expected_result": "電源投入から3分以内に表示",
+      "manual_or_automated": "manual",
+      "verification_method": "電源を抜き差し"
+    },
+    {
+      "id": "check_010",
+      "target": "完成条件10 オフライン表示",
+      "rule": "ネット切断中も直前の内容を表示",
+      "expected_result": "LAN を抜いて30分、表示と動画再生が継続",
+      "manual_or_automated": "manual",
+      "verification_method": "LAN ケーブルを抜く"
+    },
+    {
+      "id": "check_011",
+      "target": "完成条件11 動画設定変更",
+      "rule": "ON/OFF と間隔を変更できる",
+      "expected_result": "変更が次の同期で Pi に反映される",
+      "manual_or_automated": "manual",
+      "verification_method": "間隔を5分に変えて再生間隔を確認"
+    },
+    {
+      "id": "check_012",
+      "target": "完成条件12 端末状態",
+      "rule": "ONLINE/OFFLINE を確認できる",
+      "expected_result": "Agent 停止5分後に OFFLINE、再開後60秒以内に ONLINE",
+      "manual_or_automated": "manual",
+      "verification_method": "systemctl stop/start"
+    },
+    {
+      "id": "check_013",
+      "target": "完成条件13 オフライン再起動",
+      "rule": "ネット切断中の再起動でも表示",
+      "expected_result": "LAN を抜いたまま再起動して表示が再開",
+      "manual_or_automated": "manual",
+      "verification_method": "LAN を抜いて電源を抜き差し"
+    },
+    {
+      "id": "check_014",
+      "target": "完成条件14 向き",
+      "rule": "端末の向きに応じたレイアウト",
+      "expected_result": "縦設定で UI-V、横設定で UI-H の構成",
+      "manual_or_automated": "manual",
+      "verification_method": "端末設定を変更して目視"
+    },
+    {
+      "id": "check_015",
+      "target": "完成条件15 お知らせ等の反映",
+      "rule": "お知らせ・ハウスルール・キャッチコピーの変更が30秒以内に反映",
+      "expected_result": "30秒以内に表示が変わる",
+      "manual_or_automated": "manual",
+      "verification_method": "管理画面で変更"
+    },
+    {
+      "id": "check_016",
+      "target": "完成条件16 時計・天気",
+      "rule": "時計・日付・天気が表示される",
+      "expected_result": "時刻のずれが1分以内。天気が表示され、取得が3時間より古いと天気欄が消える",
+      "manual_or_automated": "manual",
+      "verification_method": "実機目視"
+    },
+    {
+      "id": "check_017",
+      "target": "認証 未ログイン",
+      "rule": "未ログインで /admin 配下にアクセス",
+      "expected_result": "/login へ転送",
+      "manual_or_automated": "automated",
+      "verification_method": "Vitest（middleware）"
+    },
+    {
+      "id": "check_018",
+      "target": "認証 権限",
+      "rule": "Staff が Administrator 専用画面・操作にアクセス",
+      "expected_result": "画面は 403、Server Action は拒否",
+      "manual_or_automated": "automated",
+      "verification_method": "Vitest（requireRole）"
+    },
+    {
+      "id": "check_019",
+      "target": "認証 ログイン制限",
+      "rule": "同一 IP・同一メールで連続失敗",
+      "expected_result": "一定時間ログインを受け付けない。別 IP からの正しいログインは通る",
+      "manual_or_automated": "automated",
+      "verification_method": "Vitest"
+    },
+    {
+      "id": "check_020",
+      "target": "API 入力不正",
+      "rule": "不正な入力で API を呼ぶ",
+      "expected_result": "400 と日本語 message、DB 変更なし",
+      "manual_or_automated": "automated",
+      "verification_method": "Vitest"
+    },
+    {
+      "id": "check_021",
+      "target": "API 端末トークン",
+      "rule": "不正トークン、またはトークンなしで端末 API を呼ぶ",
+      "expected_result": "401",
+      "manual_or_automated": "automated",
+      "verification_method": "Vitest"
+    },
+    {
+      "id": "check_022",
+      "target": "API 304",
+      "rule": "If-None-Match が version と一致",
+      "expected_result": "304",
+      "manual_or_automated": "automated",
+      "verification_method": "Vitest"
+    },
+    {
+      "id": "check_023",
+      "target": "API Range",
+      "rule": "メディア中継に Range 指定",
+      "expected_result": "206 と正しい Content-Range、不正は 416",
+      "manual_or_automated": "automated",
+      "verification_method": "Vitest"
+    },
+    {
+      "id": "check_024",
+      "target": "API 他端末のメディア",
+      "rule": "config に含まれない mediaId を要求",
+      "expected_result": "その端末の現行 config に含まれない mediaId は 404",
+      "manual_or_automated": "automated",
+      "verification_method": "Vitest"
+    },
+    {
+      "id": "check_025",
+      "target": "DB config の版",
+      "rule": "内容が同じなら version が同じ、内容・天気・バンドルが変われば version が変わる",
+      "expected_result": "期待どおりに一致・変化する",
+      "manual_or_automated": "automated",
+      "verification_method": "Vitest（config-builder）"
+    },
+    {
+      "id": "check_026",
+      "target": "DB 使用中メディア削除",
+      "rule": "イベントやプレイリストで使用中のメディアを削除",
+      "expected_result": "409、R2 と DB に変化なし",
+      "manual_or_automated": "automated",
+      "verification_method": "Vitest"
+    },
+    {
+      "id": "check_027",
+      "target": "日時 タイムゾーン",
+      "rule": "UTC 環境で日本時間 0:00〜8:59 の今日判定",
+      "expected_result": "日本時間の日付で判定",
+      "manual_or_automated": "automated",
+      "verification_method": "TZ=UTC npm test"
+    },
+    {
+      "id": "check_028",
+      "target": "日時 状態境界",
+      "rule": "開始30分前・開始・終了の境界",
+      "expected_result": "STARTING SOON / NOW HAPPENING / 終了が正しく切り替わる",
+      "manual_or_automated": "automated",
+      "verification_method": "Vitest"
+    },
+    {
+      "id": "check_029",
+      "target": "表示 外部参照なし",
+      "rule": "Pi 用バンドルが外部 URL を参照しない",
+      "expected_result": "ビルド成果物に http(s):// の読み込みがない",
+      "manual_or_automated": "automated",
+      "verification_method": "build:display 後に grep し、さらに Pi 実機で外向き通信を遮断して表示ページが完全に表示されることを確認"
+    },
+    {
+      "id": "check_030",
+      "target": "表示 空状態",
+      "rule": "イベント0件・画像なし・長いタイトル",
+      "expected_result": "崩れず表示される",
+      "manual_or_automated": "automated",
+      "verification_method": "Vitest（コンポーネント）"
+    },
+    {
+      "id": "check_031",
+      "target": "表示 スケジュール外",
+      "rule": "表示時間外",
+      "expected_result": "黒画面で動画も再生しない",
+      "manual_or_automated": "manual",
+      "verification_method": "スケジュールを現在時刻外にして確認"
+    },
+    {
+      "id": "check_032",
+      "target": "Pi キャッシュ原子性",
+      "rule": "ダウンロード中の電源断",
+      "expected_result": "不完全ファイルを再生しない",
+      "manual_or_automated": "automated",
+      "verification_method": "pytest"
+    },
+    {
+      "id": "check_033",
+      "target": "Pi 空き容量",
+      "rule": "空き容量が下限を下回る",
+      "expected_result": "不要ファイルを削除し、ログを送る",
+      "manual_or_automated": "automated",
+      "verification_method": "pytest"
+    },
+    {
+      "id": "check_034",
+      "target": "Pi 動画失敗",
+      "rule": "壊れた動画",
+      "expected_result": "次の動画へ進み VIDEO_FAILED を記録",
+      "manual_or_automated": "automated",
+      "verification_method": "pytest"
+    },
+    {
+      "id": "check_035",
+      "target": "UI 用語",
+      "rule": "管理画面の全画面",
+      "expected_result": "技術用語・トークン・エラー原文が出ない",
+      "manual_or_automated": "manual",
+      "verification_method": "全画面を目視し、要件28節の禁止語を grep"
+    },
+    {
+      "id": "check_036",
+      "target": "UI 画面幅",
+      "rule": "管理画面を 1280px 幅で表示",
+      "expected_result": "横スクロールなし。スマホ幅は対象外",
+      "manual_or_automated": "manual",
+      "verification_method": "ブラウザ幅 1280px で確認"
+    },
+    {
+      "id": "check_037",
+      "target": "回帰 モック一致",
+      "rule": "ダッシュボード・縦型・横型",
+      "expected_result": "固定日時 2025-09-24(水)17:42 と固定データで、各画面の主要要素（ヘッダー・時計・天気・今日のイベント・Upcoming・今週・お知らせ・ハウスルール・フッター／ダッシュボードの各カード）の有無と配置順がモックと一致。日付・人数などの値は 8.1 節の規則を正とする",
+      "manual_or_automated": "manual",
+      "verification_method": "スクリーンショットとモックを並べて確認"
+    },
+    {
+      "id": "check_038",
+      "target": "ビルド 型",
+      "rule": "型検査",
+      "expected_result": "終了コード0",
+      "manual_or_automated": "automated",
+      "verification_method": "npm run typecheck"
+    },
+    {
+      "id": "check_039",
+      "target": "ビルド lint",
+      "rule": "lint",
+      "expected_result": "終了コード0",
+      "manual_or_automated": "automated",
+      "verification_method": "npm run lint"
+    },
+    {
+      "id": "check_040",
+      "target": "ビルド テスト",
+      "rule": "単体テスト",
+      "expected_result": "終了コード0",
+      "manual_or_automated": "automated",
+      "verification_method": "npm test と python3 -m pytest raspberry-pi/tests"
+    },
+    {
+      "id": "check_041",
+      "target": "ビルド 本体",
+      "rule": "Workers 用ビルドと Pi 用バンドル",
+      "expected_result": "終了コード0",
+      "manual_or_automated": "automated",
+      "verification_method": "npm run build と npm run build:display"
+    },
+    {
+      "id": "check_042",
+      "target": "障害 更新中の電源断",
+      "rule": "世代切替の各段階（ダウンロード中、検証中、切替直後）で電源を抜く",
+      "expected_result": "再起動後に current か previous の完全な世代で表示される",
+      "manual_or_automated": "manual",
+      "verification_method": "実機で3段階それぞれ実施"
+    },
+    {
+      "id": "check_043",
+      "target": "障害 容量不足",
+      "rule": "空き容量が更新に足りない",
+      "expected_result": "更新を保留し現行で表示を続け、管理画面に表示",
+      "manual_or_automated": "automated",
+      "verification_method": "pytest と実機でダミーファイルを置いて確認"
+    },
+    {
+      "id": "check_044",
+      "target": "障害 ハッシュ不一致",
+      "rule": "取得した媒体の SHA-256 が一致しない",
+      "expected_result": "3回再取得して隔離し、管理画面に失敗として出る。再取得を続けない",
+      "manual_or_automated": "automated",
+      "verification_method": "pytest"
+    },
+    {
+      "id": "check_045",
+      "target": "障害 mpv 停止",
+      "rule": "再生中に mpv を SIGSTOP",
+      "expected_result": "期限内に強制終了し表示へ戻る",
+      "manual_or_automated": "manual",
+      "verification_method": "実機で kill -STOP"
+    },
+    {
+      "id": "check_046",
+      "target": "障害 表示の固まり",
+      "rule": "表示ページが応答しない",
+      "expected_result": "60秒以内に Chromium が再起動。管理画面で表示異常が出る",
+      "manual_or_automated": "manual",
+      "verification_method": "実機で Chromium を SIGSTOP"
+    },
+    {
+      "id": "check_047",
+      "target": "障害 バンドル更新失敗",
+      "rule": "壊れた表示バンドルを公開",
+      "expected_result": "生存確認に失敗し旧バンドルへ戻る",
+      "manual_or_automated": "manual",
+      "verification_method": "わざと壊したバンドルを公開"
+    },
+    {
+      "id": "check_048",
+      "target": "障害 Agent 更新失敗",
+      "rule": "壊れた Agent を update.sh で導入",
+      "expected_result": "旧版へ戻り表示が続く",
+      "manual_or_automated": "manual",
+      "verification_method": "実機"
+    },
+    {
+      "id": "check_049",
+      "target": "障害 時刻",
+      "rule": "ネット切断のまま電源を抜いて24時間後に起動",
+      "expected_result": "RTC により時刻が正しく、表示と表示スケジュールが正しい",
+      "manual_or_automated": "manual",
+      "verification_method": "実機"
+    },
+    {
+      "id": "check_050",
+      "target": "障害 日付の変化",
+      "rule": "編集なしで日付・週・お知らせの表示時間帯をまたぐ（オフライン中も含む）",
+      "expected_result": "表示が時刻どおりに切り替わる",
+      "manual_or_automated": "manual",
+      "verification_method": "Pi の時刻を境界直前に合わせて確認（ネット切断状態でも実施）"
+    },
+    {
+      "id": "check_051",
+      "target": "表示 スケジュール時間外",
+      "rule": "表示時間外になる",
+      "expected_result": "HDMI 出力が止まり（できない場合は黒画面）、動画も再生しない。時間内に戻ると表示が再開",
+      "manual_or_automated": "manual",
+      "verification_method": "スケジュールを変更して確認"
+    },
+    {
+      "id": "check_052",
+      "target": "表示 規則",
+      "rule": "下書き・同時刻の2件・日またぎ・終了なしのイベント",
+      "expected_result": "8.1 節どおりに表示される",
+      "manual_or_automated": "automated",
+      "verification_method": "Vitest（display-rules）"
+    },
+    {
+      "id": "check_053",
+      "target": "認証 無効化・降格",
+      "rule": "無効化・降格されたユーザーの既存 Cookie で操作",
+      "expected_result": "API・Server Action とも拒否",
+      "manual_or_automated": "automated",
+      "verification_method": "Vitest と preview 環境での手動確認"
+    },
+    {
+      "id": "check_054",
+      "target": "認証 CSRF",
+      "rule": "別 Origin から更新系 API と Server Action を呼ぶ",
+      "expected_result": "403、DB 変化なし",
+      "manual_or_automated": "manual",
+      "verification_method": "preview 環境に別 Origin のページを置いて試験"
+    },
+    {
+      "id": "check_055",
+      "target": "API 形式偽装",
+      "rule": "拡張子を偽装したファイル・SVG・上限超過",
+      "expected_result": "拒否され R2 に残らない",
+      "manual_or_automated": "automated",
+      "verification_method": "Vitest（file-sniff, media）"
+    },
+    {
+      "id": "check_056",
+      "target": "API 冪等な完了",
+      "rule": "アップロード complete を2回・同時に呼ぶ",
+      "expected_result": "media は1件",
+      "manual_or_automated": "automated",
+      "verification_method": "Vitest"
+    },
+    {
+      "id": "check_057",
+      "target": "API 並行編集",
+      "rule": "2 セッションで同じイベント・お知らせ・プレイリスト・設定を編集",
+      "expected_result": "後の保存が 409 と競合表示、入力は保持",
+      "manual_or_automated": "automated",
+      "verification_method": "Vitest と手動"
+    },
+    {
+      "id": "check_058",
+      "target": "API 削除予約",
+      "rule": "参照のないメディアを削除",
+      "expected_result": "deleting になり新規参照不可、7日後に R2 と行が消える",
+      "manual_or_automated": "automated",
+      "verification_method": "Vitest（Cron）"
+    },
+    {
+      "id": "check_059",
+      "target": "API 管理用素材",
+      "rule": "未ログインで管理用素材 API を呼ぶ",
+      "expected_result": "401。ログイン時は nosniff 付きで返る",
+      "manual_or_automated": "automated",
+      "verification_method": "Vitest"
+    },
+    {
+      "id": "check_060",
+      "target": "セキュリティ トークン露出",
+      "rule": "管理画面の HTML・API 応答・ログ",
+      "expected_result": "端末トークンの平文が出ない",
+      "manual_or_automated": "manual",
+      "verification_method": "画面ソースと Workers Logs を検索"
+    },
+    {
+      "id": "check_061",
+      "target": "表示 XSS",
+      "rule": "イベント名・説明・お知らせに HTML やスクリプトを入れる",
+      "expected_result": "文字として表示され実行されない",
+      "manual_or_automated": "automated",
+      "verification_method": "Vitest（部品の描画）"
+    },
+    {
+      "id": "check_062",
+      "target": "運用 72時間",
+      "rule": "14節の数値基準",
+      "expected_result": "すべて基準内",
+      "manual_or_automated": "manual",
+      "verification_method": "task_024 の記録"
+    },
+    {
+      "id": "check_063",
+      "target": "運用 復元",
+      "rule": "DB をバックアップから復元、旧 Worker へ戻す",
+      "expected_result": "手順どおり戻り、Pi が再同期する",
+      "manual_or_automated": "manual",
+      "verification_method": "task_025 で実演"
+    },
+    {
+      "id": "check_064",
+      "target": "運用 新規導入",
+      "rule": "新しい SD に install.sh と設定ファイルだけで導入",
+      "expected_result": "人手なしで表示まで到達",
+      "manual_or_automated": "manual",
+      "verification_method": "実機"
+    },
+    {
+      "id": "check_065",
+      "target": "CI",
+      "rule": "main への push",
+      "expected_result": "CI の全ジョブが成功",
+      "manual_or_automated": "automated",
+      "verification_method": "GitHub Actions"
+    }
+  ]
+}

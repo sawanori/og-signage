@@ -1,0 +1,1172 @@
+{
+  "feature": "share_house_signage_mvp",
+  "version": 2,
+  "tasks": [
+    {
+      "task_id": "task_001",
+      "title": "雛形・検証コマンド・CI",
+      "goal": "Next.js + vinext + TS + Tailwind + shadcn/ui + Vitest の雛形、13節の npm スクリプト、GitHub Actions の CI を作る",
+      "scope": [
+        "package.json と npm スクリプト",
+        "tsconfig.json",
+        "Tailwind・shadcn/ui 初期化",
+        "wrangler.jsonc（MEDIA_BUCKET, Cron, Rate Limiting の枠）",
+        "Vitest とダミーテスト",
+        "CI（typecheck, lint, test, build, build:display, pytest）",
+        ".gitignore と .dev.vars.example"
+      ],
+      "non_scope": [
+        "画面・API・スキーマ"
+      ],
+      "files_to_read": [
+        "docs/TECH_STACK.md",
+        "docs/implementation-plan.md"
+      ],
+      "files_to_create": [
+        "package.json",
+        "package-lock.json",
+        "tsconfig.json",
+        "vite.config.ts",
+        "vitest.config.ts",
+        "wrangler.jsonc",
+        ".dev.vars.example",
+        ".github/workflows/ci.yml",
+        "app/layout.tsx",
+        "app/page.tsx",
+        "tests/smoke.test.ts"
+      ],
+      "files_to_modify": [
+        ".gitignore"
+      ],
+      "dependencies": [],
+      "implementation_steps": [
+        "migrate-to-vinext スキルと Context7 で vinext の現行手順を確認する（Context7 が使えない場合はその旨を記録）",
+        "雛形を作る",
+        "依存を導入し版を固定する",
+        "CI を作る（この時点で存在しないコマンドは CI に入れず、作成タスクで追加する）"
+      ],
+      "done_definition": [
+        "npm run typecheck / lint / test / build が終了コード0",
+        "CI が GitHub 上で緑",
+        "wrangler dev でトップページが表示される"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test",
+        "npm run lint",
+        "npm run build"
+      ],
+      "risk_level": "medium"
+    },
+    {
+      "task_id": "task_002",
+      "title": "Workers 技術検証（ゲート）",
+      "goal": "vinext on Workers で必要な機能が動くかを実測し、合格条件を満たすまで後続に進まない",
+      "scope": [
+        "Auth.js Credentials + JWT のログイン往復と sessionVersion 照合",
+        "Server Action からの Turso 書き込みと読み取りトランザクション",
+        "別 Origin からの Server Action・Route Handler 呼び出しが拒否されるか",
+        "R2 マルチパートで 500MB を送る",
+        "R2 本体のストリーム中継で 500MB を Range 付きで取得（Worker のメモリ・CPU・時間の実測）",
+        "Cron Trigger",
+        "Rate Limiting binding",
+        "PBKDF2 の所要 CPU 時間",
+        "天気 API の選定（規約・商用可否・上限）",
+        "採用版の固定"
+      ],
+      "non_scope": [
+        "本番の画面・API"
+      ],
+      "files_to_read": [
+        "docs/implementation-plan.md"
+      ],
+      "files_to_create": [
+        "docs/spikes/workers.md",
+        "spikes/workers/**"
+      ],
+      "files_to_modify": [
+        "docs/implementation-plan.md",
+        "docs/task-list.json"
+      ],
+      "dependencies": [
+        "task_001"
+      ],
+      "implementation_steps": [
+        "各項目を最小コードで preview 環境に出して試す",
+        "失敗項目は代替案を試す（自前セッション等）",
+        "結果で 7 節と関連タスクを更新する",
+        "spikes/ を削除する"
+      ],
+      "done_definition": [
+        "合格条件: 上記のすべてが成功、または代替案で成功し同じ試験を再実施済み",
+        "docs/spikes/workers.md に項目ごとの結果・実測値・採用版がある",
+        "不合格が残る場合はユーザー判断を記録するまで task_004 以降を開始しない"
+      ],
+      "verify_commands": [
+        "npm run build"
+      ],
+      "risk_level": "high"
+    },
+    {
+      "task_id": "task_003",
+      "title": "Pi 実機技術検証（ゲート）",
+      "goal": "Pi 4 / Bookworm で表示・再生・回転・時刻・出力制御の方式を実測して固定する",
+      "scope": [
+        "GUI 起動方式（Wayland/labwc か X11）の決定",
+        "OS 側の画面回転（縦置き）で Chromium と mpv が両方正しく回転するか",
+        "Chromium --kiosk で localhost を表示",
+        "mpv を Chromium の前面に全画面表示し、終了後に戻る。ちらつきやデスクトップの露出",
+        "mpv IPC で再生位置を取得できるか",
+        "1080×1920 と 1920×1080 の H.264 実素材でドロップフレーム数（再生条件の確定）",
+        "HDMI 出力の停止と再開の方法",
+        "DS3231 RTC で、ネット切断のまま電源を抜いて24時間後に起動したときの時刻",
+        "モニター OFF のまま起動、HDMI 抜き差し",
+        "4K ディスプレイへの 1080p 出力"
+      ],
+      "non_scope": [
+        "Agent 本実装"
+      ],
+      "files_to_read": [
+        "docs/要件定義書.md"
+      ],
+      "files_to_create": [
+        "docs/spikes/pi.md"
+      ],
+      "files_to_modify": [
+        "docs/implementation-plan.md",
+        "docs/task-list.json"
+      ],
+      "dependencies": [],
+      "implementation_steps": [
+        "OS を導入し各項目を試す",
+        "切替を動画撮影して確認する",
+        "再生条件（解像度・プロファイル・レベル・フレームレート・ビットレート上限）を表にする",
+        "結果で task_021・022 の手順と media.playable の判定条件を更新する"
+      ],
+      "done_definition": [
+        "合格条件: 前面表示・回転・再生条件・RTC 時刻保持が成功",
+        "docs/spikes/pi.md に起動コマンド、回転設定、再生条件表、出力停止の方法、ちらつきの有無がある",
+        "不合格が残る場合はユーザー判断を記録するまで task_020 以降を開始しない"
+      ],
+      "verify_commands": [],
+      "risk_level": "high"
+    },
+    {
+      "task_id": "task_004",
+      "title": "DB スキーマ・マイグレーション・初期データ",
+      "goal": "10 節のスキーマを Drizzle で定義し、初期データと管理者作成スクリプトを用意する",
+      "scope": [
+        "10 節の全テーブル・列・外部キー・インデックス",
+        "seed",
+        "scripts/create-admin.ts"
+      ],
+      "non_scope": [
+        "API"
+      ],
+      "files_to_read": [
+        "docs/implementation-plan.md",
+        "docs/spikes/workers.md"
+      ],
+      "files_to_create": [
+        "db/schema.ts",
+        "db/index.ts",
+        "db/seed.ts",
+        "db/migrations/**",
+        "drizzle.config.ts",
+        "scripts/create-admin.ts",
+        "tests/db/schema.test.ts"
+      ],
+      "files_to_modify": [
+        "package.json"
+      ],
+      "dependencies": [
+        "task_002"
+      ],
+      "implementation_steps": [
+        "スキーマを書きマイグレーションを生成する",
+        "ローカル libSQL で適用するテストを書く"
+      ],
+      "done_definition": [
+        "npm run db:migrate がローカル libSQL で成功",
+        "参照中の media の行削除が外部キー違反になる（全画像参照と playlist_items）"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test",
+        "npm run db:generate"
+      ],
+      "risk_level": "medium"
+    },
+    {
+      "task_id": "task_005",
+      "title": "config の型・業務規則・日時",
+      "goal": "SignageConfig の Zod 型と、8.1 節の業務規則を単体テスト付きで作る",
+      "scope": [
+        "lib/config-schema.ts（schemaVersion つき）",
+        "lib/display-rules.ts（主イベント・Upcoming・今週・状態・お知らせ・表示スケジュール・動画の次回時刻）",
+        "lib/dates.ts（Asia/Tokyo）",
+        "lib/validators.ts"
+      ],
+      "non_scope": [
+        "DB アクセス"
+      ],
+      "files_to_read": [
+        "docs/implementation-plan.md"
+      ],
+      "files_to_create": [
+        "lib/config-schema.ts",
+        "lib/display-rules.ts",
+        "lib/dates.ts",
+        "lib/validators.ts",
+        "tests/lib/display-rules.test.ts",
+        "tests/lib/dates.test.ts",
+        "tests/lib/validators.test.ts",
+        "tests/fixtures/config.fixture.ts"
+      ],
+      "files_to_modify": [],
+      "dependencies": [
+        "task_001"
+      ],
+      "implementation_steps": [
+        "固定日時の fixture（2025-09-24 水 17:42 と境界時刻）を作る",
+        "下書き除外・同時刻・日またぎ・終了なし・30分前・イベント0件・日またぎの表示スケジュールをテストする"
+      ],
+      "done_definition": [
+        "TZ=UTC で npm test が成功し上記がすべてテストされている"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test"
+      ],
+      "risk_level": "medium"
+    },
+    {
+      "task_id": "task_006",
+      "title": "認証・権限・CSRF・レート制限",
+      "goal": "ログイン、保護、役割、無効化・降格の即時反映、CSRF、ログイン制限を作る",
+      "scope": [
+        "lib/password.ts",
+        "lib/auth.ts（JWT に userId と sessionVersion）",
+        "requireRole（DB の is_active・role・session_version と照合）",
+        "lib/csrf.ts（更新系の Origin 検査）",
+        "lib/rate-limit.ts",
+        "ログイン画面",
+        "middleware.ts"
+      ],
+      "non_scope": [
+        "ユーザー管理画面"
+      ],
+      "files_to_read": [
+        "docs/spikes/workers.md"
+      ],
+      "files_to_create": [
+        "lib/password.ts",
+        "lib/auth.ts",
+        "lib/csrf.ts",
+        "lib/rate-limit.ts",
+        "app/login/page.tsx",
+        "middleware.ts",
+        "tests/lib/auth.test.ts",
+        "tests/lib/csrf.test.ts"
+      ],
+      "files_to_modify": [],
+      "dependencies": [
+        "task_002",
+        "task_004"
+      ],
+      "implementation_steps": [
+        "task_002 の結果の方式で実装する",
+        "無効化・降格で session_version を上げる"
+      ],
+      "done_definition": [
+        "未ログインの /admin は /login へ",
+        "Staff が Administrator 専用の画面・操作を使うと拒否",
+        "無効化・降格前の Cookie での API・Server Action が拒否",
+        "別 Origin の更新要求が 403",
+        "同一 IP・同一メールの連続失敗が制限される"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test",
+        "npm run lint",
+        "npm run build"
+      ],
+      "risk_level": "high"
+    },
+    {
+      "task_id": "task_007",
+      "title": "イベントのサービスと API",
+      "goal": "イベント CRUD（revision による条件付き更新）",
+      "scope": [
+        "lib/services/events.ts",
+        "app/api/events/**",
+        "公開・下書き",
+        "画像 media は active かつ image"
+      ],
+      "non_scope": [
+        "画面"
+      ],
+      "files_to_read": [
+        "lib/validators.ts",
+        "db/schema.ts"
+      ],
+      "files_to_create": [
+        "lib/services/events.ts",
+        "app/api/events/route.ts",
+        "app/api/events/[id]/route.ts",
+        "tests/services/events.test.ts"
+      ],
+      "files_to_modify": [],
+      "dependencies": [
+        "task_005",
+        "task_006"
+      ],
+      "implementation_steps": [
+        "サービスを書き API から呼ぶ"
+      ],
+      "done_definition": [
+        "401・400・404・409（revision 不一致）のテストが通る",
+        "deleting 状態の画像を参照できない"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test"
+      ],
+      "risk_level": "medium"
+    },
+    {
+      "task_id": "task_008",
+      "title": "メディアのアップロード・中継・削除",
+      "goal": "uploads による冪等なアップロード、形式検査、管理画面への素材中継、削除予約を作る",
+      "scope": [
+        "lib/r2.ts",
+        "lib/file-sniff.ts（JPEG/PNG/WebP/MP4 の先頭バイト）",
+        "アップロード開始・パート・完了（冪等）・中断",
+        "ブラウザ側: 画像の WebP 縮小、動画のサムネイル・尺・コーデック情報（mp4 のボックス解析）、増分 SHA-256、パートごとの再試行",
+        "playable の判定（task_003 の条件）",
+        "管理用素材中継（nosniff）",
+        "削除予約と参照検査"
+      ],
+      "non_scope": [
+        "動画変換"
+      ],
+      "files_to_read": [
+        "docs/spikes/workers.md",
+        "docs/spikes/pi.md"
+      ],
+      "files_to_create": [
+        "lib/r2.ts",
+        "lib/file-sniff.ts",
+        "lib/services/media.ts",
+        "lib/client/upload.ts",
+        "app/api/media/**",
+        "tests/services/media.test.ts",
+        "tests/lib/file-sniff.test.ts"
+      ],
+      "files_to_modify": [],
+      "dependencies": [
+        "task_003",
+        "task_004",
+        "task_006"
+      ],
+      "implementation_steps": [
+        "サーバーがキーを決め、クライアント指定のキーを受けない",
+        "complete の二重送信・応答喪失・DB 失敗をテストする"
+      ],
+      "done_definition": [
+        "500MB 動画のアップロードが完了し、尺とサムネイルが出る",
+        "拡張子偽装・SVG・上限超過が拒否される",
+        "complete を2回呼んでも media は1件",
+        "参照中の削除は 409"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test",
+        "npm run lint",
+        "npm run build"
+      ],
+      "risk_level": "high"
+    },
+    {
+      "task_id": "task_009",
+      "title": "お知らせ・デザイン設定・ハウスルール・カテゴリ・表示スケジュール",
+      "goal": "これらのサービスと Server Actions（revision つき）",
+      "scope": [
+        "lib/services/notices.ts",
+        "lib/services/house.ts",
+        "lib/services/schedule.ts",
+        "権限表どおりの制御"
+      ],
+      "non_scope": [
+        "画面"
+      ],
+      "files_to_read": [
+        "lib/validators.ts"
+      ],
+      "files_to_create": [
+        "lib/services/notices.ts",
+        "lib/services/house.ts",
+        "lib/services/schedule.ts",
+        "app/admin/_actions/content.ts",
+        "tests/services/content.test.ts"
+      ],
+      "files_to_modify": [],
+      "dependencies": [
+        "task_005",
+        "task_006"
+      ],
+      "implementation_steps": [
+        "サービスと Server Actions を書く"
+      ],
+      "done_definition": [
+        "成功・権限違反・入力不正・revision 競合のテストが通る"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test"
+      ],
+      "risk_level": "low"
+    },
+    {
+      "task_id": "task_010",
+      "title": "動画設定とプレイリスト",
+      "goal": "並べ替え・追加・削除と端末ごとの再生設定（間隔・順番/ランダム・ON/OFF・音量）、テスト表示の要求",
+      "scope": [
+        "lib/services/playback.ts",
+        "間隔は 5/10/15/20/30/60 分のみ",
+        "playable=false の動画は追加不可",
+        "テスト表示で devices.test_play_requested_at を設定"
+      ],
+      "non_scope": [
+        "画面"
+      ],
+      "files_to_read": [
+        "db/schema.ts"
+      ],
+      "files_to_create": [
+        "lib/services/playback.ts",
+        "app/admin/_actions/playback.ts",
+        "tests/services/playback.test.ts"
+      ],
+      "files_to_modify": [],
+      "dependencies": [
+        "task_006",
+        "task_008"
+      ],
+      "implementation_steps": [
+        "サービスを書く"
+      ],
+      "done_definition": [
+        "並べ替えで position が重複しない",
+        "playable=false の追加が拒否される"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test"
+      ],
+      "risk_level": "low"
+    },
+    {
+      "task_id": "task_011",
+      "title": "端末の登録・トークン・状態",
+      "goal": "端末登録、設定ファイルの1回出力、再発行、ONLINE/OFFLINE/表示異常の判定",
+      "scope": [
+        "lib/services/devices.ts",
+        "lib/device-auth.ts（Bearer、SHA-256、定数時間比較）"
+      ],
+      "non_scope": [
+        "画面"
+      ],
+      "files_to_read": [
+        "db/schema.ts"
+      ],
+      "files_to_create": [
+        "lib/services/devices.ts",
+        "lib/device-auth.ts",
+        "app/admin/_actions/devices.ts",
+        "tests/services/devices.test.ts"
+      ],
+      "files_to_modify": [],
+      "dependencies": [
+        "task_006"
+      ],
+      "implementation_steps": [
+        "登録・再発行・削除を書く"
+      ],
+      "done_definition": [
+        "再発行後に旧トークンが 401",
+        "状態判定の境界テスト",
+        "トークンが DB・ログ・画面に平文で残らない"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test"
+      ],
+      "risk_level": "medium"
+    },
+    {
+      "task_id": "task_012",
+      "title": "端末 API",
+      "goal": "9 節の端末用 API を作る",
+      "scope": [
+        "lib/config-builder.ts（読み取りトランザクション内で組み立て、SHA-256 を version に）",
+        "config、媒体中継（Range、その config に含まれるものだけ）、バンドル中継、heartbeat、logs、media-failures",
+        "ログ件数の上限"
+      ],
+      "non_scope": [
+        "Pi 側"
+      ],
+      "files_to_read": [
+        "lib/config-schema.ts"
+      ],
+      "files_to_create": [
+        "lib/config-builder.ts",
+        "app/api/device/config/route.ts",
+        "app/api/device/media/[mediaId]/route.ts",
+        "app/api/device/bundles/[bundleId]/route.ts",
+        "app/api/device/heartbeat/route.ts",
+        "app/api/device/logs/route.ts",
+        "app/api/device/media-failures/route.ts",
+        "tests/api/device.test.ts"
+      ],
+      "files_to_modify": [],
+      "dependencies": [
+        "task_007",
+        "task_008",
+        "task_009",
+        "task_010",
+        "task_011"
+      ],
+      "implementation_steps": [
+        "config が SignageConfig の Zod 検査を通ることをテストする",
+        "組み立て中に更新を割り込ませ、完全な旧世代か新世代のどちらかになることをテストする"
+      ],
+      "done_definition": [
+        "401・304・206・416 のテスト",
+        "内容が同じなら version が同じ、変われば変わる",
+        "天気・バンドル公開だけの変更でも version が変わる"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test",
+        "npm run lint",
+        "npm run build"
+      ],
+      "risk_level": "high"
+    },
+    {
+      "task_id": "task_013",
+      "title": "天気と Cron",
+      "goal": "天気の取得・保存、R2 削除予約の実行、未完了アップロードとログの掃除",
+      "scope": [
+        "lib/weather.ts",
+        "worker/scheduled.ts",
+        "失敗時は前回値を保持"
+      ],
+      "non_scope": [
+        "表示"
+      ],
+      "files_to_read": [
+        "docs/spikes/workers.md"
+      ],
+      "files_to_create": [
+        "lib/weather.ts",
+        "worker/scheduled.ts",
+        "tests/lib/weather.test.ts",
+        "tests/worker/scheduled.test.ts"
+      ],
+      "files_to_modify": [
+        "wrangler.jsonc"
+      ],
+      "dependencies": [
+        "task_004",
+        "task_008"
+      ],
+      "implementation_steps": [
+        "各処理を書く"
+      ],
+      "done_definition": [
+        "preview 環境で weather_cache が更新される",
+        "削除予約から7日後に R2 と行が消え、失敗時は再試行される（テスト）"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test"
+      ],
+      "risk_level": "medium"
+    },
+    {
+      "task_id": "task_014a",
+      "title": "表示ページ（固定データ版）",
+      "goal": "モック UI-V・UI-H の配置で、SignageConfig の fixture を表示する部品を作る",
+      "scope": [
+        "components/signage/**",
+        "固定キャンバスの拡大縮小",
+        "8.3 節の全状態",
+        "フォント同梱（web-typography スキル）",
+        "QR 生成",
+        "文字あふれ",
+        "画像 URL の解決関数を外から受け取る"
+      ],
+      "non_scope": [
+        "config の取得"
+      ],
+      "files_to_read": [
+        "image/UI-V.png",
+        "image/UI-H.png",
+        "lib/config-schema.ts",
+        "lib/display-rules.ts"
+      ],
+      "files_to_create": [
+        "components/signage/**",
+        "tests/signage/*.test.tsx"
+      ],
+      "files_to_modify": [],
+      "dependencies": [
+        "task_005"
+      ],
+      "implementation_steps": [
+        "fixture でモックを再現する",
+        "状態ごとのテストを書く"
+      ],
+      "done_definition": [
+        "固定日時・固定データでモックと主要要素・配置が一致（check の比較手順に従う）",
+        "全状態のテストが通る"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test",
+        "npm run lint"
+      ],
+      "risk_level": "high"
+    },
+    {
+      "task_id": "task_014b",
+      "title": "表示ページの接続とバンドル",
+      "goal": "管理画面プレビューと Pi 用バンドルを config につなぐ",
+      "scope": [
+        "app/admin/devices/[id]/preview/page.tsx（管理セッション）",
+        "display/（/local/config.json、SSE /local/events、/local/ack）",
+        "npm run build:display と scripts/publish-display-bundle.ts（不変 ID・SHA-256・display_bundles 登録）"
+      ],
+      "non_scope": [
+        "Pi 側"
+      ],
+      "files_to_read": [
+        "lib/config-builder.ts"
+      ],
+      "files_to_create": [
+        "app/admin/devices/[id]/preview/page.tsx",
+        "display/main.tsx",
+        "display/index.html",
+        "display/vite.config.ts",
+        "scripts/publish-display-bundle.ts"
+      ],
+      "files_to_modify": [
+        "package.json",
+        ".github/workflows/ci.yml"
+      ],
+      "dependencies": [
+        "task_012",
+        "task_014a"
+      ],
+      "implementation_steps": [
+        "バンドルに外部 URL が含まれないことを CI で検査する"
+      ],
+      "done_definition": [
+        "build:display の成果物に外部読み込みがない",
+        "バンドル公開で config の version が変わる"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test",
+        "npm run build:display"
+      ],
+      "risk_level": "high"
+    },
+    {
+      "task_id": "task_015",
+      "title": "管理画面の枠とダッシュボード",
+      "goal": "dashboard.png の配置のダッシュボード",
+      "scope": [
+        "サイドバー（権限表）",
+        "今週のカレンダー",
+        "今日のイベント",
+        "イベント一覧",
+        "お知らせカード",
+        "定期動画カード（次回予定は Heartbeat の値と観測時刻）",
+        "端末プレビューと状態",
+        "テスト表示ボタン",
+        "空状態"
+      ],
+      "non_scope": [
+        "各詳細画面"
+      ],
+      "files_to_read": [
+        "image/dashboard.png"
+      ],
+      "files_to_create": [
+        "app/admin/layout.tsx",
+        "app/admin/page.tsx",
+        "components/admin/**"
+      ],
+      "files_to_modify": [],
+      "dependencies": [
+        "task_007",
+        "task_009",
+        "task_010",
+        "task_011",
+        "task_014b"
+      ],
+      "implementation_steps": [
+        "各カードをサービスにつなぐ"
+      ],
+      "done_definition": [
+        "1280px 幅でモックの主要要素と一致",
+        "空状態で崩れない",
+        "技術用語が出ない"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test",
+        "npm run lint",
+        "npm run build"
+      ],
+      "risk_level": "medium"
+    },
+    {
+      "task_id": "task_016",
+      "title": "イベント管理画面",
+      "goal": "一覧（リスト/カレンダー）・作成・編集・削除",
+      "scope": [
+        "React Hook Form + Zod",
+        "公開・下書き",
+        "終了なしの説明",
+        "競合時に入力を保持"
+      ],
+      "non_scope": [
+        "繰り返し"
+      ],
+      "files_to_read": [
+        "lib/validators.ts"
+      ],
+      "files_to_create": [
+        "app/admin/events/page.tsx",
+        "app/admin/events/new/page.tsx",
+        "app/admin/events/[id]/page.tsx",
+        "components/admin/event-form.tsx"
+      ],
+      "files_to_modify": [],
+      "dependencies": [
+        "task_007",
+        "task_008",
+        "task_015"
+      ],
+      "implementation_steps": [
+        "フォームを作る"
+      ],
+      "done_definition": [
+        "イベント名と開始日時だけで登録できる",
+        "2 画面で同時編集すると後の保存が競合表示になる"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test",
+        "npm run lint",
+        "npm run build"
+      ],
+      "risk_level": "medium"
+    },
+    {
+      "task_id": "task_017",
+      "title": "動画・メディア画面",
+      "goal": "メディア一覧、アップロード、プレイリスト、再生設定",
+      "scope": [
+        "進捗と中断",
+        "再生条件外の理由表示",
+        "Pi で失敗した媒体の表示",
+        "要件14節の構成"
+      ],
+      "non_scope": [
+        "動画変換"
+      ],
+      "files_to_read": [
+        "docs/要件定義書.md"
+      ],
+      "files_to_create": [
+        "app/admin/media/page.tsx",
+        "app/admin/videos/page.tsx",
+        "components/admin/upload-dropzone.tsx",
+        "components/admin/playlist-editor.tsx"
+      ],
+      "files_to_modify": [],
+      "dependencies": [
+        "task_008",
+        "task_010",
+        "task_015"
+      ],
+      "implementation_steps": [
+        "画面を作る"
+      ],
+      "done_definition": [
+        "動画をアップロードしてプレイリストに入れ、順番を変えて保存できる"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test",
+        "npm run lint",
+        "npm run build"
+      ],
+      "risk_level": "medium"
+    },
+    {
+      "task_id": "task_018",
+      "title": "お知らせ・デザイン設定・表示スケジュール・利用ガイド画面",
+      "goal": "4 画面",
+      "scope": [
+        "お知らせ",
+        "デザイン設定",
+        "表示スケジュール（日またぎ）",
+        "利用ガイド"
+      ],
+      "non_scope": [
+        "多言語"
+      ],
+      "files_to_read": [
+        "lib/services/notices.ts",
+        "lib/services/house.ts",
+        "lib/services/schedule.ts"
+      ],
+      "files_to_create": [
+        "app/admin/notices/page.tsx",
+        "app/admin/design/page.tsx",
+        "app/admin/schedule/page.tsx",
+        "app/admin/guide/page.tsx"
+      ],
+      "files_to_modify": [],
+      "dependencies": [
+        "task_009",
+        "task_015"
+      ],
+      "implementation_steps": [
+        "画面を作る"
+      ],
+      "done_definition": [
+        "各設定を保存でき、プレビューに反映される"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test",
+        "npm run lint",
+        "npm run build"
+      ],
+      "risk_level": "low"
+    },
+    {
+      "task_id": "task_019",
+      "title": "端末画面とシステム設定",
+      "goal": "端末の登録・状態・設定ファイル・再発行・音量と、ユーザー管理",
+      "scope": [
+        "端末一覧（9 節の Heartbeat 項目）",
+        "設定ファイルの1回出力",
+        "ユーザー管理（最後の Administrator は無効化不可）"
+      ],
+      "non_scope": [
+        "遠隔再起動"
+      ],
+      "files_to_read": [
+        "lib/services/devices.ts"
+      ],
+      "files_to_create": [
+        "app/admin/devices/page.tsx",
+        "app/admin/settings/page.tsx"
+      ],
+      "files_to_modify": [],
+      "dependencies": [
+        "task_011",
+        "task_012",
+        "task_015"
+      ],
+      "implementation_steps": [
+        "画面を作る"
+      ],
+      "done_definition": [
+        "端末を登録し設定ファイルを取得できる",
+        "トークンが画面・HTML に出ない",
+        "ユーザーを無効化すると、そのユーザーの開いている画面の次の操作が拒否される"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test",
+        "npm run lint",
+        "npm run build"
+      ],
+      "risk_level": "medium"
+    },
+    {
+      "task_id": "task_020",
+      "title": "Agent: 同期・世代・ダウンロード・Heartbeat・ログ",
+      "goal": "7 節 Pi の同期と世代切替を作る",
+      "scope": [
+        "api.py（Bearer）",
+        "sync.py（10 秒、If-None-Match）",
+        "generations.py（世代作成・検証・原子切替・previous 保持・容量見積りと保留）",
+        "downloader.py（別スレッド、Range 再開、SHA-256 検証、3回不一致で隔離と報告）",
+        "heartbeat.py（別スレッド、60 秒）",
+        "ログ（上限つき、未送信の保持）",
+        "時刻同期状態の取得",
+        "pytest"
+      ],
+      "non_scope": [
+        "mpv・表示サーバー"
+      ],
+      "files_to_read": [
+        "docs/spikes/pi.md",
+        "lib/config-schema.ts"
+      ],
+      "files_to_create": [
+        "raspberry-pi/agent/main.py",
+        "raspberry-pi/agent/api.py",
+        "raspberry-pi/agent/sync.py",
+        "raspberry-pi/agent/generations.py",
+        "raspberry-pi/agent/downloader.py",
+        "raspberry-pi/agent/heartbeat.py",
+        "raspberry-pi/agent/config.py",
+        "raspberry-pi/tests/test_generations.py",
+        "raspberry-pi/tests/test_downloader.py",
+        "raspberry-pi/tests/test_sync.py"
+      ],
+      "files_to_modify": [
+        ".github/workflows/ci.yml"
+      ],
+      "dependencies": [
+        "task_003",
+        "task_012"
+      ],
+      "implementation_steps": [
+        "切替の各段階で処理を中断させるテストを書く",
+        "容量不足・SHA 不一致・ネット不通のテストを書く"
+      ],
+      "done_definition": [
+        "pytest が成功",
+        "切替のどの段階で止めても、次の起動で current か previous の完全な世代が使われる",
+        "容量不足では更新を保留し現行を維持"
+      ],
+      "verify_commands": [
+        "python3 -m pytest raspberry-pi/tests"
+      ],
+      "risk_level": "high"
+    },
+    {
+      "task_id": "task_021",
+      "title": "Agent: ローカル表示・再生・監視",
+      "goal": "localhost 配信、再生の状態機械、生存監視、表示スケジュール、テスト表示",
+      "scope": [
+        "server.py（ThreadingHTTPServer、127.0.0.1、/、/local/config.json、/local/media/<sha256>、/local/events（SSE）、/local/ack）",
+        "player.py（状態機械、遷移 ID と期限、mpv IPC の進行監視、失敗媒体の隔離と報告、順番位置の保存）",
+        "watchdog.py（表示応答 60 秒なしで Chromium 再起動、Chromium の毎日再起動）",
+        "スケジュール外は HDMI 出力停止（task_003 の方法）",
+        "時刻未同期時は消灯しない",
+        "バンドル切替後の生存確認と旧版への戻し"
+      ],
+      "non_scope": [
+        "systemd"
+      ],
+      "files_to_read": [
+        "docs/spikes/pi.md"
+      ],
+      "files_to_create": [
+        "raspberry-pi/agent/server.py",
+        "raspberry-pi/agent/player.py",
+        "raspberry-pi/agent/watchdog.py",
+        "raspberry-pi/tests/test_player.py",
+        "raspberry-pi/tests/test_server.py",
+        "raspberry-pi/tests/test_watchdog.py"
+      ],
+      "files_to_modify": [
+        "raspberry-pi/agent/main.py"
+      ],
+      "dependencies": [
+        "task_014b",
+        "task_020"
+      ],
+      "implementation_steps": [
+        "mpv と Chromium は抽象化して pytest で差し替える",
+        "実機で連続再生と各障害を試す"
+      ],
+      "done_definition": [
+        "pytest が成功",
+        "実機で 10 分間隔の再生と復帰が 3 回連続成功",
+        "mpv を SIGSTOP すると期限内に表示へ戻る",
+        "表示ページを止めると Chromium が再起動される",
+        "新バンドルが生存確認に失敗すると旧版に戻る"
+      ],
+      "verify_commands": [
+        "python3 -m pytest raspberry-pi/tests"
+      ],
+      "risk_level": "high"
+    },
+    {
+      "task_id": "task_022",
+      "title": "OS 設定・systemd・導入と更新スクリプト",
+      "goal": "電源投入から人手なしで表示し、書き込みを抑え、Agent とバンドルを安全に更新できる",
+      "scope": [
+        "GUI 自動ログインとユーザーサービス（task_003 の方式）",
+        "signage-agent.service（Restart=always）と chromium-kiosk.service（Agent の応答後に起動）",
+        "画面回転・自動消灯無効化・クラッシュ復帰ダイアログ無効",
+        "Chromium プロファイルと一時領域を tmpfs",
+        "journald を揮発・上限つき",
+        "RTC 設定",
+        "install.sh（初期バンドル同梱）",
+        "update.sh（releases/<version> へ導入、切替、生存確認、失敗時に戻す）"
+      ],
+      "non_scope": [
+        "OS イメージの自動作成"
+      ],
+      "files_to_read": [
+        "docs/spikes/pi.md"
+      ],
+      "files_to_create": [
+        "raspberry-pi/systemd/signage-agent.service",
+        "raspberry-pi/systemd/chromium-kiosk.service",
+        "raspberry-pi/os/**",
+        "raspberry-pi/install.sh",
+        "raspberry-pi/update.sh",
+        "raspberry-pi/README.md"
+      ],
+      "files_to_modify": [],
+      "dependencies": [
+        "task_021"
+      ],
+      "implementation_steps": [
+        "新しい SD に install.sh だけで導入できることを確認する"
+      ],
+      "done_definition": [
+        "電源投入から 3 分以内に表示",
+        "Agent と Chromium を kill すると自動で戻る",
+        "update.sh で壊れた版を入れると旧版へ戻る",
+        "ネット切断のまま再起動して表示される"
+      ],
+      "verify_commands": [],
+      "risk_level": "high"
+    },
+    {
+      "task_id": "task_023",
+      "title": "実機の総合確認",
+      "goal": "acceptance-checks.json の全項目を preview 環境と実機で確認する",
+      "scope": [
+        "完成条件 1〜16",
+        "障害系（停電・ネット切断・更新中の電源断・時刻）",
+        "セキュリティ系"
+      ],
+      "non_scope": [
+        "追加機能"
+      ],
+      "files_to_read": [
+        "docs/acceptance-checks.json"
+      ],
+      "files_to_create": [
+        "docs/acceptance-report.md"
+      ],
+      "files_to_modify": [],
+      "dependencies": [
+        "task_013",
+        "task_016",
+        "task_017",
+        "task_018",
+        "task_019",
+        "task_022"
+      ],
+      "implementation_steps": [
+        "各チェックを実施し、証拠（動画・スクリーンショット・ログ）を残す",
+        "失敗は 15 節の Repair Loop へ"
+      ],
+      "done_definition": [
+        "acceptance-report.md で全チェックが pass"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test",
+        "npm run lint",
+        "npm run build",
+        "npm run build:display",
+        "python3 -m pytest raspberry-pi/tests"
+      ],
+      "risk_level": "medium"
+    },
+    {
+      "task_id": "task_024",
+      "title": "72 時間連続運転試験",
+      "goal": "14 節の数値基準を満たすか確かめる",
+      "scope": [
+        "メモリ・SD 書き込み量・温度・ファイル記述子・動画開始の遅れを 10 分ごとに記録",
+        "途中で停電とネット切断を1回ずつ入れる"
+      ],
+      "non_scope": [
+        "負荷試験"
+      ],
+      "files_to_read": [
+        "docs/implementation-plan.md"
+      ],
+      "files_to_create": [
+        "raspberry-pi/tools/soak-monitor.sh",
+        "docs/soak-report.md"
+      ],
+      "files_to_modify": [],
+      "dependencies": [
+        "task_023"
+      ],
+      "implementation_steps": [
+        "計測スクリプトを置き 72 時間走らせる"
+      ],
+      "done_definition": [
+        "14 節の数値基準をすべて満たす"
+      ],
+      "verify_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "task_id": "task_025",
+      "title": "本番デプロイ・バックアップ・更新と復元の手順",
+      "goal": "本番環境を作り、運用手順を文書化して実演する",
+      "scope": [
+        "本番の Turso・R2・Workers",
+        "管理者作成",
+        "scripts/backup-db.sh（毎日の DB 書き出しを R2 へ）",
+        "DB 変更は旧新の Worker が共存できる順序で行う",
+        "復元手順（DB 復元後は config の version が変わり Pi が再同期する）",
+        "Pi の交換手順（新しい SD に install.sh と設定ファイル）"
+      ],
+      "non_scope": [
+        "自動フェイルオーバー"
+      ],
+      "files_to_read": [
+        "docs/spikes/workers.md"
+      ],
+      "files_to_create": [
+        "scripts/backup-db.sh",
+        "docs/runbook.md"
+      ],
+      "files_to_modify": [
+        "wrangler.jsonc"
+      ],
+      "dependencies": [
+        "task_024"
+      ],
+      "implementation_steps": [
+        "本番を作る",
+        "バックアップからの復元と、旧 Worker への戻しを実演する"
+      ],
+      "done_definition": [
+        "runbook.md の手順で復元と戻しが実演され、記録がある"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test",
+        "npm run lint",
+        "npm run build"
+      ],
+      "risk_level": "medium"
+    }
+  ]
+}
