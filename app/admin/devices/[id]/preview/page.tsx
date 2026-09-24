@@ -55,6 +55,12 @@ export default async function DevicePreviewPage({ params }: { params: Promise<{ 
       <h1 className="mb-4 text-xl font-bold">
         {device.name} のプレビュー（{ORIENTATION_LABEL[config.device.orientation]}）
       </h1>
+      <p className="mb-4 text-sm">
+        この表示はログインなしで Web に公開しています:{" "}
+        <a href={`/signage?device=${id}`} target="_blank" rel="noreferrer" className="text-[#3794ff] underline">
+          /signage?device={id}
+        </a>
+      </p>
       <PreviewScreen config={config} initialNow={now} />
     </main>
   );

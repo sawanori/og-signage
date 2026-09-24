@@ -150,6 +150,7 @@
 | 表示スケジュール | `/admin/schedule` | Administrator | 曜日ごとの時間帯 |
 | 端末 | `/admin/devices` | Administrator | ONLINE/OFFLINE/表示異常、最終通信、向き、版、空き容量、時刻同期、直近ログ、設定ファイル取得、トークン再発行、音量 |
 | 端末プレビュー | `/admin/devices/[id]/preview` | Staff 以上 | 管理セッションで認証。その端末の向きと config で表示部品を描画 |
+| Web 公開の表示 | `/signage`（`?device=`・`?layout=`） | ログイン不要 | 2026-09-25 ユーザー指示で追加。Pi と同じ表示部品を全画面で描き、30 秒ごとにデータを取り直す。公開するのは表示に使う項目と、表示中の画像だけ（`lib/public-signage.ts`、`worker/public-signage-relay.ts`）。動画は再生しない。検索エンジンには載せない |
 | 利用ガイド | `/admin/guide` | Staff 以上 | 静的 |
 | システム設定 | `/admin/settings` | Administrator | ユーザーの追加・役割変更・無効化。最後の Administrator は無効化不可 |
 

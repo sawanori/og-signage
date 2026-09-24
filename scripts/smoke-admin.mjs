@@ -34,6 +34,7 @@ const PATHS = [
   "/admin/devices",
   "/admin/settings",
   "/admin/guide",
+  "/signage", // Web 公開のサイネージ（ログイン不要）
   ...(process.env.SMOKE_EXTRA_PATHS ? process.env.SMOKE_EXTRA_PATHS.split(",") : []),
 ];
 

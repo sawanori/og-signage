@@ -241,6 +241,10 @@ function DeviceCard({ device, onConfirm }: { device: DeviceView; onConfirm: (r: 
             <ExternalLink size={15} aria-hidden />
             プレビュー
           </Link>
+          <a href={`/signage?device=${device.id}`} target="_blank" rel="noreferrer" className={`${styles.outlineButton} ${d.actionButton}`}>
+            <ExternalLink size={15} aria-hidden />
+            Web 表示
+          </a>
           <button type="button" className={`${styles.outlineButton} ${d.actionButton}`} disabled={pending} onClick={testPlay}>
             テスト表示
           </button>

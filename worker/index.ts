@@ -9,6 +9,7 @@
  * - task_012: 端末向けの中継（/api/device/media/[mediaId]、/api/device/bundles/[bundleId]）を
  *   fetch の「大きな本文の中継」の並びに足す。
  * - task_013: Cron Trigger（天気・掃除）。scheduled の本体は worker/scheduled.ts。
+ * - Web 公開のサイネージ（/signage）の画像の中継（/api/signage/media/[mediaId]、worker/public-signage-relay.ts）。
  */
 import handler from "vinext/server/fetch-handler";
 import { getToken } from "next-auth/jwt";
@@ -17,6 +18,7 @@ import { getMediaBucket, serveObject } from "../lib/r2";
 import { getDb } from "../lib/runtime";
 import { getActiveMedia } from "../lib/services/media";
 import { handleDeviceRelay } from "./device-relay";
+import { handlePublicSignageMedia } from "./public-signage-relay";
 import { scheduled } from "./scheduled";
 
 type Env = { AUTH_SECRET: string };
@@ -65,6 +67,11 @@ const worker = {
       if (pathname.startsWith("/api/device/")) {
         const deviceRelay = await handleDeviceRelay(request, pathname, { db: getDb(), bucket: getMediaBucket() });
         if (deviceRelay) return deviceRelay;
+      }
+      // Web 公開のサイネージの画像（ログイン不要。公開中の config が参照している画像だけ）
+      if (pathname.startsWith("/api/signage/media/")) {
+        const publicMedia = await handlePublicSignageMedia(request, pathname, { db: getDb(), bucket: getMediaBucket() });
+        if (publicMedia) return publicMedia;
       }
     }
 
