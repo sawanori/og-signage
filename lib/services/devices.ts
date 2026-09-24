@@ -5,10 +5,10 @@
  * - 再発行は token_hash を置き換えるので、旧トークンは即座に無効になる。
  * - 権限（Administrator のみ）は呼び出し側（app/admin/_actions/devices.ts）で確認する。
  */
-import { asc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../../db/index";
-import { devices, nowSeconds, playlists, videoPlaybackSettings } from "../../db/schema";
+import { deviceLogs, devices, media, mediaFailures, nowSeconds, playlists, videoPlaybackSettings } from "../../db/schema";
 import { hashDeviceToken } from "../device-auth";
 import type { HeartbeatInput } from "../validators";
 
@@ -172,4 +172,56 @@ export async function recordHeartbeat(
       updatedAt: now,
     })
     .where(eq(devices.id, deviceId));
+}
+
+// ---------------------------------------------------------------- 端末画面の読み取り（task_019）
+
+/** 端末画面に出す直近ログの件数 */
+export const RECENT_DEVICE_LOG_LIMIT = 10;
+
+export type DeviceLogEntry = { id: string; type: string; message: string | null; createdAt: number };
+
+/** 直近のログ（新しい順） */
+export async function listRecentDeviceLogs(
+  db: Db,
+  deviceId: string,
+  limit: number = RECENT_DEVICE_LOG_LIMIT,
+): Promise<DeviceLogEntry[]> {
+  return db
+    .select({ id: deviceLogs.id, type: deviceLogs.type, message: deviceLogs.message, createdAt: deviceLogs.createdAt })
+    .from(deviceLogs)
+    .where(eq(deviceLogs.deviceId, deviceId))
+    .orderBy(desc(deviceLogs.createdAt), desc(deviceLogs.id))
+    .limit(limit);
+}
+
+export type DeviceMediaFailure = {
+  id: string;
+  mediaId: string | null;
+  /** media が対象のときはその名前。表示バンドルが対象のときは null */
+  mediaName: string | null;
+  bundleId: string | null;
+  reason: "download_failed" | "hash_mismatch" | "playback_failed";
+  quarantined: boolean;
+  count: number;
+  lastAt: number;
+};
+
+/** Pi が報告した取得・再生の失敗（最後に起きた順） */
+export async function listDeviceMediaFailures(db: Db, deviceId: string): Promise<DeviceMediaFailure[]> {
+  return db
+    .select({
+      id: mediaFailures.id,
+      mediaId: mediaFailures.mediaId,
+      mediaName: media.name,
+      bundleId: mediaFailures.bundleId,
+      reason: mediaFailures.reason,
+      quarantined: mediaFailures.quarantined,
+      count: mediaFailures.count,
+      lastAt: mediaFailures.lastAt,
+    })
+    .from(mediaFailures)
+    .leftJoin(media, eq(mediaFailures.mediaId, media.id))
+    .where(eq(mediaFailures.deviceId, deviceId))
+    .orderBy(desc(mediaFailures.lastAt));
 }

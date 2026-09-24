@@ -5,13 +5,16 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "../../db/index";
-import { deviceLogs, devices, users, videoPlaybackSettings } from "../../db/schema";
+import { deviceLogs, devices, displayBundles, media, mediaFailures, users, videoPlaybackSettings } from "../../db/schema";
 import { seed, SEED_PLAYLIST_ID } from "../../db/seed";
 import { authenticateDevice, DeviceAuthError, hashDeviceToken, parseBearerToken } from "../../lib/device-auth";
 import {
   deleteDevice,
   deviceStatus,
+  listDeviceMediaFailures,
   listDevices,
+  listRecentDeviceLogs,
+  RECENT_DEVICE_LOG_LIMIT,
   ONLINE_WINDOW_SECONDS,
   PI_DATA_DIR,
   recordHeartbeat,
@@ -253,5 +256,42 @@ describe("Server Actions の権限", () => {
 
     expect(await deleteDeviceAction(registered.data.deviceId)).toEqual({ ok: true, data: null });
     expect(await deleteDeviceAction(registered.data.deviceId)).toMatchObject({ ok: false });
+  });
+});
+
+describe("端末画面の読み取り", () => {
+  it("直近のログを新しい順に 10 件だけ、その端末の分だけ返す", async () => {
+    const a = await registerDevice(db, input, ORIGIN);
+    const b = await registerDevice(db, { ...input, name: "玄関" }, ORIGIN);
+    await db.insert(deviceLogs).values(
+      Array.from({ length: 12 }, (_, i) => ({ deviceId: a.deviceId, type: "sync", message: `m${i}`, createdAt: 1000 + i })),
+    );
+    await db.insert(deviceLogs).values({ deviceId: b.deviceId, type: "error", message: "other", createdAt: 5000 });
+
+    const logs = await listRecentDeviceLogs(db, a.deviceId);
+    expect(logs).toHaveLength(RECENT_DEVICE_LOG_LIMIT);
+    expect(logs.map((l) => l.message)).toEqual(Array.from({ length: 10 }, (_, i) => `m${11 - i}`));
+    expect(logs[0]).toEqual({ id: expect.any(String), type: "sync", message: "m11", createdAt: 1011 });
+  });
+
+  it("失敗の報告を媒体名つきで最後に起きた順に返す。表示バンドルの失敗は媒体名なし", async () => {
+    const a = await registerDevice(db, input, ORIGIN);
+    const [video] = await db
+      .insert(media)
+      .values({ type: "video", name: "ハウス紹介", r2Key: "videos/a.mp4", mimeType: "video/mp4", fileSize: 10, sha256: "a".repeat(64) })
+      .returning();
+    const [bundle] = await db
+      .insert(displayBundles)
+      .values({ sha256: "b".repeat(64), size: 1, r2Key: "bundles/b.zip", schemaVersion: 1 })
+      .returning();
+    await db.insert(mediaFailures).values([
+      { deviceId: a.deviceId, mediaId: video.id, reason: "hash_mismatch", quarantined: true, count: 3, lastAt: 200 },
+      { deviceId: a.deviceId, bundleId: bundle.id, reason: "download_failed", count: 1, lastAt: 300 },
+    ]);
+
+    expect(await listDeviceMediaFailures(db, a.deviceId)).toEqual([
+      expect.objectContaining({ bundleId: bundle.id, mediaId: null, mediaName: null, reason: "download_failed", lastAt: 300 }),
+      expect.objectContaining({ mediaId: video.id, mediaName: "ハウス紹介", quarantined: true, count: 3, lastAt: 200 }),
+    ]);
   });
 });

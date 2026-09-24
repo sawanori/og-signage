@@ -1,0 +1,705 @@
+/*
+ * 端末画面（/admin/devices）とシステム設定（/admin/settings）。
+ * 色・角丸・影・文字組みは admin.module.css（image/dashboard.png の採寸値）の変数と値にそろえる。
+ * 変数（--ink など）は AdminShell の .shell で定義されたものを使う。
+ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  min-width: 0;
+}
+
+.pageHead {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding: 2px 0 3px 19px;
+}
+
+.pageTitle {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 28px;
+  letter-spacing: 0.02em;
+  color: #0e1a33;
+}
+
+.pageSub {
+  font-size: 13px;
+  line-height: 18px;
+  letter-spacing: 0.02em;
+  color: #56657b;
+}
+
+.topRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  column-gap: 11px;
+}
+
+/* ---------------------------------------------------------------- フォーム */
+
+.registerCard,
+.guideCard {
+  padding: 17px 19px 19px;
+}
+
+.registerForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px auto;
+  gap: 14px 14px;
+  align-items: end;
+  margin-top: 14px;
+}
+
+.registerForm .primaryButton {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+.stackForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.stackForm .primaryButton {
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 16px;
+  color: #0e1a33;
+}
+
+.input {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid #e3e8ef;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+  color: #0e1a33;
+  outline: none;
+}
+
+.input::placeholder {
+  color: #9aa4b4;
+}
+
+.input:focus,
+.selectField:focus,
+.roleSelect:focus {
+  border-color: var(--blue);
+}
+
+.selectField {
+  width: 100%;
+  height: 38px;
+  border-radius: 8px;
+}
+
+.resolution {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--ink-mute);
+}
+
+.numberInput {
+  width: 78px;
+  padding: 0 8px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.primaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  box-shadow: 0 4px 12px -4px rgba(47, 142, 253, 0.55);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.primaryButton:hover {
+  background: #1f7ff0;
+}
+
+.primaryButton:disabled,
+.actionButton:disabled,
+.secondaryButton:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.primaryDanger {
+  background: #e5415f;
+  box-shadow: 0 4px 12px -4px rgba(229, 65, 95, 0.5);
+}
+
+.primaryDanger:hover {
+  background: #d43552;
+}
+
+.secondaryButton {
+  height: 42px;
+  padding: 0 20px;
+  border: 1px solid #e3e8ef;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0e1a33;
+  cursor: pointer;
+}
+
+.secondaryButton:hover {
+  background: #f3f6fa;
+}
+
+/* ---------------------------------------------------------------- 導入の流れ */
+
+.guideList {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 14px;
+  counter-reset: step;
+}
+
+.guideList li {
+  position: relative;
+  padding-left: 32px;
+  font-size: 13px;
+  line-height: 20px;
+  color: #33435c;
+  counter-increment: step;
+}
+
+.guideList li::before {
+  content: counter(step);
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  background: var(--blue-soft);
+  color: #1473f0;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ---------------------------------------------------------------- 端末カード */
+
+.emptyCard {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  padding: 40px 16px;
+  font-size: 14px;
+  color: var(--ink-mute);
+}
+
+.emptyIcon {
+  width: 32px;
+  height: 32px;
+  color: #a3adbb;
+}
+
+.deviceCard {
+  padding: 15px 19px 19px;
+}
+
+.deviceHead {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.statusText {
+  margin-left: 6px;
+  font-weight: 700;
+  color: #0e1a33;
+}
+
+.statusText[data-status="offline"] {
+  color: #5d6b80;
+}
+
+.statusText[data-status="display_error"] {
+  color: #d63552;
+}
+
+.deviceName {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 24px;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #0e1a33;
+}
+
+.deviceActions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+  padding-left: 16px;
+  flex: none;
+}
+
+.actionButton {
+  display: inline-flex;
+  gap: 6px;
+  padding: 0 14px;
+  font-weight: 400;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.actionButton:hover:not(:disabled) {
+  background: #f3f6fa;
+}
+
+.dangerButton {
+  color: #d63552;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) repeat(8, minmax(0, 1fr));
+  margin: 0;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.stat {
+  min-width: 0;
+  padding: 0 12px;
+}
+
+.stat:first-child {
+  padding-left: 0;
+}
+
+.stat + .stat {
+  border-left: 1px solid var(--line);
+}
+
+.statLabel {
+  font-size: 11px;
+  line-height: 15px;
+  letter-spacing: 0.02em;
+  color: #6f7c90;
+}
+
+.statValue {
+  margin: 5px 0 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 19px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: #0e1a33;
+}
+
+.warn {
+  color: #d63552;
+}
+
+.note {
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink-mute);
+}
+
+.volumeRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.volumeIcon {
+  width: 18px;
+  height: 18px;
+  color: #1c2940;
+}
+
+.volumeLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0e1a33;
+}
+
+.range {
+  width: 240px;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, var(--blue) var(--fill, 0%), #dfe5ee var(--fill, 0%));
+  appearance: none;
+  cursor: pointer;
+}
+
+.range::-webkit-slider-thumb {
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(20, 32, 58, 0.3);
+  appearance: none;
+}
+
+.range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(20, 32, 58, 0.3);
+}
+
+.volumeValue {
+  width: 56px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: #33435c;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  column-gap: 24px;
+  padding-top: 13px;
+}
+
+.subTitle {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+  color: #0e1a33;
+}
+
+.none {
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.logList {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #edf0f5;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.logItem,
+.failureItem {
+  display: grid;
+  align-items: center;
+  column-gap: 10px;
+  min-height: 30px;
+  padding: 5px 12px;
+  font-size: 12px;
+  line-height: 16px;
+  color: #33435c;
+}
+
+.logItem {
+  grid-template-columns: 124px 96px minmax(0, 1fr);
+}
+
+.failureItem {
+  grid-template-columns: auto minmax(0, 1fr);
+  row-gap: 4px;
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+
+.failureItem .failureName {
+  grid-column: 1 / -1;
+}
+
+.logItem + .logItem,
+.failureItem + .failureItem {
+  border-top: 1px solid #f0f3f7;
+}
+
+.logTime {
+  font-variant-numeric: tabular-nums;
+  color: #6f7c90;
+  white-space: nowrap;
+}
+
+.logType {
+  justify-self: start;
+  max-width: 100%;
+  padding: 1px 7px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--chip);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #33435c;
+}
+
+.logMessage,
+.failureName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.failureName {
+  font-weight: 700;
+  color: #0e1a33;
+}
+
+.failureReason {
+  padding: 1px 7px;
+  border-radius: 4px;
+  background: #fdecef;
+  font-size: 11px;
+  color: #c62d4a;
+  white-space: nowrap;
+}
+
+.message {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #e8f2ff;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #1c5fb8;
+}
+
+.messageError {
+  background: #fdecef;
+  color: #c62d4a;
+}
+
+/* ---------------------------------------------------------------- システム設定 */
+
+.settingsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  column-gap: 11px;
+  align-items: start;
+}
+
+.listCard {
+  padding: 17px 19px 19px;
+}
+
+.table {
+  width: 100%;
+  margin-top: 12px;
+  border-collapse: collapse;
+  font-size: 14px;
+  color: #0e1a33;
+}
+
+.table th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 400;
+  text-align: left;
+  color: #6f7c90;
+}
+
+.table td {
+  padding: 10px;
+  border-bottom: 1px solid #f0f3f7;
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: 0;
+}
+
+.table tr[data-inactive] td {
+  color: #8792a4;
+}
+
+.userCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+}
+
+.userAvatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 50%;
+  background: #e9f1fc;
+  color: #1473f0;
+}
+
+.youTag {
+  padding: 1px 7px;
+  border-radius: 4px;
+  background: var(--blue-soft);
+  font-size: 11px;
+  font-weight: 700;
+  color: #1473f0;
+}
+
+.emailCell {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  color: #33435c;
+}
+
+.roleSelect {
+  width: 140px;
+  height: 34px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.roleSelect:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.stateBadge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #e5f6e4;
+  font-size: 12px;
+  font-weight: 700;
+  color: #2f8a2c;
+}
+
+.stateBadge[data-active="false"] {
+  background: #eef1f5;
+  color: #6f7c90;
+}
+
+.actionCell {
+  text-align: right;
+}
+
+.actionCell .actionButton {
+  display: inline-flex;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- 確認ダイアログ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: rgba(14, 26, 51, 0.32);
+}
+
+.dialog {
+  width: 440px;
+  padding: 22px 24px 20px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 12px 40px -8px rgba(23, 42, 80, 0.3);
+  font-family: var(--font-sans);
+  color: #0e1a33;
+}
+
+.dialogTitle {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.dialogBody {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #33435c;
+}
+
+.dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* ---------------------------------------------------------------- 狭い画面（1280〜1500px） */
+
+@media (max-width: 1500px) {
+  .stats {
+    grid-template-columns: minmax(0, 1.4fr) repeat(4, minmax(0, 1fr));
+    row-gap: 12px;
+  }
+
+  .stat:nth-child(6) {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .deviceActions {
+    gap: 6px;
+  }
+
+  .actionButton {
+    padding: 0 10px;
+  }
+}
