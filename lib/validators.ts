@@ -221,13 +221,17 @@ export const deviceLogsSchema = z.object({
 export const mediaFailuresSchema = z.object({
   failures: z
     .array(
-      z.object({
-        mediaId: z.string().min(1),
-        reason: z.enum(["download_failed", "hash_mismatch", "playback_failed"]),
-        /** 3 回不一致で隔離したとき true */
-        quarantined: z.boolean(),
-        occurredAt: unixSeconds,
-      }),
+      z
+        .object({
+          /** 失敗したのが画像・動画なら mediaId、表示バンドルなら bundleId。どちらか一方だけを送る */
+          mediaId: z.string().min(1).nullable().default(null),
+          bundleId: z.string().min(1).nullable().default(null),
+          reason: z.enum(["download_failed", "hash_mismatch", "playback_failed"]),
+          /** 3 回不一致で隔離したとき true */
+          quarantined: z.boolean(),
+          occurredAt: unixSeconds,
+        })
+        .refine((f) => (f.mediaId === null) !== (f.bundleId === null), "mediaId と bundleId はどちらか一方だけを指定してください"),
     )
     .min(1)
     .max(MEDIA_FAILURES_MAX),

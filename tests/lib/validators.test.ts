@@ -205,4 +205,15 @@ describe("端末 API", () => {
     expect(mediaFailuresSchema.safeParse({ failures: [failure] }).success).toBe(true);
     expect(mediaFailuresSchema.safeParse({ failures: [{ ...failure, reason: "unknown" }] }).success).toBe(false);
   });
+
+  it("media-failures は mediaId と bundleId のどちらか一方だけを受け付ける", () => {
+    const base = { reason: "hash_mismatch", quarantined: false, occurredAt: NOW };
+    const bundle = mediaFailuresSchema.safeParse({ failures: [{ ...base, bundleId: "bundle_1" }] });
+    expect(bundle.success).toBe(true);
+    expect(bundle.data?.failures[0].mediaId).toBeNull();
+    expect(mediaFailuresSchema.safeParse({ failures: [base] }).success).toBe(false);
+    expect(
+      mediaFailuresSchema.safeParse({ failures: [{ ...base, mediaId: "med_welcome", bundleId: "bundle_1" }] }).success,
+    ).toBe(false);
+  });
 });

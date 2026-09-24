@@ -15,3 +15,7 @@ npm-debug.log*
 next-env.d.ts
 __pycache__/
 .pytest_cache/
+
+# ローカルの libSQL
+local.db
+local.db-*
