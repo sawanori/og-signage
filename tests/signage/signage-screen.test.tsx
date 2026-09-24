@@ -7,18 +7,31 @@ import { afterEach, describe, expect, it } from "vitest";
 import { SignageScreen } from "@/components/signage/SignageScreen";
 import type { MediaRef, SignageConfig } from "@/lib/config-schema";
 import { tokyoDateTime } from "@/lib/dates";
-import { NOW, makeConfig, pizzaNight } from "../fixtures/config.fixture";
+import { HERO_SLIDE_SECONDS, heroSlideIndex, selectHeroSlides } from "@/lib/display-rules";
+import { NOW, makeConfig, movieNight, pizzaNight } from "../fixtures/config.fixture";
 
 const resolve = (ref: MediaRef) => `/media/${ref.sha256}`;
 
+/** 大きな欄のスライドショーが 1 枚目を出す時刻にそろえる（10 秒単位で先へ進めるだけ） */
+function atFirstSlide(config: SignageConfig, now: number): number {
+  const count = selectHeroSlides(config.events, now).length;
+  return count <= 1 ? now : now + ((count - heroSlideIndex(now, count)) % count) * HERO_SLIDE_SECONDS;
+}
+
+/**
+ * 既定では、大きな欄が 1 枚目（今日の主イベント）を出す時刻にそろえて描く。
+ * スライドショーそのものを確かめるときは align: false で時刻をそのまま使う。
+ */
 function renderScreen(
-  props: Partial<{ config: SignageConfig; now: number; timeSynced: boolean; fading: boolean }> = {},
+  props: Partial<{ config: SignageConfig; now: number; timeSynced: boolean; fading: boolean; align: boolean }> = {},
   orientation: "portrait" | "landscape" = "portrait",
 ) {
+  const config = props.config ?? makeConfig();
+  const now = props.now ?? NOW;
   return render(
     <SignageScreen
-      config={props.config ?? makeConfig()}
-      now={props.now ?? NOW}
+      config={config}
+      now={props.align === false ? now : atFirstSlide(config, now)}
       resolveMediaUrl={resolve}
       orientation={orientation}
       timeSynced={props.timeSynced}
@@ -65,17 +78,21 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     expect(screen.getByTestId("state-badge").textContent).toContain("NOW HAPPENING");
   });
 
-  it("今日のイベントがなければ次のイベントを小さく出す", () => {
+  it("今日のイベントがなければ、明日以降のイベントを大きく出す（日付つき）", () => {
     const config = makeConfig();
     renderScreen({ config: { ...config, events: config.events.filter((e) => e.id !== pizzaNight.id) } }, orientation);
-    expect(screen.queryByTestId("state-badge")).toBeNull();
-    expect(within(screen.getByTestId("next-event")).getByText("Movie Night")).toBeTruthy();
+    expect(screen.getByTestId("state-badge").textContent).toContain("UPCOMING");
+    expect(screen.getByTestId("state-badge").dataset.state).toBe("upcoming");
+    expect(screen.getByTestId("main-title").textContent).toContain("Movie Night");
+    expect(screen.getByText(/9月26日（金） 20:00/)).toBeTruthy();
+    expect(screen.queryByTestId("no-event")).toBeNull();
   });
 
   it("イベント 0 件: キャッチコピーと空の Upcoming", () => {
     renderScreen({ config: { ...makeConfig(), events: [] } }, orientation);
     expect(screen.getByTestId("no-event").textContent).toContain("Welcome Home!");
-    expect(screen.queryByTestId("next-event")).toBeNull();
+    expect(screen.queryByTestId("state-badge")).toBeNull();
+    expect(screen.queryByTestId("hero-dots")).toBeNull();
     expect(screen.getByTestId("upcoming").textContent).toContain("予定されているイベントはありません");
   });
 
@@ -169,6 +186,40 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     const srcs = [...container.querySelectorAll("img")].map((img) => img.getAttribute("src"));
     expect(srcs.length).toBeGreaterThan(0);
     for (const src of srcs) expect(src).toMatch(/^\/media\/[0-9a-f]{64}$/);
+  });
+
+  it("大きな欄は 10 秒ごとに次のイベントへ切り替わる（今日の主イベントから順に）", () => {
+    const config = makeConfig();
+    const start = atFirstSlide(config, NOW);
+    const slides = selectHeroSlides(config.events, start);
+    expect(slides.length).toBeGreaterThan(1);
+    renderScreen({ now: start, align: false }, orientation);
+    expect(screen.getByTestId("main-title").textContent).toContain(slides[0].event.title);
+    cleanup();
+    renderScreen({ now: start + HERO_SLIDE_SECONDS, align: false }, orientation);
+    expect(screen.getByTestId("main-title").textContent).toContain(slides[1].event.title);
+    cleanup();
+    renderScreen({ now: start + slides.length * HERO_SLIDE_SECONDS, align: false }, orientation);
+    expect(screen.getByTestId("main-title").textContent).toContain(slides[0].event.title);
+  });
+
+  it("何枚目かを点で出し、今の 1 枚だけ強調する", () => {
+    const config = makeConfig();
+    const start = atFirstSlide(config, NOW) + HERO_SLIDE_SECONDS;
+    renderScreen({ now: start, align: false }, orientation);
+    const dots = [...screen.getByTestId("hero-dots").querySelectorAll("span")];
+    expect(dots.length).toBe(selectHeroSlides(config.events, start).length);
+    expect(dots.map((d) => d.dataset.active)).toEqual(dots.map((_, i) => (i === 1 ? "true" : "false")));
+  });
+
+  it("イベントが 1 件だけなら切り替えず、点も出さない", () => {
+    const config = { ...makeConfig(), events: [movieNight] };
+    renderScreen({ config, align: false }, orientation);
+    expect(screen.getByTestId("main-title").textContent).toContain("Movie Night");
+    expect(screen.queryByTestId("hero-dots")).toBeNull();
+    cleanup();
+    renderScreen({ config, now: NOW + HERO_SLIDE_SECONDS, align: false }, orientation);
+    expect(screen.getByTestId("main-title").textContent).toContain("Movie Night");
   });
 
   it("Upcoming は主イベントを除いて最大 4 件", () => {

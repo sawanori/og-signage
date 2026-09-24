@@ -1,14 +1,14 @@
 /**
  * 表示ページの確認用（固定データのみ）。
  *   /dev/signage?orientation=portrait|landscape&state=<状態>
- * 状態: today（既定。モックと同じ）/ starting-soon / now-happening / next / no-event / off / fade / unsynced /
+ * 状態: today（既定。モックと同じ）/ starting-soon / now-happening / next（今日のイベントなし。明日以降を流す）/ no-event / off / fade / unsynced /
  *       no-image / long
  */
 import { SignageScreen } from "@/components/signage/SignageScreen";
 import type { Orientation } from "@/components/signage/model";
 import type { SignageConfig } from "@/lib/config-schema";
 import { tokyoDateTime } from "@/lib/dates";
-import { NOW, mockConfig, mockMediaResolver } from "./mock-fixture";
+import { NOW, atFirstSlide, mockConfig, mockMediaResolver } from "./mock-fixture";
 
 export const metadata = { title: "表示ページ確認（固定データ）" };
 
@@ -97,7 +97,7 @@ export default async function DevSignagePage({
   return (
     <SignageScreen
       config={s.config}
-      now={s.now}
+      now={atFirstSlide(s.config.events, s.now)}
       resolveMediaUrl={mockMediaResolver(orientation)}
       orientation={orientation}
       timeSynced={s.timeSynced}

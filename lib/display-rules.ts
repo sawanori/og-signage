@@ -70,6 +70,33 @@ export type MainEventSelection<E extends SignageEvent = SignageEvent> =
   /** 表示するイベントがない（ハウスのキャッチコピーを出す） */
   | { kind: "none" };
 
+/** 大きな欄のスライドショーで 1 枚を出す秒数 */
+export const HERO_SLIDE_SECONDS = 10;
+
+export type HeroSlideState = Exclude<EventState, "ended">;
+export type HeroSlide<E extends SignageEvent = SignageEvent> = { event: E; state: HeroSlideState };
+
+/**
+ * 大きな欄（写真つきで詳細を出す欄）のスライドショーに流すイベント。
+ * 終わっていない公開イベントをすべて、開催中を先頭に、残りは開始が早い順で並べる。
+ * サイネージはタッチ操作ができず、各イベントの詳細はこの欄でしか見られないため（2026-09-25 ユーザー指示）。
+ */
+export function selectHeroSlides<E extends SignageEvent>(events: readonly E[], now: number): HeroSlide<E>[] {
+  const slides = events
+    .filter((e) => isPublished(e))
+    .map((event) => ({ event, state: getEventState(event, now) }))
+    .filter((slide): slide is HeroSlide<E> => slide.state !== "ended");
+  const byOrder = (a: HeroSlide<E>, b: HeroSlide<E>) => compareEventOrder(a.event, b.event);
+  const happening = slides.filter((slide) => slide.state === "now_happening").sort(byOrder);
+  const rest = slides.filter((slide) => slide.state !== "now_happening").sort(byOrder);
+  return [...happening, ...rest];
+}
+
+/** 今出すスライドの番号。時刻だけで決めるので、Pi・Web・管理画面のプレビューで同じ 1 枚が出る */
+export function heroSlideIndex(now: number, count: number): number {
+  return count <= 1 ? 0 : Math.floor(now / HERO_SLIDE_SECONDS) % count;
+}
+
 /**
  * 今日の主イベント。開催中を優先し、なければ今日これから始まるもの。
  * 前日から続いて開催中のもの（日またぎ）も今日のイベントに含める。

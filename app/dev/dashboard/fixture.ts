@@ -6,6 +6,7 @@ import type { DashboardData, DashboardEvent, ShellData } from "@/components/admi
 import type { Role } from "@/lib/auth";
 import { tokyoDateTime } from "@/lib/dates";
 import { NOW, makeEvent } from "@/tests/fixtures/config.fixture";
+import { atFirstSlide, mockConfig } from "@/app/dev/signage/mock-fixture";
 
 export { NOW };
 
@@ -101,7 +102,8 @@ export function fixtureShell(role: Role): ShellData {
 const LAST_SEEN = NOW - 20;
 
 export const fixtureDashboard: DashboardData = {
-  now: NOW,
+  // プレビュー欄のスライドショーが 1 枚目（Pizza Night）を出す時刻（時計の表示は 17:42 のまま）
+  now: atFirstSlide(mockConfig("portrait").events, NOW),
   events: fixtureEvents,
   video: {
     deviceId: "dev_entrance",

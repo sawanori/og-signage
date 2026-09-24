@@ -144,65 +144,13 @@
   color: rgba(255, 255, 255, 0.85);
 }
 
-.pNextLabel {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 22px;
-  letter-spacing: 0.08em;
-  color: var(--ink);
-  white-space: nowrap;
-}
 
-.pNextLabel small {
-  font-weight: 400;
-  font-size: 15px;
-  color: var(--ink-mute);
-}
 
-.pNextImage {
-  position: relative;
-  width: 150px;
-  height: 96px;
-  border-radius: 10px;
-  overflow: hidden;
-  flex: none;
-}
 
-.pNextDate {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  font-weight: 700;
-  font-size: 34px;
-  line-height: 1.1;
-}
 
-.pNextDate small {
-  font-weight: 400;
-  font-size: 18px;
-}
 
-.pNextText {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
 
-.pNextTitle {
-  font-weight: 700;
-  font-size: 28px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
-.pNextMeta {
-  font-size: 19px;
-  color: var(--ink-soft);
-}
 
 /* ---------------------------------------------------------------- 縦型 */
 
@@ -377,20 +325,6 @@
   background: linear-gradient(135deg, #2b3440, #1b2530);
 }
 
-.pNext {
-  position: absolute;
-  left: 40px;
-  right: 40px;
-  bottom: 40px;
-  height: 136px;
-  padding: 0 28px;
-  border-radius: 18px;
-  background: #f2f3f5;
-  color: var(--ink);
-  display: flex;
-  align-items: center;
-  gap: 28px;
-}
 
 .pBadge {
   position: absolute;
@@ -1075,20 +1009,6 @@
   background: linear-gradient(135deg, #2b3440, #1b2530);
 }
 
-.lNext {
-  position: absolute;
-  left: 60px;
-  right: 60px;
-  bottom: 60px;
-  height: 150px;
-  padding: 0 32px;
-  border-radius: 18px;
-  background: #f5f5f5;
-  color: var(--ink);
-  display: flex;
-  align-items: center;
-  gap: 32px;
-}
 
 .lCircle {
   position: absolute;
@@ -1725,4 +1645,50 @@
   font-size: 17px;
   letter-spacing: 0.17em;
   white-space: nowrap;
+}
+
+/* ---- 大きな欄のスライドショー（lib/display-rules.ts の selectHeroSlides） */
+
+/* 1 枚ごとにフェードで出す（React の key で要素が入れ替わるたびに再生される） */
+.heroFade {
+  animation: heroFadeIn 700ms ease-out;
+}
+
+@keyframes heroFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 何枚目か（点の並び）。今の 1 枚だけ白く、ほかは半透明 */
+.heroDots {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  gap: 12px;
+}
+
+.heroDots span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.heroDots span[data-active="true"] {
+  background: #fff;
+}
+
+.pDots {
+  left: 50%;
+  bottom: 30px;
+  transform: translateX(-50%);
+}
+
+.lDots {
+  right: 44px;
+  bottom: 30px;
 }

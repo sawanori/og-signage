@@ -1,12 +1,13 @@
 /**
  * 横型（1920×1080）の配置。モック image/UI-H.png の画面部分に合わせる。
  */
+import { Fragment } from "react";
 import { ArrowRight, ChevronRight, Clock, House } from "lucide-react";
 import type { SignageConfig, SignageEvent } from "@/lib/config-schema";
-import type { MainEventSelection } from "@/lib/display-rules";
 import { tokyoParts } from "@/lib/dates";
 import { COPY } from "./copy";
 import {
+  formatDateJa,
   formatMonthDay,
   formatParticipation,
   formatTimeRange,
@@ -18,7 +19,7 @@ import {
   type ResolveMediaUrl,
   type SignageView,
 } from "./model";
-import { Emoji, GroupIcon, isQrUrl, MediaImage, PersonIcon, PinIcon, QrCode, RuleIcon, WeatherIcon } from "./parts";
+import { Emoji, GroupIcon, HeroDots, isQrUrl, MediaImage, PersonIcon, PinIcon, QrCode, RuleIcon, WeatherIcon } from "./parts";
 import styles from "./signage.module.css";
 
 type Props = { config: SignageConfig; view: SignageView; resolveMediaUrl: ResolveMediaUrl };
@@ -53,7 +54,7 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
       </div>
 
       {/* 今日のイベント */}
-      <Hero main={view.main} config={config} resolveMediaUrl={resolveMediaUrl} />
+      <Hero hero={view.hero} config={config} resolveMediaUrl={resolveMediaUrl} />
 
       {/* Upcoming */}
       <div className={styles.lSectionTitle} style={{ left: 1272, top: 179 }}>
@@ -172,55 +173,39 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
 }
 
 function Hero({
-  main,
+  hero,
   config,
   resolveMediaUrl,
 }: {
-  main: MainEventSelection;
+  hero: SignageView["hero"];
   config: SignageConfig;
   resolveMediaUrl: ResolveMediaUrl;
 }) {
-  if (main.kind !== "today") {
+  if (!hero) {
+    // 流すイベントが 1 件も無いとき。ハウスのキャッチコピーを出す
     const copy = config.house.headerCopy ?? config.house.name;
     return (
       <div className={`${styles.lHero} ${styles.lHeroQuiet}`} data-testid="no-event">
         <div className={styles.quietCopy}>{copy}</div>
-        <div className={styles.quietNote}>{COPY.noEventsToday}</div>
-        {main.kind === "next" ? (
-          <div className={styles.lNext} data-testid="next-event">
-            <span className={styles.pNextLabel}>
-              {COPY.nextEvent.en}
-              <small>{COPY.nextEvent.ja}</small>
-            </span>
-            <MediaImage
-              media={main.event.image}
-              category={main.event.category}
-              resolveMediaUrl={resolveMediaUrl}
-              className={styles.pNextImage}
-            />
-            <span className={styles.pNextDate}>
-              {formatMonthDay(main.event.startAt)}
-              <small>{formatWeekdayUpper(main.event.startAt)}</small>
-            </span>
-            <span className={styles.pNextText}>
-              <span className={styles.pNextTitle}>{main.event.title}</span>
-              <span className={styles.pNextMeta}>
-                {formatTimeRange(main.event)}
-                {main.event.location ? `　${main.event.location}` : ""}
-              </span>
-            </span>
-          </div>
-        ) : null}
+        <div className={styles.quietNote}>{COPY.noUpcoming}</div>
       </div>
     );
   }
-  const { event, state } = main;
+  const { slide, index, count } = hero;
+  const { event, state } = slide;
   const label = stateLabel(state);
   const catchLines = splitCatchCopy(event.catchCopy);
   const longTitle = [...event.title].length > 12;
+  // 写真・丸い目印・本文・QR は別々の要素なので、同じ key でまとめて入れ替え、それぞれフェードで出す
+  const fade = count > 1 ? styles.heroFade : "";
   return (
-    <>
-      <MediaImage media={event.image} category={event.category} resolveMediaUrl={resolveMediaUrl} className={styles.lHero}>
+    <Fragment key={event.id}>
+      <MediaImage
+        media={event.image}
+        category={event.category}
+        resolveMediaUrl={resolveMediaUrl}
+        className={`${styles.lHero} ${fade}`}
+      >
         <div className={styles.lHeroShade} />
         {catchLines.length > 0 ? (
           <div className={styles.lCatch} aria-hidden>
@@ -233,43 +218,45 @@ function Hero({
             <span className={styles.pCatchTick2} />
           </div>
         ) : null}
+        {count > 1 ? <HeroDots index={index} count={count} className={styles.lDots} /> : null}
       </MediaImage>
-      <div className={styles.lCircle} data-state={state} data-testid="state-badge">
+      <div className={`${styles.lCircle} ${fade}`} data-state={state} data-testid="state-badge">
         <span className={styles.lCircleEn} data-long={label.en.length > 5 ? "true" : "false"}>
           {label.en}
         </span>
         <span className={styles.lCircleDate}>{formatMonthDay(event.startAt)}</span>
         <span className={styles.lCircleWeek}>{formatWeekdayUpper(event.startAt)}</span>
       </div>
-      <div className={styles.lHeroBody}>
+      <div className={`${styles.lHeroBody} ${fade}`}>
         {event.category ? <span className={styles.lPill}>{event.category.name}</span> : null}
         <h1 className={styles.lTitle} data-long={longTitle ? "true" : "false"} data-testid="main-title">
           <span className={styles.lTitleText}>{event.title}</span>
           {event.emoji ? <Emoji className={styles.lTitleEmoji}>{event.emoji}</Emoji> : null}
         </h1>
         {event.description ? <p className={styles.lDesc}>{event.description}</p> : null}
-        <EventInfo event={event} />
+        <EventInfo event={event} withDate={state === "upcoming"} />
         <div className={styles.lButton} aria-hidden>
           {COPY.detailLandscape}
           <ArrowRight size={24} strokeWidth={1.8} />
         </div>
       </div>
       {isQrUrl(event.qrUrl) ? (
-        <div className={styles.lQr}>
+        <div className={`${styles.lQr} ${fade}`}>
           <QrCode url={event.qrUrl} size={106} />
           <span className={styles.lQrLabel}>{COPY.qrLabel}</span>
         </div>
       ) : null}
-    </>
+    </Fragment>
   );
 }
 
-function EventInfo({ event }: { event: SignageEvent }) {
+/** 明日以降のイベントは、時間の前に日付を付ける（どの日のイベントか分かるように） */
+function EventInfo({ event, withDate }: { event: SignageEvent; withDate: boolean }) {
   return (
     <ul className={styles.lInfo}>
       <li className={styles.lInfoStrong}>
         <Clock size={32} strokeWidth={1.8} aria-hidden />
-        <span>{formatTimeRange(event)}</span>
+        <span>{withDate ? `${formatDateJa(event.startAt)} ${formatTimeRange(event)}` : formatTimeRange(event)}</span>
       </li>
       {event.location ? (
         <li className={styles.lInfoStrong}>

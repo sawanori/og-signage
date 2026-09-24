@@ -18,8 +18,6 @@ export const COPY = {
   detailLandscape: "詳細はこちら",
   qrLabel: "イベント詳細",
   hostPrefix: "主催：",
-  noEventsToday: "本日のイベントはありません",
-  nextEvent: { en: "NEXT EVENT", ja: "次のイベント" },
   noUpcoming: "予定されているイベントはありません",
   noNotice: "現在お知らせはありません",
   offHours: "表示時間外",

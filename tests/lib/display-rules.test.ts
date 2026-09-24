@@ -5,7 +5,10 @@ import {
   computeNextVideoAt,
   effectiveEndAt,
   getEventState,
+  HERO_SLIDE_SECONDS,
+  heroSlideIndex,
   isWithinDisplaySchedule,
+  selectHeroSlides,
   selectMainEvent,
   selectNotice,
   selectThisWeek,
@@ -196,6 +199,39 @@ describe("今日の主イベントと Upcoming", () => {
 
   it("公開イベントがすべて終わっていれば none", () => {
     expect(selectMainEvent([pizzaNight], tokyoDateTime(2025, 9, 25, 9, 0))).toEqual({ kind: "none" });
+  });
+});
+
+describe("大きな欄のスライドショー", () => {
+  it("終わっていない公開イベントを、開催中を先頭に、残りは開始が早い順で流す", () => {
+    const draft = makeEvent({ id: "evt_draft", startAt: at(21, 0), status: "draft" });
+    const ended = makeEvent({ id: "evt_ended", startAt: at(9, 0), endAt: at(10, 0) });
+    const events = [coffeeWorkshop, movieNight, draft, ended, pizzaNight, bbqParty, englishMeetup];
+    const slides = selectHeroSlides(events, at(20, 0));
+    expect(slides.map((s) => s.event.id)).toEqual([pizzaNight.id, movieNight.id, bbqParty.id, englishMeetup.id, coffeeWorkshop.id]);
+    expect(slides.map((s) => s.state)).toEqual(["now_happening", "upcoming", "upcoming", "upcoming", "upcoming"]);
+  });
+
+  it("今日のイベントは、開始前なら today・30 分前から starting_soon", () => {
+    expect(selectHeroSlides([pizzaNight], at(17, 42))[0].state).toBe("today");
+    expect(selectHeroSlides([pizzaNight], at(19, 0))[0].state).toBe("starting_soon");
+  });
+
+  it("流すイベントが無ければ空", () => {
+    expect(selectHeroSlides([], NOW)).toEqual([]);
+  });
+
+  it(`${HERO_SLIDE_SECONDS} 秒ごとに次の 1 枚へ進み、最後の次は最初に戻る`, () => {
+    const t = 1_000_000_000; // 10 の倍数
+    expect(heroSlideIndex(t, 3)).toBe(Math.floor(t / 10) % 3);
+    expect(heroSlideIndex(t + 9, 3)).toBe(heroSlideIndex(t, 3));
+    expect(heroSlideIndex(t + 10, 3)).toBe((heroSlideIndex(t, 3) + 1) % 3);
+    expect(heroSlideIndex(t + 30, 3)).toBe(heroSlideIndex(t, 3));
+  });
+
+  it("0 件・1 件なら常に 0", () => {
+    expect(heroSlideIndex(NOW, 0)).toBe(0);
+    expect(heroSlideIndex(NOW + 12345, 1)).toBe(0);
   });
 });
 

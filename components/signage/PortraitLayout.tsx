@@ -3,9 +3,9 @@
  */
 import { ArrowRight, ChevronRight, Clock, House } from "lucide-react";
 import type { SignageConfig, SignageEvent } from "@/lib/config-schema";
-import type { MainEventSelection } from "@/lib/display-rules";
 import { COPY } from "./copy";
 import {
+  formatDateJa,
   formatMonthDay,
   formatParticipation,
   formatTimeRange,
@@ -20,6 +20,7 @@ import {
 import {
   Emoji,
   GroupIcon,
+  HeroDots,
   isQrUrl,
   MediaImage,
   PersonOutlineIcon,
@@ -71,7 +72,7 @@ export function PortraitLayout({ config, view, resolveMediaUrl }: Props) {
       ) : null}
 
       {/* 今日のイベント */}
-      <Hero main={view.main} config={config} resolveMediaUrl={resolveMediaUrl} />
+      <Hero hero={view.hero} config={config} resolveMediaUrl={resolveMediaUrl} />
 
       {/* Upcoming */}
       <div className={styles.pSectionTitle} style={{ left: 42, top: 961 }}>
@@ -145,27 +146,27 @@ export function PortraitLayout({ config, view, resolveMediaUrl }: Props) {
 }
 
 function Hero({
-  main,
+  hero,
   config,
   resolveMediaUrl,
 }: {
-  main: MainEventSelection;
+  hero: SignageView["hero"];
   config: SignageConfig;
   resolveMediaUrl: ResolveMediaUrl;
 }) {
-  if (main.kind !== "today") {
-    return <HeroWithoutToday main={main} config={config} resolveMediaUrl={resolveMediaUrl} />;
-  }
-  const { event, state } = main;
+  if (!hero) return <QuietHero config={config} />;
+  const { slide, index, count } = hero;
+  const { event, state } = slide;
   const label = stateLabel(state);
   const catchLines = splitCatchCopy(event.catchCopy);
   const longTitle = [...event.title].length > 12;
   return (
     <MediaImage
+      key={event.id}
       media={event.image}
       category={event.category}
       resolveMediaUrl={resolveMediaUrl}
-      className={styles.pHero}
+      className={count > 1 ? `${styles.pHero} ${styles.heroFade}` : styles.pHero}
     >
       <div className={styles.pHeroShade} />
       <div className={styles.pBadge} data-state={state} data-testid="state-badge">
@@ -189,7 +190,7 @@ function Hero({
           {event.emoji ? <Emoji className={styles.pTitleEmoji}>{event.emoji}</Emoji> : null}
         </h1>
         {event.description ? <p className={styles.pDesc}>{event.description}</p> : null}
-        <EventInfo event={event} />
+        <EventInfo event={event} withDate={state === "upcoming"} />
         <div className={styles.pButton} aria-hidden>
           {COPY.detailPortrait}
           <ArrowRight size={26} strokeWidth={1.7} />
@@ -201,16 +202,18 @@ function Hero({
           <span className={styles.pQrLabel}>{COPY.qrLabel}</span>
         </div>
       ) : null}
+      {count > 1 ? <HeroDots index={index} count={count} className={styles.pDots} /> : null}
     </MediaImage>
   );
 }
 
-function EventInfo({ event }: { event: SignageEvent }) {
+/** 明日以降のイベントは、時間の前に日付を付ける（どの日のイベントか分かるように） */
+function EventInfo({ event, withDate }: { event: SignageEvent; withDate: boolean }) {
   return (
     <ul className={styles.pInfo}>
       <li>
         <Clock size={31} strokeWidth={2} aria-hidden />
-        <span>{formatTimeRange(event)}</span>
+        <span>{withDate ? `${formatDateJa(event.startAt)} ${formatTimeRange(event)}` : formatTimeRange(event)}</span>
       </li>
       {event.location ? (
         <li>
@@ -235,46 +238,13 @@ function EventInfo({ event }: { event: SignageEvent }) {
   );
 }
 
-/** 今日のイベントがないとき。次のイベントを小さく、それもなければハウスのキャッチコピー */
-function HeroWithoutToday({
-  main,
-  config,
-  resolveMediaUrl,
-}: {
-  main: Exclude<MainEventSelection, { kind: "today" }>;
-  config: SignageConfig;
-  resolveMediaUrl: ResolveMediaUrl;
-}) {
+/** 流すイベントが 1 件も無いとき。ハウスのキャッチコピーを出す */
+function QuietHero({ config }: { config: SignageConfig }) {
   const copy = config.house.headerCopy ?? config.house.name;
   return (
     <div className={`${styles.pHero} ${styles.pHeroQuiet}`} data-testid="no-event">
       <div className={styles.quietCopy}>{copy}</div>
-      <div className={styles.quietNote}>{COPY.noEventsToday}</div>
-      {main.kind === "next" ? (
-        <div className={styles.pNext} data-testid="next-event">
-          <span className={styles.pNextLabel}>
-            {COPY.nextEvent.en}
-            <small>{COPY.nextEvent.ja}</small>
-          </span>
-          <MediaImage
-            media={main.event.image}
-            category={main.event.category}
-            resolveMediaUrl={resolveMediaUrl}
-            className={styles.pNextImage}
-          />
-          <span className={styles.pNextDate}>
-            {formatMonthDay(main.event.startAt)}
-            <small>{formatWeekdayUpper(main.event.startAt)}</small>
-          </span>
-          <span className={styles.pNextText}>
-            <span className={styles.pNextTitle}>{main.event.title}</span>
-            <span className={styles.pNextMeta}>
-              {formatTimeRange(main.event)}
-              {main.event.location ? `　${main.event.location}` : ""}
-            </span>
-          </span>
-        </div>
-      ) : null}
+      <div className={styles.quietNote}>{COPY.noUpcoming}</div>
     </div>
   );
 }

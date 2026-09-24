@@ -7,6 +7,7 @@
  */
 import type { MediaRef, SignageConfig, SignageEvent } from "@/lib/config-schema";
 import { tokyoDateTime } from "@/lib/dates";
+import { HERO_SLIDE_SECONDS, heroSlideIndex, selectHeroSlides } from "@/lib/display-rules";
 import {
   NOW,
   bbqParty,
@@ -21,6 +22,16 @@ import {
 import type { Orientation } from "@/components/signage/model";
 
 export { NOW };
+
+/**
+ * 大きな欄のスライドショーの 1 枚目（今日のイベント）が出る時刻にそろえる。モックとの比較用。
+ * 10 秒単位で先へ進めるだけなので、時計の表示（時:分）は変わらない（例: 17:42:00 → 17:42:30）。
+ */
+export function atFirstSlide(events: readonly SignageEvent[], now: number): number {
+  const count = selectHeroSlides(events, now).length;
+  if (count <= 1) return now;
+  return now + ((count - heroSlideIndex(now, count)) % count) * HERO_SLIDE_SECONDS;
+}
 
 /** モックのタグの色から逆算したカテゴリ色（タグは白との混色で薄く出す） */
 const category = {

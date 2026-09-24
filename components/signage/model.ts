@@ -6,12 +6,16 @@
 import type { MediaRef, SignageConfig, SignageEvent, SignageNotice, Weather } from "@/lib/config-schema";
 import { tokyoParts } from "@/lib/dates";
 import {
+  heroSlideIndex,
   isWithinDisplaySchedule,
+  selectHeroSlides,
   selectMainEvent,
   selectNotice,
   selectThisWeek,
   selectUpcomingEvents,
   shouldShowWeather,
+  type HeroSlide,
+  type HeroSlideState,
   type MainEventSelection,
   type WeekDay,
 } from "@/lib/display-rules";
@@ -25,6 +29,8 @@ export type SignageView = {
   /** 表示スケジュール上、今表示してよいか */
   visible: boolean;
   main: MainEventSelection;
+  /** 大きな欄のスライドショー。今出す 1 枚と、何枚中の何枚目か。流すイベントが無ければ null */
+  hero: { slide: HeroSlide; index: number; count: number } | null;
   upcoming: SignageEvent[];
   week: WeekDay[];
   notice: SignageNotice | null;
@@ -43,12 +49,16 @@ export type ClockText = {
 };
 
 const WEEKDAY_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+const WEEKDAY_JA = ["日", "月", "火", "水", "木", "金", "土"] as const;
 
 export function buildView(config: SignageConfig, now: number, timeSynced: boolean): SignageView {
   const main = selectMainEvent(config.events, now);
+  const slides = selectHeroSlides(config.events, now);
+  const index = heroSlideIndex(now, slides.length);
   return {
     visible: isWithinDisplaySchedule(config.schedule, now, timeSynced),
     main,
+    hero: slides.length > 0 ? { slide: slides[index], index, count: slides.length } : null,
     upcoming: selectUpcomingEvents(config.events, now, main),
     week: selectThisWeek(config.events, now),
     notice: selectNotice(config.notices, now),
@@ -86,6 +96,12 @@ export function formatMonthDay(unixSeconds: number): string {
   return `${p.month}.${p.day}`;
 }
 
+/** 9月26日（土） */
+export function formatDateJa(unixSeconds: number): string {
+  const p = tokyoParts(unixSeconds);
+  return `${p.month}月${p.day}日（${WEEKDAY_JA[p.weekday]}）`;
+}
+
 /** FRI */
 export function formatWeekdayUpper(unixSeconds: number): string {
   return WEEKDAY_EN[tokyoParts(unixSeconds).weekday].toUpperCase();
@@ -99,9 +115,11 @@ export function formatParticipation(event: Pick<SignageEvent, "participation" | 
   return left === 0 ? `定員 ${event.capacity}名（満員）` : `定員 ${event.capacity}名（残り${left}名）`;
 }
 
-/** 主イベントの状態の見出し */
-export function stateLabel(state: "today" | "starting_soon" | "now_happening"): { en: string; ja: string } {
+/** 大きな欄のイベントの状態の見出し */
+export function stateLabel(state: HeroSlideState): { en: string; ja: string } {
   switch (state) {
+    case "upcoming":
+      return { en: "UPCOMING", ja: "今後のイベント" };
     case "starting_soon":
       return { en: "STARTING SOON", ja: "まもなく開始" };
     case "now_happening":

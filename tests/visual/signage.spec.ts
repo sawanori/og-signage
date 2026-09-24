@@ -28,7 +28,7 @@ for (const c of CASES) {
     await page.evaluate(() => document.fonts.ready);
     await page.waitForFunction(() => [...document.images].every((img) => img.complete));
     await page.waitForTimeout(500);
-    const shot = PNG.sync.read(await page.screenshot({ type: "png" }));
+    const shot = PNG.sync.read(await page.screenshot({ type: "png", animations: "disabled" }));
     const mock = PNG.sync.read(readFileSync(join(HERE, "reference", `mock-${c.orientation}.png`)));
     expect([shot.width, shot.height]).toEqual([mock.width, mock.height]);
 
