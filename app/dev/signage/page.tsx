@@ -3,6 +3,7 @@
  *   /dev/signage?orientation=portrait|landscape&state=<状態>
  * 状態: today（既定。モックと同じ）/ starting-soon / now-happening / next（今日のイベントなし。明日以降を流す）/ no-event / off / fade / unsynced /
  *       no-image / long
+ * &fill=1 で Web 公開のサイネージと同じく、ウィンドウに合わせて横型を縦に伸ばす（fillHeight）
  */
 import { SignageScreen } from "@/components/signage/SignageScreen";
 import type { Orientation } from "@/components/signage/model";
@@ -102,6 +103,7 @@ export default async function DevSignagePage({
       orientation={orientation}
       timeSynced={s.timeSynced}
       fading={s.fading}
+      fillHeight={params.fill === "1"}
     />
   );
 }

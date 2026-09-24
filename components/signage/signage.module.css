@@ -950,12 +950,13 @@
 }
 
 /* 主イベント（横） */
+/* 縦に伸ばしたとき（ScaledCanvas の --canvas-extra）は、伸びた分をこの大きな枠に回す */
 .lHero {
   position: absolute;
   left: 0;
   top: 138px;
   width: 1331px;
-  height: 668px;
+  height: calc(668px + var(--canvas-extra, 0px));
   border-top-right-radius: 16px;
   overflow: hidden;
   color: #fff;
@@ -1192,15 +1193,16 @@
 }
 
 /* Upcoming（横） */
+/* 縦に伸ばしたときは、行の間隔を広げて大きな枠と下端をそろえる（4 行で間は 3 つ） */
 .lUpcoming {
   position: absolute;
   left: 1368px;
   top: 220px;
   width: 516px;
-  height: 512px;
+  height: calc(512px + var(--canvas-extra, 0px));
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: calc(2px + var(--canvas-extra, 0px) / 3);
 }
 
 .lRow {
@@ -1306,6 +1308,15 @@
 
 
 /* 下段（横） */
+/* 下段とフッターのまとまり。中の位置は 1920×1080 の座標のまま、縦に伸ばした分だけ下へずらす */
+.lLower {
+  position: absolute;
+  left: 0;
+  top: var(--canvas-extra, 0px);
+  width: 1920px;
+  height: 1080px;
+}
+
 .lBottomBand {
   position: absolute;
   left: 0;

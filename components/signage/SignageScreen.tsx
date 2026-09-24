@@ -22,6 +22,9 @@ export const CANVAS_SIZE: Record<Orientation, { width: number; height: number }>
   landscape: { width: 1920, height: 1080 },
 };
 
+/** fillHeight のとき横型を縦に伸ばす上限（4:3 まで）。それより縦長のウィンドウでは上下に帯が残る */
+const LANDSCAPE_MAX_HEIGHT = 1440;
+
 export type SignageScreenProps = {
   config: SignageConfig;
   /** 現在時刻（UNIX 秒） */
@@ -35,6 +38,11 @@ export type SignageScreenProps = {
   fading?: boolean;
   /** true（既定）で画面いっぱいに拡大縮小。false はキャンバス原寸（テスト・プレビュー用） */
   fit?: boolean;
+  /**
+   * true なら、ウィンドウが 16:9 より縦長のとき横型を縦に伸ばし、上下の黒い帯を出さない。伸びた分は大きな枠に回す。
+   * Web 公開のサイネージ用。端末（Pi）と管理画面のプレビューは端末の画面どおり 16:9 のまま
+   */
+  fillHeight?: boolean;
 };
 
 export function SignageScreen({
@@ -45,14 +53,17 @@ export function SignageScreen({
   timeSynced = true,
   fading = false,
   fit = true,
+  fillHeight = false,
 }: SignageScreenProps) {
   const view = buildView(config, now, timeSynced);
   const size = CANVAS_SIZE[orientation];
+  // ScaledCanvas が縦に伸ばした分（--canvas-extra）だけ高くする。伸ばさないときは 0
+  const canvasHeight = `calc(${size.height}px + var(--canvas-extra, 0px))`;
 
   const content = view.visible ? (
     <div
       className={styles.canvas}
-      style={{ width: size.width, height: size.height }}
+      style={{ width: size.width, height: canvasHeight }}
       data-orientation={orientation}
       data-testid="signage-canvas"
     >
@@ -68,7 +79,7 @@ export function SignageScreen({
     // 表示時間外。HDMI 出力を切れない端末ではこの黒画面が見える
     <div
       className={styles.off}
-      style={{ width: size.width, height: size.height }}
+      style={{ width: size.width, height: canvasHeight }}
       data-orientation={orientation}
       data-testid="signage-off"
       aria-label={COPY.offHours}
@@ -76,7 +87,11 @@ export function SignageScreen({
   );
 
   return fit ? (
-    <ScaledCanvas width={size.width} height={size.height}>
+    <ScaledCanvas
+      width={size.width}
+      height={size.height}
+      maxHeight={fillHeight && orientation === "landscape" ? LANDSCAPE_MAX_HEIGHT : size.height}
+    >
       {content}
     </ScaledCanvas>
   ) : (

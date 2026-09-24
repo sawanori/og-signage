@@ -68,104 +68,106 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
         ))}
       </div>
 
-      {/* 下段 */}
-      <div className={styles.lBottomBand} />
-      <div className={styles.lSectionTitle} style={{ left: 50, top: 833 }}>
-        <span className={styles.lSectionEn}>{COPY.news.en}</span>
-        <span className={styles.lSectionJa}>{COPY.news.ja}</span>
-      </div>
-      <div className={styles.lNews} data-testid="notice">
-        {view.notice ? (
-          <>
-            {view.notice.image ? (
-              <MediaImage
-                media={view.notice.image}
-                category={null}
-                resolveMediaUrl={resolveMediaUrl}
-                className={styles.lNewsImage}
-              />
-            ) : null}
-            <div className={styles.lNewsText} data-has-image={view.notice.image ? "true" : "false"}>
-              <div className={styles.lNewsTitle}>{view.notice.title}</div>
-              {view.notice.body ? <div className={styles.lNewsBody}>{view.notice.body}</div> : null}
-            </div>
-          </>
-        ) : (
-          <div className={styles.pEmpty}>{COPY.noNotice}</div>
-        )}
-      </div>
-      <div className={styles.lDivider} style={{ left: 592 }} />
+      {/* 下段とフッター。縦に伸ばしたときは、伸びた分だけまとめて下へずらす（中の位置は 1920×1080 のまま） */}
+      <div className={styles.lLower}>
+        <div className={styles.lBottomBand} />
+        <div className={styles.lSectionTitle} style={{ left: 50, top: 833 }}>
+          <span className={styles.lSectionEn}>{COPY.news.en}</span>
+          <span className={styles.lSectionJa}>{COPY.news.ja}</span>
+        </div>
+        <div className={styles.lNews} data-testid="notice">
+          {view.notice ? (
+            <>
+              {view.notice.image ? (
+                <MediaImage
+                  media={view.notice.image}
+                  category={null}
+                  resolveMediaUrl={resolveMediaUrl}
+                  className={styles.lNewsImage}
+                />
+              ) : null}
+              <div className={styles.lNewsText} data-has-image={view.notice.image ? "true" : "false"}>
+                <div className={styles.lNewsTitle}>{view.notice.title}</div>
+                {view.notice.body ? <div className={styles.lNewsBody}>{view.notice.body}</div> : null}
+              </div>
+            </>
+          ) : (
+            <div className={styles.pEmpty}>{COPY.noNotice}</div>
+          )}
+        </div>
+        <div className={styles.lDivider} style={{ left: 592 }} />
 
-      <div className={styles.lSectionTitle} style={{ left: 618, top: 833 }}>
-        <span className={styles.lSectionEn}>{COPY.week.en}</span>
-        <span className={styles.lSectionJa}>{COPY.week.ja}</span>
-      </div>
-      <div className={styles.lWeek} data-testid="week">
-        {view.week.map((day) => {
-          const p = tokyoParts(day.startAt);
-          const first = day.events[0];
-          return (
-            <div key={day.dateKey} className={styles.lWeekDay} data-today={day.isToday ? "true" : "false"}>
-              <span className={styles.lWeekName}>{formatWeekdayUpper(day.startAt)}</span>
-              <span className={styles.lWeekNum}>{p.day}</span>
-              <span className={styles.lWeekMark}>
-                {first ? (
-                  first.emoji ? (
-                    <Emoji>{first.emoji}</Emoji>
+        <div className={styles.lSectionTitle} style={{ left: 618, top: 833 }}>
+          <span className={styles.lSectionEn}>{COPY.week.en}</span>
+          <span className={styles.lSectionJa}>{COPY.week.ja}</span>
+        </div>
+        <div className={styles.lWeek} data-testid="week">
+          {view.week.map((day) => {
+            const p = tokyoParts(day.startAt);
+            const first = day.events[0];
+            return (
+              <div key={day.dateKey} className={styles.lWeekDay} data-today={day.isToday ? "true" : "false"}>
+                <span className={styles.lWeekName}>{formatWeekdayUpper(day.startAt)}</span>
+                <span className={styles.lWeekNum}>{p.day}</span>
+                <span className={styles.lWeekMark}>
+                  {first ? (
+                    first.emoji ? (
+                      <Emoji>{first.emoji}</Emoji>
+                    ) : (
+                      <span className={styles.lWeekDot} style={{ backgroundColor: first.category?.color ?? "#1B2530" }} />
+                    )
                   ) : (
-                    <span className={styles.lWeekDot} style={{ backgroundColor: first.category?.color ?? "#1B2530" }} />
-                  )
-                ) : (
-                  <span className={styles.lWeekDash} />
-                )}
+                    <span className={styles.lWeekDash} />
+                  )}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <div className={styles.lDivider} style={{ left: 1290 }} />
+
+        <div className={styles.lSectionTitle} style={{ left: 1317, top: 833 }}>
+          <span className={styles.lSectionEn}>{COPY.rules.en}</span>
+          <span className={styles.lSectionJa}>{COPY.rules.ja}</span>
+        </div>
+        <div className={styles.lRules} data-testid="rules">
+          {house.rules.map((rule, i) => (
+            <div key={i} className={styles.lRule}>
+              <span className={styles.lRuleIcon}>
+                <RuleIcon icon={rule.icon} size={34} strokeWidth={1.8} />
+              </span>
+              <span className={styles.lRuleText}>{rule.text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* フッター */}
+        <div className={styles.lFooter}>
+          <div className={styles.lFooterTime}>{view.clock.time}</div>
+          <div className={styles.lFooterDate}>
+            {view.clock.year}. {view.clock.month}.{view.clock.day} ({view.clock.weekdayShort})
+          </div>
+          {view.weather ? (
+            <div className={styles.lFooterWeather} data-testid="weather">
+              <WeatherIcon condition={view.weather.condition} size={38} strokeWidth={1.7} />
+              <span className={styles.lFooterTemp}>{Math.round(view.weather.temperatureC)}
+              <span className={styles.deg}>°</span>C
+            </span>
+              <span className={styles.lFooterPlace}>{view.weather.locationName}</span>
+              <span className={styles.lWeatherAttribution} data-testid="weather-attribution">
+                {COPY.weatherAttribution}
               </span>
             </div>
-          );
-        })}
-      </div>
-      <div className={styles.lDivider} style={{ left: 1290 }} />
-
-      <div className={styles.lSectionTitle} style={{ left: 1317, top: 833 }}>
-        <span className={styles.lSectionEn}>{COPY.rules.en}</span>
-        <span className={styles.lSectionJa}>{COPY.rules.ja}</span>
-      </div>
-      <div className={styles.lRules} data-testid="rules">
-        {house.rules.map((rule, i) => (
-          <div key={i} className={styles.lRule}>
-            <span className={styles.lRuleIcon}>
-              <RuleIcon icon={rule.icon} size={34} strokeWidth={1.8} />
-            </span>
-            <span className={styles.lRuleText}>{rule.text}</span>
+          ) : null}
+          <div className={styles.lFooterDivider} />
+          <div className={styles.lFooterCopy}>
+            {footer.lead ? <div className={styles.lFooterLead}>“{footer.lead}”</div> : null}
+            {footer.sub.length > 0 ? <div className={styles.lFooterSub}>{footer.sub.join("")}</div> : null}
           </div>
-        ))}
-      </div>
-
-      {/* フッター */}
-      <div className={styles.lFooter}>
-        <div className={styles.lFooterTime}>{view.clock.time}</div>
-        <div className={styles.lFooterDate}>
-          {view.clock.year}. {view.clock.month}.{view.clock.day} ({view.clock.weekdayShort})
-        </div>
-        {view.weather ? (
-          <div className={styles.lFooterWeather} data-testid="weather">
-            <WeatherIcon condition={view.weather.condition} size={38} strokeWidth={1.7} />
-            <span className={styles.lFooterTemp}>{Math.round(view.weather.temperatureC)}
-            <span className={styles.deg}>°</span>C
-          </span>
-            <span className={styles.lFooterPlace}>{view.weather.locationName}</span>
-            <span className={styles.lWeatherAttribution} data-testid="weather-attribution">
-              {COPY.weatherAttribution}
-            </span>
+          <div className={styles.lFooterHouse}>
+            <House size={40} strokeWidth={1.6} aria-hidden />
+            <span>{house.name}</span>
           </div>
-        ) : null}
-        <div className={styles.lFooterDivider} />
-        <div className={styles.lFooterCopy}>
-          {footer.lead ? <div className={styles.lFooterLead}>“{footer.lead}”</div> : null}
-          {footer.sub.length > 0 ? <div className={styles.lFooterSub}>{footer.sub.join("")}</div> : null}
-        </div>
-        <div className={styles.lFooterHouse}>
-          <House size={40} strokeWidth={1.6} aria-hidden />
-          <span>{house.name}</span>
         </div>
       </div>
     </div>

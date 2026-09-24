@@ -6,6 +6,7 @@
  * - 縦横は ?layout で固定しなければ、見ている画面（ウィンドウ）の向きに合わせる。
  * - 画像は公開用の中継（/api/signage/media/<mediaId>）で読む。
  * - 全画面表示はブラウザの制約でボタン操作が要る。ボタンはマウスを動かしたときだけ 3 秒出す。
+ * - ウィンドウが 16:9 より縦長なら横型を縦に伸ばし、上下の黒い帯を出さない（fillHeight）。
  */
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { SignageScreen } from "@/components/signage/SignageScreen";
@@ -84,6 +85,7 @@ export function PublicSignage({
         now={now}
         resolveMediaUrl={resolveMediaUrl}
         orientation={layout ?? viewport ?? config.device.orientation}
+        fillHeight
       />
       {controlsVisible ? (
         <button
