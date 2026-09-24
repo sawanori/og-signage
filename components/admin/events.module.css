@@ -1,0 +1,868 @@
+/*
+ * イベント管理（/admin/events、/new、/[id]）。
+ * 色・角丸・影・文字組みはダッシュボード（admin.module.css、image/dashboard.png の採寸値）に合わせる。
+ * 変数（--blue など）は admin.module.css の .shell で定義されたものを使う。
+ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  min-width: 0;
+}
+
+/* ---------------------------------------------------------------- 共通の部品 */
+
+.card {
+  position: relative;
+  min-width: 0;
+  padding: 17px 19px 20px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: var(--card-shadow);
+}
+
+.cardTitle {
+  margin-bottom: 14px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 24px;
+  letter-spacing: 0.02em;
+  color: #0e1a33;
+}
+
+.hint {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #56657b;
+}
+
+.fieldError {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: #d63552;
+}
+
+.bannerError,
+.bannerWarn {
+  display: grid;
+  gap: 4px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.bannerError {
+  background: #fdecef;
+  color: #c62d4a;
+}
+
+.bannerWarn {
+  background: #fff4e5;
+  color: #9a5a00;
+}
+
+.bannerWarn .textButton {
+  justify-self: start;
+  color: #9a5a00;
+}
+
+.primaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  height: 49px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  box-shadow: 0 4px 12px -4px rgba(47, 142, 253, 0.55);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: #1f7ff0;
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.dangerButton:disabled,
+.deleteButton:disabled,
+.textButton:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.secondaryButton {
+  display: inline-grid;
+  place-items: center;
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid #e3e8ef;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0e1a33;
+  cursor: pointer;
+}
+
+.secondaryButton:hover:not(:disabled) {
+  background: #f3f6fb;
+}
+
+.dangerButton {
+  display: inline-grid;
+  place-items: center;
+  height: 38px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 8px;
+  background: #e5415f;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dangerButton:hover:not(:disabled) {
+  background: #d63552;
+}
+
+.textButton {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 700;
+  color: #2d88f9;
+  cursor: pointer;
+}
+
+.textButton:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+/* ---------------------------------------------------------------- 一覧 */
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 8px 0 16px;
+  border-radius: 10px;
+  background: #f2fbf4;
+  box-shadow: 0 0 0 1px #e6f4ea, var(--card-shadow);
+  font-size: 14px;
+  font-weight: 700;
+  color: #2f8a55;
+}
+
+.toastClose {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #2f8a55;
+  cursor: pointer;
+}
+
+.toastClose:hover {
+  background: #e3f4e8;
+}
+
+.listCard {
+  display: flex;
+  flex-direction: column;
+  padding: 0 16px 8px;
+}
+
+.listHead {
+  display: flex;
+  align-items: center;
+  height: 58px;
+  padding: 3px 0 0 1px;
+}
+
+.count {
+  margin-left: 12px;
+  font-size: 13px;
+  color: var(--ink-mute);
+}
+
+.viewSwitch {
+  display: flex;
+  gap: 3px;
+  margin-left: auto;
+  padding: 3px;
+  border-radius: 10px;
+  background: #f4f6fa;
+}
+
+.viewSwitch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 13px;
+  color: #3a4a64;
+  cursor: pointer;
+}
+
+.viewSwitch button[aria-pressed="true"] {
+  background: #fff;
+  color: #1d73ee;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(23, 42, 80, 0.1);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 1px 11px;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.chipsLeft {
+  margin-left: 0;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 300px;
+  height: 37px;
+  margin-left: auto;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 19px;
+  background: #f4f6fa;
+  color: #1c2940;
+}
+
+.search:focus-within {
+  border-color: var(--blue);
+  background: #fff;
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  font-size: 13px;
+  outline: none;
+}
+
+.listCard > .bannerError {
+  margin-top: 10px;
+}
+
+.rows {
+  display: block;
+}
+
+.rowEnded {
+  opacity: 0.62;
+}
+
+.tags {
+  display: flex;
+  gap: 4px;
+  height: 17px;
+}
+
+.tagEnded {
+  background: #b3bcc9;
+}
+
+.emptyBox {
+  min-height: 240px;
+}
+
+/* ---------------------------------------------------------------- 月のカレンダー */
+
+.calendar {
+  padding: 14px 1px 8px;
+}
+
+.calendarHead {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 35px;
+}
+
+.calendarMonth {
+  margin-left: 12px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #0e1a33;
+}
+
+.thisMonth {
+  width: 62px;
+}
+
+.monthGrid {
+  margin-top: 12px;
+  border: 1px solid #edf0f5;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.weekdayRow,
+.monthWeek {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.weekday {
+  padding: 9px 0 8px;
+  background: #f7f9fc;
+  border-bottom: 1px solid #edf0f5;
+  text-align: center;
+  font-size: 12px;
+  color: #3c4f69;
+}
+
+.monthWeek + .monthWeek {
+  border-top: 1px solid #f0f2f6;
+}
+
+.monthDay {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 118px;
+  padding: 7px 6px 8px;
+}
+
+.monthDay + .monthDay {
+  border-left: 1px solid #f0f2f6;
+}
+
+.monthDay[data-outside] {
+  background: #fafbfd;
+}
+
+.monthDay[data-outside] .monthDayNum {
+  opacity: 0.4;
+}
+
+.monthDayNum {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 14px;
+  color: #0e1a33;
+}
+
+.monthDayNum[data-today] {
+  background: var(--blue);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 4px 10px -4px rgba(47, 142, 253, 0.7);
+}
+
+.dayEvents {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.dayEvent {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 5px;
+  background: var(--event-color);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.dayEvent:hover {
+  filter: brightness(0.95);
+}
+
+.dayEvent[data-draft] {
+  background: #fff;
+  color: #33435c;
+  border: 1.5px dashed var(--event-color);
+}
+
+.dayEventTime {
+  flex: none;
+  font-weight: 700;
+}
+
+.dayEventTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 700;
+}
+
+.dayMore {
+  margin-top: 4px;
+  padding-left: 4px;
+  font-size: 11px;
+  color: var(--ink-mute);
+}
+
+.calendarLegend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--ink-mute);
+}
+
+.legendDraft {
+  width: 22px;
+  height: 12px;
+  border-radius: 4px;
+  border: 1.5px dashed #94a0b2;
+}
+
+/* ---------------------------------------------------------------- フォーム */
+
+.pageHead {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 36px;
+  padding-left: 4px;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 32px;
+  padding: 0 12px 0 6px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #33435c;
+}
+
+.backLink:hover {
+  background: #edf1f7;
+}
+
+.pageTitle {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #0e1a33;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(300px, 28vw, 402px);
+  column-gap: 17px;
+  align-items: start;
+}
+
+.formMain,
+.formSide {
+  display: grid;
+  gap: 11px;
+  min-width: 0;
+}
+
+.formSide {
+  position: sticky;
+  top: 16px;
+}
+
+.field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.field + .field,
+.fieldRow + .field,
+.field + .fieldRow,
+.fieldRow + .fieldRow {
+  margin-top: 18px;
+}
+
+.dayEvents > li {
+  min-width: 0;
+}
+
+.fieldRow > .field {
+  margin-top: 0;
+}
+
+.fieldRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0e1a33;
+}
+
+.required,
+.optional {
+  display: inline-grid;
+  place-items: center;
+  height: 17px;
+  padding: 0 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.required {
+  background: #fd5579;
+  color: #fff;
+}
+
+.optional {
+  background: #f3f5f9;
+  color: #5d6b80;
+}
+
+.input {
+  display: block;
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #e3e8ef;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+  color: #0e1a33;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.input::placeholder {
+  color: #a3adbb;
+}
+
+.input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(47, 142, 253, 0.12);
+}
+
+.input[aria-invalid="true"] {
+  border-color: #e5415f;
+}
+
+.textarea {
+  height: auto;
+  min-height: 104px;
+  padding: 9px 12px;
+  line-height: 1.7;
+  resize: vertical;
+}
+
+.dateTime {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.emojiInput {
+  width: 96px;
+  font-family: var(--font-emoji), var(--font-sans);
+  font-size: 18px;
+  text-align: center;
+}
+
+.withUnit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #33435c;
+}
+
+.numberInput {
+  width: 120px;
+}
+
+.categoryChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.categoryChip,
+.segmentItem {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+}
+
+.categoryChip input,
+.segmentItem input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.categoryChip {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 16px;
+  background: #f4f6fa;
+  font-size: 13px;
+  color: #3a4a64;
+}
+
+.categoryDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--chip-color);
+}
+
+.categoryChip[data-selected="true"] {
+  background: var(--chip-color, var(--blue-soft));
+  color: #fff;
+  font-weight: 700;
+}
+
+.categoryChip:not([style])[data-selected="true"] {
+  color: #1d73ee;
+}
+
+.categoryChip[data-selected="true"] .categoryDot {
+  background: #fff;
+}
+
+.categoryChip:has(input:focus-visible),
+.segmentItem:has(input:focus-visible) {
+  outline: 2px solid rgba(47, 142, 253, 0.45);
+  outline-offset: 2px;
+}
+
+.segment {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 10px;
+  background: #f4f6fa;
+}
+
+.segmentItem {
+  flex: 1;
+  justify-content: center;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #3a4a64;
+  white-space: nowrap;
+}
+
+.segmentItem[data-selected="true"] {
+  background: #fff;
+  color: #1d73ee;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(23, 42, 80, 0.1);
+}
+
+.publishCard {
+  display: grid;
+  gap: 12px;
+}
+
+.publishCard .cardTitle {
+  margin-bottom: 2px;
+}
+
+.publishCard .hint {
+  margin-top: -4px;
+}
+
+.deleteButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 40px;
+  border: 1px solid #f6d3da;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  color: #d63552;
+  cursor: pointer;
+}
+
+.deleteButton:hover:not(:disabled) {
+  background: #fdf2f4;
+}
+
+/* ---------------------------------------------------------------- 画像 */
+
+.imageBox {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f6f8fb;
+}
+
+.imagePreview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.imageEmpty {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  height: 100%;
+  border: 1.5px dashed #cfd7e3;
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--ink-mute);
+}
+
+.imageProgress {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  display: grid;
+  gap: 7px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 4px 12px -6px rgba(23, 42, 80, 0.3);
+  font-size: 12px;
+  color: #1c2940;
+}
+
+.progressTrack {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: #e3e8ef;
+  overflow: hidden;
+}
+
+.progressBar {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--blue);
+  transition: width 0.2s;
+}
+
+.imageActions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+/* ---------------------------------------------------------------- 確認ダイアログ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: rgba(14, 26, 51, 0.36);
+}
+
+.dialog {
+  width: 420px;
+  padding: 24px 24px 20px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 24px 60px -20px rgba(14, 26, 51, 0.45);
+}
+
+.dialogTitle {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 26px;
+  color: #0e1a33;
+}
+
+.dialogMessage {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #33435c;
+}
+
+.dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+/* ---------------------------------------------------------------- 狭い画面（1280〜1500px） */
+
+@media (max-width: 1500px) {
+  .search {
+    width: 240px;
+  }
+
+  .monthDay {
+    min-height: 104px;
+  }
+
+  .dateRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
