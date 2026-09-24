@@ -1,0 +1,17 @@
+{
+  "page": "/dev/dashboard",
+  "width": 1536,
+  "height": 1024,
+  "threshold": 0.1,
+  "mismatchedPercent": 17.6,
+  "regions": {
+    "sidebar": 5.1,
+    "header": 10.26,
+    "calendar": 6.58,
+    "todayEvent": 22,
+    "eventList": 7.71,
+    "video": 12.46,
+    "notice": 11.36,
+    "preview": 48.29
+  }
+}

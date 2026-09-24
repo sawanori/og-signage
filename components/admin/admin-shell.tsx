@@ -1,0 +1,78 @@
+/**
+ * 管理画面の枠（左のサイドバーと上のヘッダー）。/admin の layout と /dev/dashboard が共用する。
+ */
+import "@fontsource/line-seed-jp/400.css";
+import "@fontsource/line-seed-jp/700.css";
+import "@fontsource/kalam/400.css";
+import { Heart, House, Plus } from "lucide-react";
+import Link from "next/link";
+import type { ReactNode } from "react";
+import styles from "./admin.module.css";
+import type { ShellData } from "./dashboard-types";
+import { NotificationBell } from "./notification-bell";
+import { SidebarNav } from "./sidebar-nav";
+import { UserMenu } from "./user-menu";
+
+export function AdminShell({
+  shell,
+  currentPath,
+  children,
+}: {
+  shell: ShellData;
+  /** 現在地の強調に使うパス。省略時は URL から決める（/dev/dashboard は "/admin" を渡す） */
+  currentPath?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className={styles.shell}>
+      <aside className={styles.sidebar}>
+        <div className={styles.brand}>
+          <House className={styles.brandIcon} strokeWidth={1.9} aria-hidden />
+          <div>
+            <p className={styles.brandName}>{shell.houseName}</p>
+            <p className={styles.brandSub}>シェアハウス</p>
+            <p className={styles.brandSub} style={{ marginTop: 0 }}>
+              サイネージ管理
+            </p>
+          </div>
+        </div>
+        <SidebarNav role={shell.user.role} currentPath={currentPath} />
+        <div className={styles.sideCard}>
+          {shell.sidebarImageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img className={styles.sideCardImage} src={shell.sidebarImageUrl} alt="" />
+          ) : null}
+          <div className={styles.sideCardBody}>
+            <Heart className={styles.sideCardHeart} aria-hidden />
+            <p className={styles.sideCardCopy}>{"みんなの暮らしが\nもっと楽しくなる場所。"}</p>
+            <p className={styles.sideCardScript}>Good People, Better Days.</p>
+          </div>
+        </div>
+        <p className={styles.sideFooter}>{shell.houseName}</p>
+      </aside>
+
+      <div className={styles.main}>
+        <header className={styles.header}>
+          <div className={styles.greeting}>
+            <h1 className={styles.greetingTitle}>
+              こんにちは、{shell.user.name}さん
+              <span className={styles.emoji} aria-hidden>
+                👋
+              </span>
+            </h1>
+            <p className={styles.greetingSub}>今日も素敵な１日になりますように。</p>
+          </div>
+          <Link href="/admin/events/new" className={styles.createButton}>
+            <Plus size={22} strokeWidth={2.4} aria-hidden />
+            新しいイベントを作成
+          </Link>
+          <div className={styles.headerTools}>
+            <NotificationBell alerts={shell.alerts} />
+            <UserMenu user={shell.user} />
+          </div>
+        </header>
+        {children}
+      </div>
+    </div>
+  );
+}
