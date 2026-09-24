@@ -34,6 +34,10 @@ export const users = sqliteTable("users", {
   isActive: bool("is_active").notNull().default(true),
   /** 増やすと既存セッションが無効になる（役割変更・無効化・パスワード変更時） */
   sessionVersion: integer("session_version").notNull().default(0),
+  /** ログインの連続失敗回数（lib/rate-limit.ts）。成功で 0 に戻す */
+  failedLoginCount: integer("failed_login_count").notNull().default(0),
+  /** 連続失敗を数え始めた時刻。この時刻から 15 分で数え直す */
+  failedLoginWindowStart: integer("failed_login_window_start"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

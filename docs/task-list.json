@@ -1,6 +1,6 @@
 {
   "feature": "share_house_signage_mvp",
-  "version": 2.4,
+  "version": 2.5,
   "tasks": [
     {
       "task_id": "task_001",
@@ -180,10 +180,9 @@
       "files_to_modify": [
         "package.json"
       ],
-      "dependencies": [
-        "task_002"
-      ],
+      "dependencies": [],
       "implementation_steps": [
+        "スキーマ定義は task_002 の結果に依存しないため先行してよい（2026-09-24 変更）。Turso 接続方式は task_002 の結果で db/index.ts を最終調整する",
         "スキーマを書きマイグレーションを生成する",
         "ローカル libSQL で適用するテストを書く"
       ],
@@ -252,7 +251,7 @@
         "lib/csrf.ts（更新系の Origin 検査）",
         "lib/rate-limit.ts",
         "ログイン画面",
-        "middleware.ts"
+        "proxy.ts（Next.js 16 での middleware.ts。vinext は Route Handler の Origin を検査しないため、更新系 Route Handler の Origin 検査をここで行う）"
       ],
       "non_scope": [
         "ユーザー管理画面"
@@ -266,7 +265,7 @@
         "lib/csrf.ts",
         "lib/rate-limit.ts",
         "app/login/page.tsx",
-        "middleware.ts",
+        "proxy.ts",
         "tests/lib/auth.test.ts",
         "tests/lib/csrf.test.ts"
       ],
@@ -277,7 +276,11 @@
       ],
       "implementation_steps": [
         "task_002 の結果の方式で実装する",
-        "無効化・降格で session_version を上げる"
+        "無効化・降格で session_version を上げる",
+        "task_002 の結果（docs/spikes/workers.md）: Auth.js は next-auth@5.0.0-beta.32 で動作。秘密鍵は NextAuth の遅延初期化で cloudflare:workers の env から読む。ローカル開発は AUTH_URL を設定する",
+        "PBKDF2 は SHA-256・100,000 回（Workers は 100,000 回を超える反復に対応しない）。保存形式に回数を含める",
+        "Server Action の signIn はパスワード誤りで AuthError を投げるので捕まえて画面にエラーを返す",
+        "Rate Limiting binding はマシンごとの概算で、接続が分かれると制限がかからないことがある（task_002 実測）。同一メールの連続失敗は DB の失敗回数でも止める"
       ],
       "done_definition": [
         "未ログインの /admin は /login へ",
@@ -372,7 +375,8 @@
       "implementation_steps": [
         "task_003 は後回し（2026-09-24 ユーザー指示）。playable の判定は当面、要件定義書15節の推奨（MP4・H.264・1080p以下・30fps以下・yuv420p）で行い、task_003 の実測後に条件を更新する",
         "サーバーがキーを決め、クライアント指定のキーを受けない",
-        "complete の二重送信・応答喪失・DB 失敗をテストする"
+        "complete の二重送信・応答喪失・DB 失敗をテストする",
+        "管理用素材中継（GET /api/media/[id]/file）で大きな動画を返す場合は worker/index.ts で vinext より前に処理する（vinext の Route Handler 経由は 500MB で CPU 17〜20 秒。task_002 実測）。パート受信は Route Handler でよい（1 パート CPU 16〜44ms）"
       ],
       "done_definition": [
         "500MB 動画のアップロードが完了し、尺とサムネイルが出る",
@@ -512,7 +516,8 @@
       "scope": [
         "lib/config-builder.ts（読み取りトランザクション内で組み立て、SHA-256 を version に）",
         "config、媒体中継（Range、その config に含まれるものだけ）、バンドル中継、heartbeat、logs、media-failures",
-        "ログ件数の上限"
+        "ログ件数の上限",
+        "media-failures で表示バンドルの失敗も報告できるようにする（bundleId を受ける。lib/validators.ts の mediaFailuresSchema を拡張し、raspberry-pi/agent/downloader.py の未報告分を送る）"
       ],
       "non_scope": [
         "Pi 側"
@@ -528,7 +533,8 @@
         "app/api/device/heartbeat/route.ts",
         "app/api/device/logs/route.ts",
         "app/api/device/media-failures/route.ts",
-        "tests/api/device.test.ts"
+        "tests/api/device.test.ts",
+        "worker/index.ts"
       ],
       "files_to_modify": [],
       "dependencies": [
@@ -540,7 +546,9 @@
       ],
       "implementation_steps": [
         "config が SignageConfig の Zod 検査を通ることをテストする",
-        "組み立て中に更新を割り込ませ、完全な旧世代か新世代のどちらかになることをテストする"
+        "組み立て中に更新を割り込ませ、完全な旧世代か新世代のどちらかになることをテストする",
+        "GET /api/device/media/[mediaId] と GET /api/device/bundles/[bundleId] は worker/index.ts（無ければ作る）で vinext より前に処理し、R2 の本文をそのまま返す（vinext の Route Handler 経由は 500MB で CPU 17〜20 秒、独自エントリは 0〜1ms。task_002 実測）。端末トークンの確認もそこで行う",
+        "範囲外の Range は R2 が例外を投げるので、自分で 416 を返す"
       ],
       "done_definition": [
         "401・304・206・416 のテスト",
@@ -563,7 +571,7 @@
         "lib/weather.ts",
         "worker/scheduled.ts",
         "失敗時は前回値を保持",
-        "OPENWEATHER_API_KEY を Secret から読む。出典表示が必要なら config に含める"
+        "OPENWEATHER_API_KEY を Secret から読む。無料プランは出典表示が必須（task_002 で規約原文を確認）なので、出典の文言を config に含める"
       ],
       "non_scope": [
         "表示"
@@ -573,6 +581,7 @@
       ],
       "files_to_create": [
         "lib/weather.ts",
+        "worker/index.ts",
         "worker/scheduled.ts",
         "tests/lib/weather.test.ts",
         "tests/worker/scheduled.test.ts"
@@ -586,6 +595,7 @@
         "task_008"
       ],
       "implementation_steps": [
+        "wrangler.jsonc の main を ./worker/index.ts にし、vinext/server/fetch-handler の fetch と scheduled（worker/scheduled.ts）をまとめて公開する（task_002 で確認）。手動起動の確認は wrangler dev --test-scheduled の /cdn-cgi/handler/scheduled?cron=...",
         "各処理を書く"
       ],
       "done_definition": [
@@ -1000,10 +1010,10 @@
         "raspberry-pi/agent/main.py"
       ],
       "dependencies": [
-        "task_014b",
         "task_020"
       ],
       "implementation_steps": [
+        "コードと pytest は task_014b・task_003 を待たず先行してよい（2026-09-24 変更）。表示バンドルとの結合は task_014b 後、実機確認は task_003 後",
         "mpv と Chromium は抽象化して pytest で差し替える",
         "実機で連続再生と各障害を試す"
       ],
@@ -1031,7 +1041,8 @@
         "journald を揮発・上限つき",
         "RTC 設定",
         "install.sh（初期バンドル同梱）",
-        "update.sh（releases/<version> へ導入、切替、生存確認、失敗時に戻す）"
+        "update.sh（releases/<version> へ導入、切替、生存確認、失敗時に戻す）",
+        "current/previous のシンボリックリンク付け替え後に親ディレクトリを fsync する（電源断で付け替えが失われないように。task_020 で未実装）"
       ],
       "non_scope": [
         "OS イメージの自動作成"

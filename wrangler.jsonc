@@ -16,7 +16,7 @@
       "binding": "MEDIA_BUCKET",
       "bucket_name": "sharehouse-signage"
     }
-  ]
+  ],
 
   // Cron Trigger（天気 30 分ごと・R2 削除予約・未完了アップロード掃除・device_logs 掃除）。
   // scheduled ハンドラ（worker/scheduled.ts）を作るタスクで有効化する。
@@ -24,12 +24,14 @@
   //   "crons": ["*/30 * * * *", "0 19 * * *"]
   // },
 
-  // Rate Limiting binding（ログインの IP / メールアドレス単位）。認証タスクで有効化する。
-  // "ratelimits": [
-  //   {
-  //     "name": "LOGIN_RATE_LIMITER",
-  //     "namespace_id": "<数値の namespace ID>",
-  //     "simple": { "limit": 10, "period": 60 }
-  //   }
-  // ]
+  // Rate Limiting binding（ログインの IP / メールアドレス単位、lib/rate-limit.ts）。
+  // マシンごとの概算で厳密な回数制限ではない（docs/spikes/workers.md 7 節）。同じメールの連続失敗は DB でも止める。
+  // namespace_id はアカウント内で一意の整数文字列（検証用 Worker は 4201 を使った）。
+  "ratelimits": [
+    {
+      "name": "LOGIN_RATE_LIMITER",
+      "namespace_id": "4301",
+      "simple": { "limit": 10, "period": 60 }
+    }
+  ]
 }

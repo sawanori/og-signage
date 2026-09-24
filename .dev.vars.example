@@ -4,3 +4,5 @@ AUTH_SECRET=
 APP_URL=
 DEVICE_API_SECRET=
 OPENWEATHER_API_KEY=
+# ローカルの http 開発だけ設定する（例: http://localhost:5173）。本番の Secret には入れない
+AUTH_URL=
