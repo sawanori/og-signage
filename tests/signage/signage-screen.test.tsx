@@ -184,11 +184,14 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     expect(screen.queryByRole("img", { name: "イベント詳細の QR コード" })).toBeNull();
   });
 
-  it("画像の URL は渡された解決関数で決める", () => {
+  it("画像の URL は渡された解決関数で決める（埋め込みの WeWork のロゴを除く）", () => {
     const { container } = renderScreen({}, orientation);
-    const srcs = [...container.querySelectorAll("img")].map((img) => img.getAttribute("src"));
-    expect(srcs.length).toBeGreaterThan(0);
-    for (const src of srcs) expect(src).toMatch(/^\/media\/[0-9a-f]{64}$/);
+    const srcs = [...container.querySelectorAll("img")].map((img) => img.getAttribute("src") ?? "");
+    const media = srcs.filter((src) => !src.startsWith("data:"));
+    expect(media.length).toBeGreaterThan(0);
+    for (const src of media) expect(src).toMatch(/^\/media\/[0-9a-f]{64}$/);
+    // 埋め込みの画像は、横型のフッター右下の WeWork のロゴだけ
+    expect(srcs.length - media.length).toBe(orientation === "landscape" ? 1 : 0);
   });
 
   it("大きな欄は 10 秒ごとに次のイベントへ切り替わる（今日の主イベントから順に）", () => {

@@ -1596,16 +1596,13 @@
   white-space: nowrap;
 }
 
-.lFooterHouse {
+/* 右下の WeWork のロゴ（2026-09-25 ユーザー指示で、家のアイコンとハウス名から差し替え）。
+   文字の上にある k の縦線の分だけ上へ寄せ、文字の本体をフッターの上下中央に置く */
+.lFooterLogo {
   position: absolute;
-  left: 1630px;
+  right: 34px;
   top: 22px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  font-size: 17px;
-  letter-spacing: 0.17em;
-  white-space: nowrap;
+  height: 32px;
 }
 
 /* ---- 大きな欄のスライドショー（lib/display-rules.ts の selectHeroSlides） */

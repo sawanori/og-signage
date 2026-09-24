@@ -21,6 +21,7 @@ import {
 } from "./model";
 import { Emoji, GroupIcon, HeroDots, isQrUrl, MediaImage, PersonIcon, PinIcon, QrCode, RuleIcon, WeatherIcon } from "./parts";
 import styles from "./signage.module.css";
+import { WEWORK_LOGO_SRC } from "./wework-logo";
 
 type Props = { config: SignageConfig; view: SignageView; resolveMediaUrl: ResolveMediaUrl };
 
@@ -164,10 +165,8 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
             {footer.lead ? <div className={styles.lFooterLead}>“{footer.lead}”</div> : null}
             {footer.sub.length > 0 ? <div className={styles.lFooterSub}>{footer.sub.join("")}</div> : null}
           </div>
-          <div className={styles.lFooterHouse}>
-            <House size={40} strokeWidth={1.6} aria-hidden />
-            <span>{house.name}</span>
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element -- オフライン配信のため素の img */}
+          <img src={WEWORK_LOGO_SRC} alt="WeWork" className={styles.lFooterLogo} />
         </div>
       </div>
     </div>
