@@ -23,9 +23,8 @@ function displayName(user: AuthUser): string {
 }
 
 export async function loadShell(db: Db, user: AuthUser, now: number): Promise<ShellData> {
-  const [{ settings }, devices] = await Promise.all([getDesignSettings(db), listDevices(db, now)]);
+  const devices = await listDevices(db, now);
   return {
-    houseName: settings.houseName,
     user: { name: displayName(user), role: user.role, avatarUrl: null },
     alerts: devices
       .filter((d) => d.status !== "online")
@@ -36,7 +35,8 @@ export async function loadShell(db: Db, user: AuthUser, now: number): Promise<Sh
             ? `端末「${d.name}」と通信できていません`
             : `端末「${d.name}」の表示に異常があります`,
       })),
-    sidebarImageUrl: null,
+    // サイドバー下のカードの写真（管理画面の固定の飾り。GPT Image 2 で生成）
+    sidebarImageUrl: "/images/sidebar-plant.jpg",
   };
 }
 

@@ -12,6 +12,7 @@ import type { ShellData } from "./dashboard-types";
 import { NotificationBell } from "./notification-bell";
 import { SidebarNav } from "./sidebar-nav";
 import { UserMenu } from "./user-menu";
+import { ADMIN_BRAND, ADMIN_PRODUCT } from "./brand";
 
 export function AdminShell({
   shell,
@@ -29,11 +30,8 @@ export function AdminShell({
         <div className={styles.brand}>
           <House className={styles.brandIcon} strokeWidth={1.9} aria-hidden />
           <div>
-            <p className={styles.brandName}>{shell.houseName}</p>
-            <p className={styles.brandSub}>シェアハウス</p>
-            <p className={styles.brandSub} style={{ marginTop: 0 }}>
-              サイネージ管理
-            </p>
+            <p className={styles.brandName}>{ADMIN_BRAND}</p>
+            <p className={styles.brandSub}>{ADMIN_PRODUCT}</p>
           </div>
         </div>
         <SidebarNav role={shell.user.role} currentPath={currentPath} />
@@ -48,7 +46,7 @@ export function AdminShell({
             <p className={styles.sideCardScript}>Good People, Better Days.</p>
           </div>
         </div>
-        <p className={styles.sideFooter}>{shell.houseName}</p>
+        <p className={styles.sideFooter}>{ADMIN_BRAND}</p>
       </aside>
 
       <div className={styles.main}>

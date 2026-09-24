@@ -9,10 +9,11 @@ import type { MediaRef, SignageConfig } from "@/lib/config-schema";
 import { getDb } from "@/lib/runtime";
 import { requirePageUser } from "./_components/current-user";
 import { loadDashboard } from "./_components/load-dashboard";
+import { ADMIN_TITLE } from "@/components/admin/brand";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "ダッシュボード | サイネージ管理" };
+export const metadata = { title: `ダッシュボード | ${ADMIN_TITLE}` };
 
 /** クラウドでの画像 URL（管理用素材 API） */
 const resolveMediaUrl = (ref: MediaRef) => `/api/media/${encodeURIComponent(ref.mediaId)}/file`;

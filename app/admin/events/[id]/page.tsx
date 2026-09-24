@@ -5,10 +5,11 @@ import { getDb } from "@/lib/runtime";
 import { EventServiceError, getEvent, type EventRow } from "@/lib/services/events";
 import { listEventCategories } from "@/lib/services/house";
 import { requirePageUser } from "../../_components/current-user";
+import { ADMIN_TITLE } from "@/components/admin/brand";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "イベントを編集 | サイネージ管理" };
+export const metadata = { title: `イベントを編集 | ${ADMIN_TITLE}` };
 
 export default async function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePageUser();

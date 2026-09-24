@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata = {
-  title: "シェアハウス サイネージ",
+  title: "WeWorkOG デジタルサイネージ",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

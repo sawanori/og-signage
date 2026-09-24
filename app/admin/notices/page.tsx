@@ -5,10 +5,11 @@ import { NoticesView } from "@/components/admin/notices-view";
 import { getDb } from "@/lib/runtime";
 import { listNotices } from "@/lib/services/notices";
 import { requirePageUser } from "../_components/current-user";
+import { ADMIN_TITLE } from "@/components/admin/brand";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "お知らせ | サイネージ管理" };
+export const metadata = { title: `お知らせ | ${ADMIN_TITLE}` };
 
 export default async function NoticesPage() {
   await requirePageUser();

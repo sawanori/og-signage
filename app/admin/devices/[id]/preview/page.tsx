@@ -12,10 +12,11 @@ import { ConfigUnavailableError, buildDeviceConfig } from "@/lib/config-builder"
 import type { SignageConfig } from "@/lib/config-schema";
 import { getDb } from "@/lib/runtime";
 import { PreviewScreen } from "./preview-screen";
+import { ADMIN_TITLE } from "@/components/admin/brand";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "端末プレビュー | シェアハウス サイネージ管理" };
+export const metadata = { title: `端末プレビュー | ${ADMIN_TITLE}` };
 
 const ORIENTATION_LABEL = { portrait: "縦型", landscape: "横型" } as const;
 

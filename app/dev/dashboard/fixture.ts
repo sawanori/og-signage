@@ -92,7 +92,6 @@ export const fixtureEvents: DashboardEvent[] = [
 
 export function fixtureShell(role: Role): ShellData {
   return {
-    houseName: "HARMONY HOUSE",
     user: { name: "Saki", role, avatarUrl: photo("avatar") },
     alerts: [],
     sidebarImageUrl: photo("sidebar-plant"),

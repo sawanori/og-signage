@@ -4,10 +4,11 @@ import { EventForm } from "@/components/admin/event-form";
 import { getDb } from "@/lib/runtime";
 import { listEventCategories } from "@/lib/services/house";
 import { requirePageUser } from "../../_components/current-user";
+import { ADMIN_TITLE } from "@/components/admin/brand";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "新しいイベント | サイネージ管理" };
+export const metadata = { title: `新しいイベント | ${ADMIN_TITLE}` };
 
 export default async function NewEventPage() {
   await requirePageUser();

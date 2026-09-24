@@ -24,7 +24,6 @@ export type ShellUser = {
 export type ShellAlert = { id: string; message: string };
 
 export type ShellData = {
-  houseName: string;
   user: ShellUser;
   alerts: ShellAlert[];
   /** サイドバー下のカードの写真。無ければ写真なしで描く */

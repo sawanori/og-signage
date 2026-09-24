@@ -7,10 +7,11 @@ import { DevicesScreen } from "@/components/admin/devices-screen";
 import { getDb } from "@/lib/runtime";
 import { loadDevices } from "../_components/load-devices";
 import { requireAdminPage } from "../_components/require-admin";
+import { ADMIN_TITLE } from "@/components/admin/brand";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "サイネージ端末 | シェアハウス サイネージ管理" };
+export const metadata = { title: `サイネージ端末 | ${ADMIN_TITLE}` };
 
 export default async function DevicesPage() {
   await requireAdminPage();

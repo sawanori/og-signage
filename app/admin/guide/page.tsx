@@ -3,10 +3,11 @@
  */
 import styles from "@/components/admin/settings.module.css";
 import { requirePageUser } from "../_components/current-user";
+import { ADMIN_TITLE } from "@/components/admin/brand";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "利用ガイド | サイネージ管理" };
+export const metadata = { title: `利用ガイド | ${ADMIN_TITLE}` };
 
 type Step = { title: string; steps: string[] };
 

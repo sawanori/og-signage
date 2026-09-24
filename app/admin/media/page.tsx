@@ -10,10 +10,11 @@ import styles from "@/components/admin/media.module.css";
 import { UploadDropzone } from "@/components/admin/upload-dropzone";
 import { getDb } from "@/lib/runtime";
 import { listMedia, listMediaFailures } from "@/lib/services/media";
+import { ADMIN_TITLE } from "@/components/admin/brand";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "動画・メディア | シェアハウス サイネージ管理" };
+export const metadata = { title: `動画・メディア | ${ADMIN_TITLE}` };
 
 const mediaUrl = (id: string, part: "thumbnail" | "file") => `/api/media/${encodeURIComponent(id)}/${part}`;
 

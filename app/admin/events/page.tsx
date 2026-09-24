@@ -9,10 +9,11 @@ import { getDb } from "@/lib/runtime";
 import { listEvents } from "@/lib/services/events";
 import { listEventCategories } from "@/lib/services/house";
 import { requirePageUser } from "../_components/current-user";
+import { ADMIN_TITLE } from "@/components/admin/brand";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "イベント管理 | サイネージ管理" };
+export const metadata = { title: `イベント管理 | ${ADMIN_TITLE}` };
 
 const SAVED: readonly SavedNotice[] = ["created", "updated", "deleted"];
 

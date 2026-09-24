@@ -7,10 +7,11 @@ import { ForbiddenNotice } from "@/components/admin/forbidden-notice";
 import { getDb } from "@/lib/runtime";
 import { getDesignSettings, listHouseRules } from "@/lib/services/house";
 import { requirePageRole } from "../_components/require-page-role";
+import { ADMIN_TITLE } from "@/components/admin/brand";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "デザイン設定 | サイネージ管理" };
+export const metadata = { title: `デザイン設定 | ${ADMIN_TITLE}` };
 
 export default async function DesignSettingsPage() {
   const user = await requirePageRole("administrator");

@@ -4,10 +4,11 @@ import { AdminShell } from "@/components/admin/admin-shell";
 import { getDb } from "@/lib/runtime";
 import { requirePageUser } from "./_components/current-user";
 import { loadShell } from "./_components/load-dashboard";
+import { ADMIN_TITLE } from "@/components/admin/brand";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "サイネージ管理" };
+export const metadata = { title: ADMIN_TITLE };
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const user = await requirePageUser();

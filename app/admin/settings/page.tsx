@@ -5,10 +5,11 @@ import { UsersScreen } from "@/components/admin/users-screen";
 import { getDb } from "@/lib/runtime";
 import { listUsers } from "@/lib/services/users";
 import { requireAdminPage } from "../_components/require-admin";
+import { ADMIN_TITLE } from "@/components/admin/brand";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "システム設定 | シェアハウス サイネージ管理" };
+export const metadata = { title: `システム設定 | ${ADMIN_TITLE}` };
 
 export default async function SettingsPage() {
   const user = await requireAdminPage();

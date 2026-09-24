@@ -15,10 +15,11 @@ import { getDb } from "@/lib/runtime";
 import { listDevices } from "@/lib/services/devices";
 import { listMedia } from "@/lib/services/media";
 import { getDevicePlaybackSettings, getPlaylistItems, PlaybackServiceError } from "@/lib/services/playback";
+import { ADMIN_TITLE } from "@/components/admin/brand";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "定期動画の設定 | シェアハウス サイネージ管理" };
+export const metadata = { title: `定期動画の設定 | ${ADMIN_TITLE}` };
 
 const thumbnailUrl = (id: string) => `/api/media/${encodeURIComponent(id)}/thumbnail`;
 
