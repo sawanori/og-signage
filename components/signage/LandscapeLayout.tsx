@@ -57,7 +57,7 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
       <Hero hero={view.hero} config={config} resolveMediaUrl={resolveMediaUrl} />
 
       {/* Upcoming */}
-      <div className={styles.lSectionTitle} style={{ left: 1272, top: 179 }}>
+      <div className={styles.lSectionTitle} style={{ left: 1372, top: 179 }}>
         <span className={styles.lSectionEn}>{COPY.upcoming.en}</span>
         <span className={styles.lSectionJa}>{COPY.upcoming.ja}</span>
       </div>

@@ -302,7 +302,7 @@
   left: 36px;
   top: 284px;
   width: 1008px;
-  height: 646px;
+  height: 774px;
   border-radius: 26px;
   overflow: hidden;
   box-shadow: 0 2px 10px rgba(20, 20, 30, 0.12);
@@ -377,7 +377,7 @@
   top: 90px;
   padding-top: 40px;
   width: 560px;
-  height: 532px;
+  height: 660px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -429,17 +429,18 @@
   margin-top: 4px;
 }
 
+/* 詳細はこの欄でしか見られないため、ボタンを外した分だけ広げて 5 行まで出す（幅は写真の暗い帯の中に収める） */
 .pDesc {
   margin-top: 5px;
   margin-left: 8px;
-  width: 334px;
+  width: 440px;
   font-size: 24px;
   line-height: 39px;
   letter-spacing: 0.08em;
   white-space: pre-line;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 5;
   overflow: hidden;
 }
 
@@ -524,7 +525,7 @@
 .pQr {
   position: absolute;
   left: 801px;
-  top: 406px;
+  top: 534px;
   width: 171px;
   height: 185px;
   border-radius: 14px;
@@ -582,13 +583,15 @@
 }
 
 
+/* 2026-09-25 ユーザー指示: 大きな枠（スライドショー）の占有率を上げる。
+   縦は Upcoming を 3 行にして枠を 128px 高く、横は Upcoming の列を細くして枠を 100px 広くした */
 /* Upcoming（縦） */
 .pUpcoming {
   position: absolute;
   left: 38px;
-  top: 1009px;
+  top: 1137px;
   width: 1002px;
-  height: 526px;
+  height: 398px;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -952,7 +955,7 @@
   position: absolute;
   left: 0;
   top: 138px;
-  width: 1231px;
+  width: 1331px;
   height: 614px;
   border-top-right-radius: 16px;
   overflow: hidden;
@@ -1158,7 +1161,7 @@
 
 .lCatch {
   position: absolute;
-  left: 922px;
+  left: 1022px;
   top: 92px;
   display: flex;
   flex-direction: column;
@@ -1194,9 +1197,9 @@
 /* Upcoming（横） */
 .lUpcoming {
   position: absolute;
-  left: 1268px;
+  left: 1368px;
   top: 220px;
-  width: 616px;
+  width: 516px;
   height: 512px;
   display: flex;
   flex-direction: column;
@@ -1250,7 +1253,7 @@
   position: absolute;
   left: 140px;
   top: 14px;
-  width: 270px;
+  width: 236px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -1271,7 +1274,7 @@
   margin-top: 8px;
   max-width: 100%;
   font-weight: 700;
-  font-size: 23.5px;
+  font-size: 22px;
   line-height: 32px;
   white-space: nowrap;
   overflow: hidden;
@@ -1280,11 +1283,14 @@
 
 .lRowMeta {
   margin-top: 5px;
-  font-size: 17px;
+  font-size: 16px;
   line-height: 24px;
   letter-spacing: 0.01em;
   color: #2c343d;
+  max-width: 100%;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .lRowPlace {
@@ -1293,10 +1299,10 @@
 
 .lRowImage {
   position: absolute;
-  left: 418px;
-  top: 11px;
-  width: 163px;
-  height: 104px;
+  left: 384px;
+  top: 24px;
+  width: 118px;
+  height: 76px;
   border-radius: 10px;
   overflow: hidden;
 }

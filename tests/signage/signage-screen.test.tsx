@@ -131,7 +131,8 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
       orientation,
     );
     const noImage = container.querySelectorAll('[data-has-image="false"]');
-    expect(noImage.length).toBeGreaterThanOrEqual(5);
+    // 大きな枠 1 つと Upcoming の行（縦型 3 行・横型 4 行）
+    expect(noImage.length).toBeGreaterThanOrEqual(orientation === "portrait" ? 4 : 5);
     for (const el of noImage) expect(el.querySelector("img")).toBeNull();
     expect((noImage[0] as HTMLElement).style.backgroundColor).not.toBe("");
   });
@@ -222,12 +223,14 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     expect(screen.getByTestId("main-title").textContent).toContain("Movie Night");
   });
 
-  it("Upcoming は主イベントを除いて最大 4 件", () => {
+  it("Upcoming は主イベントを除いて、横型は最大 4 件・縦型は最大 3 件", () => {
     renderScreen({}, orientation);
     const upcoming = screen.getByTestId("upcoming");
     expect(upcoming.textContent).not.toContain("Pizza Night");
     expect(upcoming.textContent).toContain("Movie Night");
-    expect(upcoming.textContent).toContain("コーヒーの淹れ方講座");
+    // 4 件目（コーヒーの淹れ方講座）は横型だけ。縦型は大きな枠を広げるため 3 行
+    if (orientation === "landscape") expect(upcoming.textContent).toContain("コーヒーの淹れ方講座");
+    else expect(upcoming.textContent).not.toContain("コーヒーの淹れ方講座");
   });
 });
 

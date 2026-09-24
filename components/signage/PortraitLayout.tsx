@@ -33,6 +33,9 @@ import styles from "./signage.module.css";
 
 type Props = { config: SignageConfig; view: SignageView; resolveMediaUrl: ResolveMediaUrl };
 
+/** 縦型の Upcoming は 3 行（大きな枠を広げるため。全イベントの詳細は大きな枠のスライドショーで流す） */
+const PORTRAIT_UPCOMING_ROWS = 3;
+
 export function PortraitLayout({ config, view, resolveMediaUrl }: Props) {
   const { house } = config;
   const footer = splitFooterCopy(house.footerCopy);
@@ -75,13 +78,13 @@ export function PortraitLayout({ config, view, resolveMediaUrl }: Props) {
       <Hero hero={view.hero} config={config} resolveMediaUrl={resolveMediaUrl} />
 
       {/* Upcoming */}
-      <div className={styles.pSectionTitle} style={{ left: 42, top: 961 }}>
+      <div className={styles.pSectionTitle} style={{ left: 42, top: 1089 }}>
         <span className={styles.pSectionEn}>{COPY.upcoming.en}</span>
         <span className={styles.pSectionJa}>{COPY.upcoming.ja}</span>
       </div>
       <div className={styles.pUpcoming} data-testid="upcoming">
         {view.upcoming.length === 0 ? <div className={styles.pEmpty}>{COPY.noUpcoming}</div> : null}
-        {view.upcoming.map((event) => (
+        {view.upcoming.slice(0, PORTRAIT_UPCOMING_ROWS).map((event) => (
           <UpcomingRow key={event.id} event={event} resolveMediaUrl={resolveMediaUrl} />
         ))}
       </div>
