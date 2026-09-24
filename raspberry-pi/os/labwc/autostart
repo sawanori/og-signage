@@ -1,0 +1,21 @@
+# Share House Signage: labwc の自動起動（install.sh が ~<user>/.config/labwc/autostart に置く）
+#
+# labwc はこのファイルを sh で実行する。ユーザー側の autostart があるとシステム側
+# （/etc/xdg/labwc/autostart。パネル・デスクトップ・swayidle による自動消灯）は読まれない前提。
+# task_003: この上書きの挙動（システム側の autostart が読まれないこと）と、
+#           それで画面の自動消灯が起きないことを実機で確かめる。
+
+# shellcheck source=/dev/null
+. /etc/sharehouse-signage/kiosk.env
+
+# 縦置きのときの画面回転。
+# task_003: 出力名（SIGNAGE_OUTPUT、既定 HDMI-A-1）と transform の値（90 か 270 か）を
+#           実機の取り付け向きで確定する。Agent の hdmi_on（wlr-randr --on）のあとに
+#           回転が保たれるかも確かめる。
+if [ "${SIGNAGE_TRANSFORM:-normal}" != "normal" ]; then
+    wlr-randr --output "${SIGNAGE_OUTPUT:-HDMI-A-1}" --transform "$SIGNAGE_TRANSFORM"
+fi
+
+# Agent（mpv・wlr-randr を起動する）と Chromium に Wayland の環境変数を渡してから起動する。
+systemctl --user import-environment WAYLAND_DISPLAY XDG_RUNTIME_DIR XDG_SESSION_TYPE XDG_CURRENT_DESKTOP
+systemctl --user --no-block start signage-agent.service chromium-kiosk.service

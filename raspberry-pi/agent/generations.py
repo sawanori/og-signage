@@ -194,6 +194,16 @@ class GenerationManager:
             tmp_link.unlink()
         os.symlink(target_dir, tmp_link, target_is_directory=True)
         os.replace(tmp_link, link_path)  # 同一ディレクトリ内のリネームなので原子的
+        self._fsync_dir(link_path.parent)
+
+    @staticmethod
+    def _fsync_dir(directory: Path) -> None:
+        """リネーム（付け替え）をディスクへ確定させる。電源断で付け替えが失われないように。"""
+        fd = os.open(directory, os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
 
     # ---- 切替 ----
     def activate(self, version: str) -> None:

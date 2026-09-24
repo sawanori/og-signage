@@ -1,0 +1,15 @@
+# Chromium のプロファイル・ディスクキャッシュ・一時ファイル用の tmpfs。
+# 置き場所: /etc/systemd/system/var-cache-kiosk.mount（install.sh が @UID@ / @GID@ を
+# 表示用ユーザーの数値 ID に置き換えて配置し、有効化する）。
+# ユニット名はマウント先のパス（/var/cache/kiosk）と一致させる必要がある。
+[Unit]
+Description=tmpfs for Chromium kiosk profile and temporary files
+
+[Mount]
+What=tmpfs
+Where=/var/cache/kiosk
+Type=tmpfs
+Options=rw,nosuid,nodev,size=256M,mode=0700,uid=@UID@,gid=@GID@
+
+[Install]
+WantedBy=local-fs.target

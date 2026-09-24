@@ -1,0 +1,13 @@
+# install.sh が apt-get install する依存パッケージ（1 行 1 つ、# 以降は無視）。
+# 前提: Raspberry Pi OS Bookworm 64bit の「デスクトップ付き」イメージ（labwc・lightdm・raspi-config を含む）。
+python3
+mpv
+# task_003: Pi OS の Chromium パッケージ名（chromium / chromium-browser）を確定する
+chromium
+wlr-randr
+# 表示ページの絵文字
+fonts-noto-color-emoji
+# chromium-kiosk.service が Agent の応答待ちに使う
+curl
+# hwclock（Bookworm では util-linux から分かれている）。RTC から時刻を戻すのに使う
+util-linux-extra

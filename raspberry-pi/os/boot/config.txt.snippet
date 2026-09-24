@@ -1,0 +1,8 @@
+# >>> sharehouse-signage >>>
+# 電池付き RTC（DS3231）を I2C で有効にする（実装計画 6 節 前提13）。
+# install.sh が /boot/firmware/config.txt の末尾へ一度だけ追記する。
+# task_003: 実機で `hwclock -r` と `timedatectl` により RTC から時刻が戻ることを確かめる。
+[all]
+dtparam=i2c_arm=on
+dtoverlay=i2c-rtc,ds3231
+# <<< sharehouse-signage <<<

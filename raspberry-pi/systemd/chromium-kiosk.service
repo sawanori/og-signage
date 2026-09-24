@@ -1,0 +1,42 @@
+# 表示ページを出す Chromium（ユーザーサービス）
+# 置き場所: ~<user>/.config/systemd/user/chromium-kiosk.service（install.sh が配置）
+#
+# - Agent（signage-agent.service）の localhost 応答を待ってから起動する。
+# - プロファイル・ディスクキャッシュ・一時ファイルは tmpfs（/var/cache/kiosk、
+#   os/tmpfs/var-cache-kiosk.mount）に置く。起動のたびにプロファイルを消すので、
+#   強制終了のあとでも「ページを復元しますか」のダイアログは出ない。
+# - Agent の watchdog が `systemctl --user restart chromium-kiosk` で再起動する（platform.py）。
+#
+# task_003: 実行ファイル名（Pi OS Bookworm の chromium / chromium-browser）と
+#           --ozone-platform=wayland の要否を実機で確定する。
+[Unit]
+Description=Chromium kiosk for Share House Signage
+Wants=signage-agent.service
+After=signage-agent.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+# SIGNAGE_PORT（Agent の localServerPort）。install.sh が config.json から作る
+EnvironmentFile=/etc/sharehouse-signage/kiosk.env
+Environment=TMPDIR=/var/cache/kiosk/tmp
+# tmpfs が無いまま SD カードへ書き込まないように、マウントされていなければ起動しない
+ExecStartPre=/usr/bin/mountpoint -q /var/cache/kiosk
+ExecStartPre=/bin/rm -rf /var/cache/kiosk/profile /var/cache/kiosk/cache /var/cache/kiosk/tmp
+ExecStartPre=/bin/mkdir -p /var/cache/kiosk/profile /var/cache/kiosk/cache /var/cache/kiosk/tmp
+# Agent のローカルサーバーが HTTP で応答するまで待つ（200 でも 404 でもよい。接続拒否の間は再試行）
+ExecStartPre=/usr/bin/curl -s -o /dev/null --max-time 2 --retry 150 --retry-delay 1 --retry-connrefused --retry-max-time 170 http://127.0.0.1:${SIGNAGE_PORT}/local/config.json
+ExecStart=/usr/bin/chromium \
+    --kiosk \
+    --noerrdialogs \
+    --disable-infobars \
+    --disable-session-crashed-bubble \
+    --no-first-run \
+    --password-store=basic \
+    --ozone-platform=wayland \
+    --user-data-dir=/var/cache/kiosk/profile \
+    --disk-cache-dir=/var/cache/kiosk/cache \
+    http://127.0.0.1:${SIGNAGE_PORT}/
+Restart=always
+RestartSec=3
+TimeoutStartSec=180

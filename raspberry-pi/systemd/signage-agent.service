@@ -1,0 +1,27 @@
+# Share House Signage Pi Agent（ユーザーサービス）
+# 置き場所: ~<user>/.config/systemd/user/signage-agent.service（install.sh が配置）
+#
+# 起動順: labwc の autostart（os/labwc/autostart）が WAYLAND_DISPLAY をユーザーの
+# systemd に渡してから、このサービスと chromium-kiosk.service を起動する。
+# Agent が起動する mpv と wlr-randr は Wayland の環境変数を必要とするため、
+# default.target では有効化しない（[Install] を持たない）。
+# task_003: GUI 起動方式（Wayland/labwc か X11 か）が確定したら、起動のきっかけを見直す。
+[Unit]
+Description=Share House Signage Pi Agent
+# 何度落ちても再起動をあきらめない
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+# current -> releases/<version> を起動時に解決する。update.sh は current を付け替えてから再起動する
+WorkingDirectory=/opt/sharehouse-signage/current
+Environment=PYTHONUNBUFFERED=1
+# releases/ は root 所有で書き込まない（__pycache__ を作らない）
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 -m agent.main --config /etc/sharehouse-signage/agent.json
+# watchdog は非 0 で自身を終了する（platform.RealPlatform.exit_agent）。always なので終了コードに関係なく再起動する
+Restart=always
+RestartSec=3
+# 停止時は mpv を含む子プロセスごと止める
+KillMode=control-group
+TimeoutStopSec=15
