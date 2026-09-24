@@ -3,7 +3,7 @@
   "width": 1536,
   "height": 1024,
   "threshold": 0.1,
-  "mismatchedPercent": 22.31,
+  "mismatchedPercent": 22.3,
   "regions": {
     "sidebar": 25.71,
     "header": 8.54,
@@ -12,6 +12,6 @@
     "eventList": 13.01,
     "video": 20.39,
     "notice": 10.31,
-    "preview": 45.43
+    "preview": 45.39
   }
 }

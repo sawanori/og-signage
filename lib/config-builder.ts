@@ -189,6 +189,7 @@ async function readConfigBody(tx: Db, deviceId: string, now: number): Promise<Om
       name: house.houseName,
       headerCopy: house.headerCopy,
       footerCopy: house.footerCopy,
+      footerQrUrl: house.footerQrUrl,
       logo: toMediaRef(logo),
       footerImage: toMediaRef(footerImage),
       rules: rules.map((r) => ({ icon: r.icon, title: r.title, text: r.text })),

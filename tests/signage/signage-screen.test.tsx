@@ -194,6 +194,19 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     expect(screen.queryByRole("img", { name: "イベント詳細の QR コード" })).toBeNull();
   });
 
+  it("フッターはキャッチコピー（引用符なし）と QR。URL が未設定なら QR の場所に枠だけを出す", () => {
+    const config = makeConfig();
+    const house = { ...config.house, footerCopy: "会議室予約はここから", footerQrUrl: null };
+    renderScreen({ config: { ...config, house } }, orientation);
+    expect(screen.getByText("会議室予約はここから").textContent).toBe("会議室予約はここから");
+    expect(screen.getByTestId("footer-qr").dataset.empty).toBe("true");
+    expect(screen.getByTestId("footer-qr").querySelector("svg")).toBeNull();
+    cleanup();
+    renderScreen({ config: { ...config, house: { ...house, footerQrUrl: "https://example.com/rooms" } } }, orientation);
+    expect(screen.getByTestId("footer-qr").dataset.empty).toBe("false");
+    expect(screen.getByLabelText("フッターの QR コード")).toBeTruthy();
+  });
+
   it("メンバー情報はアイコンを出さず、見出し（任意）と文言を出す", () => {
     const config = makeConfig();
     const rules = [

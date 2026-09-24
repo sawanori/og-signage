@@ -29,6 +29,7 @@ const PATHS = [
   "/admin/media",
   "/admin/videos",
   "/admin/notices",
+  "/admin/member-info",
   "/admin/design",
   "/admin/schedule",
   "/admin/devices",

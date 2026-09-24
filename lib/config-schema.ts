@@ -85,6 +85,8 @@ export const houseSchema = z.object({
   name: z.string().min(1),
   headerCopy: z.string().nullable(),
   footerCopy: z.string().nullable(),
+  /** フッターの QR コードの飛び先（例: 会議室予約のページ）。古い Worker の config には無い */
+  footerQrUrl: z.string().nullable().optional(),
   logo: mediaRefSchema.nullable(),
   footerImage: mediaRefSchema.nullable(),
   /** 表示順に並べたもの */

@@ -3,7 +3,7 @@
 /**
  * サイドバーの項目。Administrator 専用の画面（計画 6 節の権限表）は Staff には出さない。
  */
-import { BookOpen, Bell, CalendarDays, Clock, House, Monitor, Palette, SquarePlay, type LucideIcon } from "lucide-react";
+import { BookOpen, Bell, CalendarDays, Clock, House, Monitor, Palette, SquarePlay, Users, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Role } from "@/lib/auth";
@@ -21,6 +21,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/admin/devices", label: "サイネージ端末", icon: Monitor, adminOnly: true },
   { href: "/admin/design", label: "デザイン設定", icon: Palette, adminOnly: true },
   { href: "/admin/notices", label: "お知らせ", icon: Bell },
+  // サイネージの「MEMBER INFO / メンバー情報」の欄（2026-09-25 ユーザー指示でデザイン設定から独立）
+  { href: "/admin/member-info", label: "メンバー情報", icon: Users, adminOnly: true },
   { href: "/admin/guide", label: "利用ガイド", icon: BookOpen },
 ];
 

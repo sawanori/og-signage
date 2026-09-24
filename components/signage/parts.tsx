@@ -42,7 +42,17 @@ export function WeatherIcon({ condition, size, strokeWidth }: { condition: strin
 }
 
 /** QR コード（http/https 以外の URL は出さない） */
-export function QrCode({ url, size, className }: { url: string; size: number; className?: string }) {
+export function QrCode({
+  url,
+  size,
+  className,
+  label = "イベント詳細の QR コード",
+}: {
+  url: string;
+  size: number;
+  className?: string;
+  label?: string;
+}) {
   if (!httpUrlSchema.safeParse(url).success) return null;
   const qr = createQrCode(url, { errorCorrectionLevel: "M" });
   const n = qr.modules.size;
@@ -60,7 +70,7 @@ export function QrCode({ url, size, className }: { url: string; size: number; cl
       viewBox={`0 0 ${n} ${n}`}
       shapeRendering="crispEdges"
       role="img"
-      aria-label="イベント詳細の QR コード"
+      aria-label={label}
     >
       <path d={d} fill="#111820" />
     </svg>
@@ -69,6 +79,20 @@ export function QrCode({ url, size, className }: { url: string; size: number; cl
 
 export function isQrUrl(url: string | null): url is string {
   return url !== null && httpUrlSchema.safeParse(url).success;
+}
+
+/**
+ * フッターの QR（例: 会議室予約のページ。デザイン設定の house.footerQrUrl）。
+ * URL が未設定のあいだは、QR の場所に枠だけを出して場所を空けておく（2026-09-25 ユーザー指示）
+ */
+export function FooterQr({ url, size, className }: { url: string | null | undefined; size: number; className: string }) {
+  const target = url ?? null;
+  const ready = isQrUrl(target);
+  return (
+    <div className={className} data-empty={ready ? "false" : "true"} data-testid="footer-qr">
+      {ready ? <QrCode url={target} size={size} label="フッターの QR コード" /> : <span>QR</span>}
+    </div>
+  );
 }
 
 /**

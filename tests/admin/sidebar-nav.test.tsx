@@ -3,7 +3,7 @@
  */
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { SidebarNav } from "@/components/admin/sidebar-nav";
+import { SidebarNav, visibleNavItems } from "@/components/admin/sidebar-nav";
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/admin" }));
 
@@ -17,6 +17,12 @@ describe("SidebarNav", () => {
     expect(currentLabels("/admin/media")).toEqual(["動画・メディア"]);
     expect(currentLabels("/admin/videos")).toEqual(["動画・メディア"]);
     expect(currentLabels("/admin/videos/d1")).toEqual(["動画・メディア"]);
+  });
+
+  it("メンバー情報は Administrator のメニューにだけあり、その画面で選択中になる", () => {
+    expect(visibleNavItems("administrator").map((i) => i.label)).toContain("メンバー情報");
+    expect(visibleNavItems("staff").map((i) => i.label)).not.toContain("メンバー情報");
+    expect(currentLabels("/admin/member-info")).toEqual(["メンバー情報"]);
   });
 
   it("ダッシュボードは /admin のときだけ選択中", () => {

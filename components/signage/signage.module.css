@@ -855,27 +855,55 @@
   color: #fff;
 }
 
-.pFooterLead {
+/*
+ * フッターのキャッチコピー（例: 会議室予約はここから）と QR を横に並べて中央に置く（2026-09-25 ユーザー指示）。
+ * 以前の手書き風の英文（左下）と添え書き（右）の置き方から変えた
+ */
+.pFooterCopy {
   position: absolute;
-  left: 44px;
-  top: 62px;
-  font-family: var(--font-script);
-  font-size: 35px;
-  line-height: 1;
-  letter-spacing: 0.02em;
+  inset: 10px 36px 10px 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.pFooterText {
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.pFooterLead {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 38px;
+  letter-spacing: 0.08em;
   white-space: nowrap;
-  transform: rotate(-5deg);
-  transform-origin: left top;
 }
 
 .pFooterSub {
-  position: absolute;
-  left: 785px;
-  top: 32px;
   font-size: 18px;
-  line-height: 29px;
+  line-height: 26px;
   letter-spacing: 0.08em;
   white-space: pre-line;
+}
+
+/* フッターの QR（96px 角）。URL が未設定のあいだは点線の枠だけ（components/signage/parts.tsx の FooterQr） */
+.pFooterQr {
+  flex: none;
+  width: 96px;
+  height: 96px;
+  border-radius: 10px;
+  background: #fff;
+  display: grid;
+  place-items: center;
+}
+
+.pFooterQr[data-empty="true"] {
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px dashed rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 15px;
+  letter-spacing: 0.12em;
 }
 
 /* ---------------------------------------------------------------- 横型 */
@@ -1631,18 +1659,28 @@
   background: rgba(255, 255, 255, 0.35);
 }
 
+/* フッターのキャッチコピー（例: 会議室予約はここから）と QR を横に並べて中央に置く（2026-09-25 ユーザー指示） */
 .lFooterCopy {
   position: absolute;
   left: 860px;
   width: 660px;
-  top: 16px;
-  text-align: center;
+  top: 6px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.lFooterText {
+  text-align: right;
 }
 
 .lFooterLead {
   font-size: 22px;
+  font-weight: 700;
   line-height: 28px;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   white-space: nowrap;
 }
 
@@ -1652,6 +1690,31 @@
   line-height: 22px;
   letter-spacing: 0.12em;
   white-space: nowrap;
+}
+
+/* フッターの QR（72px 角。フッターの高さ 84px に収める）。URL が未設定のあいだは点線の枠だけ */
+.lFooterQr {
+  flex: none;
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  background: #fff;
+  display: grid;
+  place-items: center;
+}
+
+.lFooterQr[data-empty="true"] {
+  background: transparent;
+  border: 2px dashed rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+}
+
+/* フッターの文言から QR へ向ける矢印（縦横共通） */
+.footerArrow {
+  flex: none;
+  opacity: 0.85;
 }
 
 /* 右下の WeWork のロゴ（2026-09-25 ユーザー指示で、家のアイコンとハウス名から差し替え）。

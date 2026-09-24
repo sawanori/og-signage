@@ -49,6 +49,7 @@ export async function updateDesignSettings(db: Db, user: AuthUser, input: unknow
         houseName: data.houseName,
         headerCopy: data.headerCopy,
         footerCopy: data.footerCopy,
+        footerQrUrl: data.footerQrUrl,
         logoMediaId: data.logoMediaId,
         footerImageMediaId: data.footerImageMediaId,
         weatherLocationName: data.weatherLocationName,

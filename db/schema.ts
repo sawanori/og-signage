@@ -277,6 +277,8 @@ export const houseSettings = sqliteTable("house_settings", {
   headerCopy: text("header_copy"),
   footerCopy: text("footer_copy"),
   footerImageMediaId: text("footer_image_media_id").references(() => media.id, { onDelete: "restrict" }),
+  /** フッターの QR コードの飛び先（http / https。例: 会議室予約のページ）。未設定ならフッターに QR の場所だけ空けておく */
+  footerQrUrl: text("footer_qr_url"),
   weatherLocationName: text("weather_location_name"),
   weatherLatitude: real("weather_latitude"),
   weatherLongitude: real("weather_longitude"),

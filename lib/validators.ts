@@ -124,6 +124,8 @@ export const designSettingsSchema = z.object({
   houseName: requiredText("ハウス名", 50),
   headerCopy: optionalText("ヘッダーのキャッチコピー", 60),
   footerCopy: optionalText("フッターのキャッチコピー", 60),
+  /** フッターの QR コードの飛び先（例: 会議室予約のページ）。空欄なら QR の場所だけ空けておく */
+  footerQrUrl: optionalHttpUrl,
   logoMediaId: optionalId,
   footerImageMediaId: optionalId,
   weatherLocationName: optionalText("天気の地域名", 50),

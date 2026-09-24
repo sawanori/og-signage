@@ -1,7 +1,7 @@
 /**
  * 縦型（1080×1920）の配置。モック image/UI-V.png の画面部分に合わせる。
  */
-import { Clock } from "lucide-react";
+import { ArrowRight, Clock } from "lucide-react";
 import type { SignageConfig, SignageEvent } from "@/lib/config-schema";
 import { COPY } from "./copy";
 import {
@@ -19,6 +19,7 @@ import {
 } from "./model";
 import {
   Emoji,
+  FooterQr,
   GroupIcon,
   HeroDots,
   isQrUrl,
@@ -145,8 +146,19 @@ export function PortraitLayout({ config, view, resolveMediaUrl }: Props) {
           // eslint-disable-next-line @next/next/no-img-element -- オフライン配信のため素の img
           <img src={resolveMediaUrl(house.footerImage)} alt="" className={styles.cover} />
         ) : null}
-        {footer.lead ? <div className={styles.pFooterLead}>“{footer.lead}”</div> : null}
-        {footer.sub.length > 0 ? <div className={styles.pFooterSub}>{footer.sub.join("\n")}</div> : null}
+        {/* キャッチコピー（フッター用。例: 会議室予約はここから）と QR。引用符は付けない（2026-09-25 ユーザー指示） */}
+        <div className={styles.pFooterCopy}>
+          {footer.lead || footer.sub.length > 0 ? (
+            <>
+              <div className={styles.pFooterText}>
+                {footer.lead ? <div className={styles.pFooterLead}>{footer.lead}</div> : null}
+                {footer.sub.length > 0 ? <div className={styles.pFooterSub}>{footer.sub.join("\n")}</div> : null}
+              </div>
+              <ArrowRight className={styles.footerArrow} size={32} strokeWidth={2} aria-hidden />
+            </>
+          ) : null}
+          <FooterQr url={house.footerQrUrl} size={84} className={styles.pFooterQr} />
+        </div>
       </div>
     </div>
   );

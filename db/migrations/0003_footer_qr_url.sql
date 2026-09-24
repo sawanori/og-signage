@@ -1,0 +1,1 @@
+ALTER TABLE `house_settings` ADD `footer_qr_url` text;

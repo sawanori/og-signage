@@ -6,6 +6,7 @@
  * &fill=1 で Web 公開のサイネージと同じく、ウィンドウに合わせて横型を縦に伸ばす（fillHeight）
  * &house=wework で本番に近いヘッダー（ロゴ未設定で WeWork のロゴ・ハウス名 OCEAN GATE MINATOMIRAI・本番のキャッチコピー）
  * &member=sample でメンバー情報に見出しつきの見本（見出しの見た目の確認用）
+ * &footerqr=sample でフッターの QR に見本の URL（未指定なら QR の場所は枠だけ）
  */
 import { SignageScreen } from "@/components/signage/SignageScreen";
 import type { Orientation } from "@/components/signage/model";
@@ -106,6 +107,7 @@ export default async function DevSignagePage({
             logo: null,
             name: "OCEAN GATE MINATOMIRAI",
             headerCopy: "OGのイベント情報＆お知らせはここで見れるズラ",
+            footerCopy: "会議室予約はここから",
           },
         }
       : s.config;
@@ -123,9 +125,11 @@ export default async function DevSignagePage({
           },
         }
       : withHouse;
+  const withFooterQr =
+    params.footerqr === "sample" ? { ...config, house: { ...config.house, footerQrUrl: "https://example.com/meeting-rooms" } } : config;
   return (
     <SignageScreen
-      config={config}
+      config={withFooterQr}
       now={atFirstSlide(s.config.events, s.now)}
       resolveMediaUrl={mockMediaResolver(orientation)}
       orientation={orientation}

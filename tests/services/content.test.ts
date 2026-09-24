@@ -182,9 +182,17 @@ describe("house（デザイン設定・ハウスルール・カテゴリ、Admin
     const updated = await houseService.updateDesignSettings(db, admin, designInput());
     expect(updated.houseName).toBe("新しいハウス名");
     expect(updated.revision).toBe(1);
+    expect(updated.footerQrUrl).toBeNull();
 
     const [cat] = await db.select().from(eventCategories).where(eq(eventCategories.id, "cat_movie"));
     expect(cat.color).toBe("#abcdef");
+  });
+
+  it("フッターの QR の URL を保存でき、空欄にすると消える", async () => {
+    const saved = await houseService.updateDesignSettings(db, admin, designInput({ footerQrUrl: "https://example.com/rooms" }));
+    expect(saved.footerQrUrl).toBe("https://example.com/rooms");
+    const cleared = await houseService.updateDesignSettings(db, admin, designInput({ footerQrUrl: "", revision: saved.revision }));
+    expect(cleared.footerQrUrl).toBeNull();
   });
 
   it("Staff は権限違反で拒否される", async () => {

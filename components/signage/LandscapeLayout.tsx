@@ -2,7 +2,7 @@
  * 横型（1920×1080）の配置。モック image/UI-H.png の画面部分に合わせる。
  */
 import { Fragment } from "react";
-import { Clock } from "lucide-react";
+import { ArrowRight, Clock } from "lucide-react";
 import type { SignageConfig, SignageEvent } from "@/lib/config-schema";
 import { tokyoParts } from "@/lib/dates";
 import { COPY } from "./copy";
@@ -19,7 +19,7 @@ import {
   type ResolveMediaUrl,
   type SignageView,
 } from "./model";
-import { Emoji, GroupIcon, HeroDots, isQrUrl, MediaImage, PersonIcon, PinIcon, QrCode, WeatherIcon } from "./parts";
+import { Emoji, FooterQr, GroupIcon, HeroDots, isQrUrl, MediaImage, PersonIcon, PinIcon, QrCode, WeatherIcon } from "./parts";
 import styles from "./signage.module.css";
 import { WEWORK_LOGO_DARK_SRC, WEWORK_LOGO_SRC } from "./wework-logo";
 
@@ -163,9 +163,18 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
             </div>
           ) : null}
           <div className={styles.lFooterDivider} />
+          {/* キャッチコピー（フッター用。例: 会議室予約はここから）と QR。引用符は付けない（2026-09-25 ユーザー指示） */}
           <div className={styles.lFooterCopy}>
-            {footer.lead ? <div className={styles.lFooterLead}>“{footer.lead}”</div> : null}
-            {footer.sub.length > 0 ? <div className={styles.lFooterSub}>{footer.sub.join("")}</div> : null}
+            {footer.lead || footer.sub.length > 0 ? (
+              <>
+                <div className={styles.lFooterText}>
+                  {footer.lead ? <div className={styles.lFooterLead}>{footer.lead}</div> : null}
+                  {footer.sub.length > 0 ? <div className={styles.lFooterSub}>{footer.sub.join("")}</div> : null}
+                </div>
+                <ArrowRight className={styles.footerArrow} size={26} strokeWidth={2} aria-hidden />
+              </>
+            ) : null}
+            <FooterQr url={house.footerQrUrl} size={62} className={styles.lFooterQr} />
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element -- オフライン配信のため素の img */}
           <img src={WEWORK_LOGO_SRC} alt="WeWork" className={styles.lFooterLogo} />

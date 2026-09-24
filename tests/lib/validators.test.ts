@@ -123,6 +123,17 @@ describe("デザイン設定・ハウスルール", () => {
     expect(designSettingsSchema.safeParse({ ...valid, categories: [{ id: "c", color: "orange" }] }).success).toBe(false);
   });
 
+  it("フッターの QR の URL は http / https だけ。空欄と未指定は null", () => {
+    const valid = { houseName: "OCEAN GATE MINATOMIRAI", categories: [], revision: 0 };
+    expect(designSettingsSchema.parse(valid).footerQrUrl).toBeNull();
+    expect(designSettingsSchema.parse({ ...valid, footerQrUrl: "  " }).footerQrUrl).toBeNull();
+    expect(designSettingsSchema.parse({ ...valid, footerQrUrl: " https://example.com/rooms " }).footerQrUrl).toBe(
+      "https://example.com/rooms",
+    );
+    expect(designSettingsSchema.safeParse({ ...valid, footerQrUrl: "javascript:alert(1)" }).success).toBe(false);
+    expect(designSettingsSchema.safeParse({ ...valid, footerQrUrl: "ftp://example.com" }).success).toBe(false);
+  });
+
   it("ハウスルールは 3 件まで", () => {
     const rule = { icon: "volume-x", text: "22時以降はお静かに" };
     expect(houseRulesSchema.safeParse({ rules: [rule, rule, rule] }).success).toBe(true);

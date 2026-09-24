@@ -1,15 +1,15 @@
 "use client";
 
 /**
- * デザイン設定（Administrator）。ハウス基本情報・イベントカテゴリ・メンバー情報（旧ハウスルール）の 3 つを、それぞれ独立して保存する。
+ * デザイン設定（Administrator）。ハウス基本情報・イベントカテゴリの 2 つを、それぞれ独立して保存する。
  * ハウス基本情報は house_settings の revision による条件付き更新（competing edits は conflict）。
- * カテゴリとハウスルールは revision を持たず、保存のたびに全件を置き換える（lib/services/house.ts）。
+ * カテゴリは revision を持たず、保存のたびに全件を置き換える（lib/services/house.ts）。
+ * メンバー情報（旧ハウスルール）は専用の画面（/admin/member-info。member-info-view.tsx）で編集する。
  */
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { updateDesignSettingsAction, updateEventCategoriesAction, updateHouseRulesAction } from "@/app/admin/_actions/content";
-import type { EventCategoryRow, HouseRuleRow, HouseSettingsRow } from "@/lib/services/house";
-import { HOUSE_RULE_TEXT_MAX, HOUSE_RULE_TITLE_MAX, HOUSE_RULES_MAX } from "@/lib/validators";
+import { updateDesignSettingsAction, updateEventCategoriesAction } from "@/app/admin/_actions/content";
+import type { EventCategoryRow, HouseSettingsRow } from "@/lib/services/house";
 import { MediaUploadField, mediaThumbnailUrl } from "./media-upload-field";
 import styles from "./settings.module.css";
 
@@ -18,22 +18,19 @@ const SAVED_MESSAGE = "保存しました。サイネージには 30 秒以内�
 export function DesignSettingsView({
   settings,
   categories,
-  rules,
 }: {
   settings: HouseSettingsRow;
   categories: EventCategoryRow[];
-  rules: HouseRuleRow[];
 }) {
   return (
     <div className={styles.page}>
       <div className={styles.pageHead}>
         <div>
           <h1 className={styles.pageTitle}>デザイン設定</h1>
-          <p className={styles.pageDesc}>サイネージに表示するハウスの情報・メンバー情報・カテゴリの色を設定します。</p>
+          <p className={styles.pageDesc}>サイネージに表示するハウスの情報とカテゴリの色を設定します。メンバー情報は左のメニューの「メンバー情報」で変えます。</p>
         </div>
       </div>
       <HouseInfoSection settings={settings} />
-      <HouseRulesSection rules={rules} />
       <CategoriesSection categories={categories} />
     </div>
   );
@@ -45,6 +42,7 @@ function HouseInfoSection({ settings }: { settings: HouseSettingsRow }) {
   const [houseName, setHouseName] = useState(settings.houseName);
   const [headerCopy, setHeaderCopy] = useState(settings.headerCopy ?? "");
   const [footerCopy, setFooterCopy] = useState(settings.footerCopy ?? "");
+  const [footerQrUrl, setFooterQrUrl] = useState(settings.footerQrUrl ?? "");
   const [logoMediaId, setLogoMediaId] = useState(settings.logoMediaId);
   const [logoPreview, setLogoPreview] = useState<string | null>(settings.logoMediaId ? mediaThumbnailUrl(settings.logoMediaId) : null);
   const [footerImageMediaId, setFooterImageMediaId] = useState(settings.footerImageMediaId);
@@ -76,6 +74,7 @@ function HouseInfoSection({ settings }: { settings: HouseSettingsRow }) {
         houseName,
         headerCopy: headerCopy.trim() === "" ? null : headerCopy,
         footerCopy: footerCopy.trim() === "" ? null : footerCopy,
+        footerQrUrl: footerQrUrl.trim() === "" ? null : footerQrUrl.trim(),
         logoMediaId,
         footerImageMediaId,
         weatherLocationName: weatherLocationName.trim() === "" ? null : weatherLocationName,
@@ -147,6 +146,24 @@ function HouseInfoSection({ settings }: { settings: HouseSettingsRow }) {
         </div>
 
         <div className={`${styles.field} ${styles.fieldFull}`}>
+          <label className={styles.label} htmlFor="design-footer-qr-url">
+            フッターの QR コード（飛び先の URL）
+          </label>
+          <input
+            id="design-footer-qr-url"
+            className={styles.input}
+            type="url"
+            value={footerQrUrl}
+            maxLength={2000}
+            placeholder="例：https://…（会議室予約のページ）"
+            onChange={(e) => setFooterQrUrl(e.target.value)}
+          />
+          <p className={styles.hint}>
+            フッターのキャッチコピーの横に QR コードで出します。空欄のあいだは、QR の場所に枠だけを出します。
+          </p>
+        </div>
+
+        <div className={`${styles.field} ${styles.fieldFull}`}>
           <MediaUploadField
             label="フッター背景画像"
             hint="JPEG・PNG・WebP（20MBまで）"
@@ -205,90 +222,6 @@ function HouseInfoSection({ settings }: { settings: HouseSettingsRow }) {
 
       <div className={styles.imageActions} style={{ marginTop: 20 }}>
         <button type="button" className={styles.primaryButton} disabled={pending || uploading || houseName.trim() === ""} onClick={save}>
-          保存する
-        </button>
-      </div>
-      {error ? (
-        <p className={styles.formError} role="alert">
-          {error}
-        </p>
-      ) : null}
-      {success ? <p className={styles.formSuccess}>{SAVED_MESSAGE}</p> : null}
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------- ハウスルール
-
-/** メンバー情報の 1 項目。2026-09-25 からアイコンではなく見出し（任意）と文言 */
-type RuleSlot = { title: string; text: string };
-
-function toSlots(rules: HouseRuleRow[]): RuleSlot[] {
-  return Array.from({ length: HOUSE_RULES_MAX }, (_, i) => ({ title: rules[i]?.title ?? "", text: rules[i]?.text ?? "" }));
-}
-
-function HouseRulesSection({ rules }: { rules: HouseRuleRow[] }) {
-  const [slots, setSlots] = useState<RuleSlot[]>(() => toSlots(rules));
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const [pending, startTransition] = useTransition();
-
-  const setSlot = (index: number, patch: Partial<RuleSlot>) => {
-    setSlots((prev) => prev.map((s, i) => (i === index ? { ...s, ...patch } : s)));
-  };
-
-  const save = () => {
-    setSuccess(false);
-    const filled = slots.filter((s) => s.text.trim() !== "");
-    startTransition(async () => {
-      const result = await updateHouseRulesAction({
-        rules: filled.map((s) => ({ title: s.title.trim(), text: s.text.trim() })),
-      });
-      if (result.error) {
-        setError(result.error.message);
-        return;
-      }
-      setError(null);
-      setSuccess(true);
-    });
-  };
-
-  return (
-    <section className={styles.panel} aria-label="メンバー情報">
-      <h2 className={styles.panelTitle}>メンバー情報</h2>
-      <p className={styles.panelDesc}>
-        サイネージの「MEMBER INFO / メンバー情報」の欄に、見出し（任意・{HOUSE_RULE_TITLE_MAX}文字まで）と文言（
-        {HOUSE_RULE_TEXT_MAX}文字まで。サイネージでは 3 行まで）を出します。最大 {HOUSE_RULES_MAX} 件まで。文言を空にした行は保存されません。
-      </p>
-      <div>
-        {slots.map((slot, i) => (
-          <div key={i} className={styles.ruleRow}>
-            <span className={styles.ruleNum}>項目 {i + 1}</span>
-            <div className={styles.ruleFields}>
-              <input
-                className={`${styles.input} ${styles.ruleTitleInput}`}
-                aria-label={`項目 ${i + 1} の見出し`}
-                value={slot.title}
-                maxLength={HOUSE_RULE_TITLE_MAX}
-                placeholder="見出し（例：受付）"
-                disabled={pending}
-                onChange={(e) => setSlot(i, { title: e.target.value })}
-              />
-              <input
-                className={styles.input}
-                aria-label={`項目 ${i + 1} の文言`}
-                value={slot.text}
-                maxLength={HOUSE_RULE_TEXT_MAX}
-                placeholder="文言（例：お困りのことはスタッフまで）"
-                disabled={pending}
-                onChange={(e) => setSlot(i, { text: e.target.value })}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className={styles.imageActions} style={{ marginTop: 16 }}>
-        <button type="button" className={styles.primaryButton} disabled={pending} onClick={save}>
           保存する
         </button>
       </div>
