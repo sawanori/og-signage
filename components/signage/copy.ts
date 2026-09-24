@@ -23,4 +23,6 @@ export const COPY = {
   noUpcoming: "予定されているイベントはありません",
   noNotice: "現在お知らせはありません",
   offHours: "表示時間外",
+  /** OpenWeatherMap 無料プランの利用規約で必須の出典表示（docs/spikes/workers.md 項目 9） */
+  weatherAttribution: "Weather data © OpenWeather",
 } as const;

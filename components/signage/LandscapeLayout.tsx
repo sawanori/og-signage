@@ -152,6 +152,9 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
             <span className={styles.deg}>°</span>C
           </span>
             <span className={styles.lFooterPlace}>{view.weather.locationName}</span>
+            <span className={styles.lWeatherAttribution} data-testid="weather-attribution">
+              {COPY.weatherAttribution}
+            </span>
           </div>
         ) : null}
         <div className={styles.lFooterDivider} />

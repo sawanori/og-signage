@@ -40,6 +40,20 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     expect(screen.getByRole("img", { name: "イベント詳細の QR コード" })).toBeTruthy();
   });
 
+  it("天気表示時: 天気欄の近くに OpenWeatherMap の出典が出る", () => {
+    renderScreen({}, orientation);
+    expect(within(screen.getByTestId("weather")).getByTestId("weather-attribution").textContent).toBe(
+      "Weather data © OpenWeather",
+    );
+  });
+
+  it("天気なし: 出典も出さない", () => {
+    const config = makeConfig();
+    renderScreen({ config: { ...config, weather: null } }, orientation);
+    expect(screen.queryByTestId("weather")).toBeNull();
+    expect(screen.queryByTestId("weather-attribution")).toBeNull();
+  });
+
   it("STARTING SOON: 開始 30 分前から", () => {
     renderScreen({ now: tokyoDateTime(2025, 9, 24, 19, 0) }, orientation);
     expect(screen.getByTestId("state-badge").textContent).toContain("STARTING SOON");
@@ -82,6 +96,7 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     renderScreen({ config, timeSynced: false }, orientation);
     expect(screen.getByRole("status", { name: "時刻未同期" })).toBeTruthy();
     expect(screen.queryByTestId("weather")).toBeNull();
+    expect(screen.queryByTestId("weather-attribution")).toBeNull();
     expect(screen.getByTestId("signage-canvas")).toBeTruthy();
   });
 
@@ -89,6 +104,7 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     const config = makeConfig();
     renderScreen({ config: { ...config, weather: { ...config.weather!, fetchedAt: NOW - 3 * 3600 - 1 } } }, orientation);
     expect(screen.queryByTestId("weather")).toBeNull();
+    expect(screen.queryByTestId("weather-attribution")).toBeNull();
   });
 
   it("画像なし: img を出さずカテゴリ色の面にする", () => {

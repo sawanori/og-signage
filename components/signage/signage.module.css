@@ -336,6 +336,18 @@
   white-space: nowrap;
 }
 
+/* OpenWeatherMap 出典（無料プラン利用規約で必須。天気欄の下に小さく控えめに出す） */
+.pWeatherAttribution {
+  position: absolute;
+  right: 0;
+  top: 84px;
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--ink-mute);
+  white-space: nowrap;
+}
+
 /* 主イベント */
 .pHero {
   position: absolute;
@@ -1657,6 +1669,18 @@
   font-size: 17px;
   line-height: 1;
   letter-spacing: 0.04em;
+}
+
+/* OpenWeatherMap 出典（無料プラン利用規約で必須。天気欄の下に小さく控えめに出す） */
+.lWeatherAttribution {
+  position: absolute;
+  left: 0;
+  top: 48px;
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
 }
 
 .lFooterDivider {

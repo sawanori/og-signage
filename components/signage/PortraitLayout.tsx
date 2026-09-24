@@ -64,6 +64,9 @@ export function PortraitLayout({ config, view, resolveMediaUrl }: Props) {
             <span className={styles.deg}>°</span>C
           </span>
           <span className={styles.pPlace}>{view.weather.locationName}</span>
+          <span className={styles.pWeatherAttribution} data-testid="weather-attribution">
+            {COPY.weatherAttribution}
+          </span>
         </div>
       ) : null}
 
