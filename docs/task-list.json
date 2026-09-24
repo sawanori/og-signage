@@ -1,6 +1,6 @@
 {
   "feature": "share_house_signage_mvp",
-  "version": 2,
+  "version": 2.1,
   "tasks": [
     {
       "task_id": "task_001",
@@ -71,7 +71,7 @@
         "Cron Trigger",
         "Rate Limiting binding",
         "PBKDF2 の所要 CPU 時間",
-        "天気 API の選定（規約・商用可否・上限）",
+        "OpenWeatherMap の API キー取得と利用規約原文の確認（商用可否・出典表示の要否）、Workers からの呼び出し試験",
         "採用版の固定"
       ],
       "non_scope": [
@@ -557,11 +557,12 @@
     {
       "task_id": "task_013",
       "title": "天気と Cron",
-      "goal": "天気の取得・保存、R2 削除予約の実行、未完了アップロードとログの掃除",
+      "goal": "OpenWeatherMap から天気を30分ごとに取得・保存し、R2 削除予約の実行、未完了アップロードとログの掃除を行う",
       "scope": [
         "lib/weather.ts",
         "worker/scheduled.ts",
-        "失敗時は前回値を保持"
+        "失敗時は前回値を保持",
+        "OPENWEATHER_API_KEY を Secret から読む。出典表示が必要なら config に含める"
       ],
       "non_scope": [
         "表示"
@@ -576,7 +577,8 @@
         "tests/worker/scheduled.test.ts"
       ],
       "files_to_modify": [
-        "wrangler.jsonc"
+        "wrangler.jsonc",
+        ".dev.vars.example"
       ],
       "dependencies": [
         "task_004",

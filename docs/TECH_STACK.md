@@ -702,7 +702,9 @@ next-auth
 
 ## Weather
 
-- Worker 側で取得・キャッシュし config API に含める（天気APIは未選定）
+- OpenWeatherMap 無料プラン（Current Weather API）
+- Worker の Cron で30分ごとに取得・キャッシュし config API に含める
+- API キーは `OPENWEATHER_API_KEY`（Workers Secret）
 
 ## Deployment
 
@@ -723,6 +725,7 @@ AUTH_SECRET=
 APP_URL=
 
 DEVICE_API_SECRET=
+OPENWEATHER_API_KEY=
 ```
 
 R2についてはWorkers Bindingを優先し、アクセスキーをアプリ環境変数として持たせない。
