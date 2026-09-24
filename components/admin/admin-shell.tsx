@@ -3,8 +3,7 @@
  */
 import "@fontsource/line-seed-jp/400.css";
 import "@fontsource/line-seed-jp/700.css";
-import "@fontsource/kalam/400.css";
-import { Heart, House, Plus } from "lucide-react";
+import { House, Plus } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import styles from "./admin.module.css";
@@ -40,11 +39,6 @@ export function AdminShell({
             // eslint-disable-next-line @next/next/no-img-element
             <img className={styles.sideCardImage} src={shell.sidebarImageUrl} alt="" />
           ) : null}
-          <div className={styles.sideCardBody}>
-            <Heart className={styles.sideCardHeart} aria-hidden />
-            <p className={styles.sideCardCopy}>{"みんなの暮らしが\nもっと楽しくなる場所。"}</p>
-            <p className={styles.sideCardScript}>Good People, Better Days.</p>
-          </div>
         </div>
         <p className={styles.sideFooter}>{ADMIN_BRAND}</p>
       </aside>
