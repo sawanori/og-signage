@@ -966,10 +966,11 @@
   color: var(--ink);
 }
 
+/* 手書き風のタグラインの下線。2 行目（You Love）の終わりの下に置く（Better Days より短いので左下へ寄せた） */
 .lScriptLine {
   position: absolute;
-  left: 1300px;
-  top: 108px;
+  left: 1256px;
+  top: 113px;
 }
 
 /* 右上の箱。キャッチコピー（ヘッダー用）を上下の中央に置く */

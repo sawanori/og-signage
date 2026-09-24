@@ -7,8 +7,9 @@ export const COPY = {
   // ハウス名の下の添え書き（2026-09-25 ユーザー指示で「WeWork Ocean Gate Minatomirai / Event Information」に）
   portraitHouseKind: "EVENT INFORMATION",
   landscapeHouseKind: "EVENT INFORMATION",
-  portraitTagline: "Good People, Better Days.",
-  landscapeTaglineScript: ["Good People", "Better Days"],
+  // 手書き風のタグライン（2026-09-25 ユーザー指示で「Good People, Better Days」から変更）
+  portraitTagline: "Do What You Love",
+  landscapeTaglineScript: ["Do What", "You Love"],
   upcoming: { en: "UPCOMING EVENTS", ja: "今後のイベント" },
   news: { en: "HOUSE NEWS", ja: "お知らせ" },
   // 旧ハウスルールの欄（2026-09-25 ユーザー指示でメンバー情報に。中身は管理画面のデザイン設定で変える）
