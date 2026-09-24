@@ -1,0 +1,823 @@
+/*
+ * 動画・メディア画面（/admin/media、/admin/videos）。
+ * 専用のモックは無いので、配色・角丸・影・文字組みは admin.module.css（image/dashboard.png の採寸値）にそろえる。
+ * 色の変数（--blue など）は .shell で定義されたものを使う。
+ */
+
+.page {
+  display: grid;
+  row-gap: 11px;
+  align-content: start;
+}
+
+/* ---------------------------------------------------------------- タブ */
+
+.tabsRow {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  margin-top: -1px;
+}
+
+.tabs {
+  display: flex;
+  gap: 3px;
+}
+
+.tab {
+  display: grid;
+  place-items: center;
+  height: 34px;
+  padding: 0 18px;
+  border-radius: 17px;
+  background: #eef1f6;
+  font-size: 14px;
+  color: #3a4a64;
+  letter-spacing: 0.02em;
+}
+
+.tab:hover {
+  background: #e6ebf2;
+}
+
+.tab[aria-current="page"] {
+  background: var(--blue-soft);
+  color: #1d73ee;
+  font-weight: 700;
+}
+
+.deviceSelect {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0e1a33;
+}
+
+.deviceSelect select {
+  height: 34px;
+  min-width: 200px;
+  background-color: #fff;
+}
+
+/* ---------------------------------------------------------------- アップロード */
+
+.uploadCard {
+  padding: 15px 17px 17px 17px;
+}
+
+.dropzone {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 8px;
+  min-height: 150px;
+  margin-top: 11px;
+  padding: 18px;
+  border: 1.5px dashed #cfd7e3;
+  border-radius: 8px;
+  background: #fbfcfe;
+  text-align: center;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.dropzone[data-over="true"] {
+  border-color: var(--blue);
+  background: #eef6ff;
+}
+
+.dropIcon {
+  width: 30px;
+  height: 30px;
+  color: #8a97aa;
+}
+
+.dropText {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1c2940;
+}
+
+.pickButton {
+  width: 132px;
+  height: 34px;
+  font-size: 13px;
+}
+
+.dropHint {
+  font-size: 12px;
+  color: #56657b;
+}
+
+.queue {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.queueItem {
+  padding: 10px 12px;
+  border: 1px solid #edf0f5;
+  border-radius: 8px;
+}
+
+.queueHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.queueIcon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.queueIcon[data-tone="done"] {
+  color: #2fb163;
+}
+
+.queueIcon[data-tone="error"] {
+  color: #d63a58;
+}
+
+.queueName {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0e1a33;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.queueAction {
+  height: 26px;
+  padding: 0 12px;
+  border: 1px solid #e3e8ef;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0e1a33;
+  cursor: pointer;
+}
+
+.queueAction:hover,
+.queueClose:hover {
+  background: #f6f9fd;
+}
+
+.queueClose {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #5d6b80;
+  cursor: pointer;
+}
+
+.progress {
+  position: relative;
+  height: 6px;
+  margin-top: 8px;
+  border-radius: 3px;
+  background: #edf1f6;
+  overflow: hidden;
+}
+
+.progress > span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--blue);
+  transition: width 0.2s;
+}
+
+.progress[data-indeterminate="true"] > span {
+  width: 30% !important;
+  animation: indeterminate 1.2s ease-in-out infinite;
+}
+
+@keyframes indeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}
+
+.queueStatus {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #56657b;
+}
+
+.queueStatus[data-tone="done"] {
+  color: #1f8a4c;
+}
+
+.queueStatus[data-tone="error"] {
+  color: #c62d4a;
+}
+
+/* ---------------------------------------------------------------- メディア一覧 */
+
+.libraryCard {
+  min-height: 300px;
+}
+
+.count {
+  margin-left: 12px;
+  font-size: 13px;
+  color: #56657b;
+}
+
+.libraryEmpty {
+  min-height: 200px;
+}
+
+.mediaRows {
+  display: grid;
+}
+
+.mediaRow {
+  display: grid;
+  grid-template-columns: 100px 20px minmax(0, 1fr) 230px 78px 8px;
+  align-items: center;
+  min-height: 83.6px;
+  padding: 7.8px 0;
+  border-bottom: 1px solid #f0f2f6;
+}
+
+.mediaRow:last-child {
+  border-bottom: 0;
+}
+
+.mediaThumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100px;
+  height: 68px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #eef1f6;
+  color: #8a97aa;
+}
+
+.mediaThumb[data-kind="video"] {
+  background: #2b3242;
+  color: #c9d2de;
+}
+
+.mediaThumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mediaMain {
+  grid-column: 3;
+  min-width: 0;
+}
+
+.kindTag[data-kind="video"] {
+  background: #4f8ff7;
+}
+
+.kindTag[data-kind="image"] {
+  background: #3cb87a;
+}
+
+.mediaName {
+  height: 24px;
+  margin-top: 2px;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 24px;
+  letter-spacing: -0.005em;
+  color: #0e1a33;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mediaMeta {
+  margin-top: 2px;
+  font-size: 13px;
+  color: #22375a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mediaState {
+  grid-column: 4;
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  padding-left: 12px;
+}
+
+.playState {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: #1c3558;
+}
+
+.playDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #2fb163;
+}
+
+.playState[data-ok="false"] {
+  color: #c62d4a;
+  font-weight: 700;
+}
+
+.playState[data-ok="false"] .playDot {
+  background: #f0506e;
+}
+
+.failState {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #b8611c;
+}
+
+.deleteButton {
+  grid-column: 5;
+  width: 78px;
+  cursor: pointer;
+}
+
+.deleteButton:hover {
+  background: #fdf3f5;
+  color: #c62d4a;
+}
+
+.deleteButton:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.mediaNotes {
+  grid-column: 3 / 6;
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.mediaNote {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #fdecef;
+  color: #c62d4a;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.mediaNote > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* ---------------------------------------------------------------- 定期動画の設定 */
+
+.videosGrid {
+  display: grid;
+  /* ダッシュボードの 814:402 にそろえる */
+  grid-template-columns: minmax(0, 1fr) clamp(280px, calc(100vw - 1134px), 402px);
+  column-gap: 17px;
+  align-items: start;
+}
+
+.settingsCard {
+  padding: 13px 19px 19px 19px;
+}
+
+.settingsSub {
+  margin-top: 2px;
+}
+
+.fieldRow {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 4px;
+  padding: 16px 0;
+  border-bottom: 1px solid #f0f2f6;
+}
+
+.fieldRowFirst {
+  margin-top: 10px;
+  border-top: 1px solid #f0f2f6;
+}
+
+.fieldRowTop {
+  align-items: start;
+}
+
+.fieldName {
+  display: grid;
+  gap: 3px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0e1a33;
+}
+
+.fieldRowTop .fieldName {
+  padding-top: 8px;
+}
+
+.fieldCount {
+  font-size: 12px;
+  font-weight: 400;
+  color: #5d6b80;
+}
+
+.fieldNote {
+  grid-column: 2;
+  font-size: 12px;
+  color: #56657b;
+}
+
+.intervalSelect {
+  width: 132px;
+  height: 34px;
+}
+
+.playlistArea {
+  min-width: 0;
+}
+
+.playlistEmpty {
+  display: grid;
+  place-items: center;
+  min-height: 72px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f6f8fb;
+  font-size: 13px;
+  color: var(--ink-mute);
+  text-align: center;
+}
+
+.playlist {
+  display: grid;
+  gap: 8px;
+}
+
+.playlistItem {
+  display: grid;
+  grid-template-columns: 30px 18px 104px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+  height: 63px;
+  padding: 0 12px 0 4px;
+  border: 1px solid #e9edf3;
+  border-radius: 8px;
+  background: #fff;
+  transition:
+    box-shadow 0.15s,
+    border-color 0.15s;
+}
+
+.playlistItem[data-dragging="true"] {
+  border-color: var(--blue);
+  box-shadow: 0 4px 14px -6px rgba(47, 142, 253, 0.45);
+  opacity: 0.85;
+}
+
+.grip {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 40px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #8a97aa;
+  cursor: grab;
+}
+
+.grip:hover {
+  background: #f4f6fa;
+  color: #1c2940;
+}
+
+.grip:focus-visible {
+  outline: 2px solid rgba(47, 142, 253, 0.5);
+}
+
+.order {
+  font-size: 13px;
+  font-weight: 700;
+  color: #5d6b80;
+  text-align: center;
+}
+
+.thumb {
+  flex: none;
+}
+
+.playlistText {
+  min-width: 0;
+}
+
+.playlistName {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 19px;
+  color: #0e1a33;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playlistDuration {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+  font-size: 12px;
+  color: #56657b;
+}
+
+.unsaved {
+  display: inline-grid;
+  place-items: center;
+  height: 17px;
+  padding: 0 7px;
+  border-radius: 4px;
+  background: #e8f2ff;
+  color: #1c5fb8;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.removeButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid #e3e8ef;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  color: #33435c;
+  cursor: pointer;
+}
+
+.removeButton:hover {
+  background: #fdf3f5;
+  color: #c62d4a;
+}
+
+.radios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+}
+
+.radio {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #1c2940;
+  cursor: pointer;
+}
+
+.radio input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.radioMark {
+  position: relative;
+  width: 19px;
+  height: 19px;
+  flex: none;
+  border: 1.5px solid #c3cddb;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.radio input:checked + .radioMark {
+  border-color: var(--blue);
+}
+
+.radio input:checked + .radioMark::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--blue);
+}
+
+.radio input:focus-visible + .radioMark {
+  outline: 2px solid rgba(47, 142, 253, 0.4);
+  outline-offset: 2px;
+}
+
+.radio[data-fixed="true"] {
+  cursor: default;
+}
+
+.radioHint {
+  margin-left: 3px;
+  font-size: 12px;
+  color: #5d6b80;
+}
+
+.saveRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.saveHint {
+  font-size: 12px;
+  color: #56657b;
+}
+
+.saveNotice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #e8f2ff;
+  color: #1c5fb8;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.saveNotice[data-tone="error"] {
+  background: #fdecef;
+  color: #c62d4a;
+}
+
+.saveNotice > svg {
+  flex: none;
+}
+
+.saveNotice > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.reloadButton {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  color: inherit;
+  cursor: pointer;
+}
+
+.saveButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 160px;
+  height: 45px;
+  margin-left: auto;
+  flex: none;
+  border: 0;
+  border-radius: 10px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  box-shadow: 0 4px 12px -4px rgba(47, 142, 253, 0.55);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.saveButton:hover {
+  background: var(--blue-deep);
+}
+
+.saveButton:disabled {
+  background: #b9d6fb;
+  box-shadow: none;
+  cursor: default;
+}
+
+/* ---------------------------------------------------------------- 動画を追加 */
+
+.addCard {
+  padding: 13px 17px 17px 19px;
+}
+
+.addSub {
+  margin-top: 2px;
+  white-space: normal;
+}
+
+.addEmpty {
+  min-height: 140px;
+}
+
+.addList {
+  display: grid;
+  margin-top: 10px;
+}
+
+.addItem {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 11px;
+  row-gap: 6px;
+  padding: 9px 0;
+  border-bottom: 1px solid #f0f2f6;
+}
+
+.addItem:last-child {
+  border-bottom: 0;
+}
+
+.addButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 74px;
+  height: 30px;
+  border: 1px solid #cfe3fe;
+  border-radius: 6px;
+  background: #eef6ff;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1d73ee;
+  cursor: pointer;
+}
+
+.addButton:hover {
+  background: #e1efff;
+}
+
+.addButton:disabled {
+  border-color: #e3e8ef;
+  background: #f4f6fa;
+  color: #8792a4;
+  cursor: default;
+}
+
+.addItem[data-disabled="true"] .thumb {
+  opacity: 0.55;
+}
+
+.addReason {
+  grid-column: 1 / -1;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #fdecef;
+  color: #c62d4a;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.emptyCard {
+  min-height: 220px;
+}

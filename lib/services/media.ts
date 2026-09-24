@@ -10,10 +10,10 @@
  * - playable は当面、要件定義書 15 節の推奨（MP4・H.264・1080p 以下・30fps 以下・yuv420p）で判定する。
  *   task_003 の実測後に isPlayable を更新する。
  */
-import { and, asc, desc, eq, lte, notExists, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, lte, notExists, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../../db/index";
-import { events, houseSettings, media, notices, playlistItems, uploads } from "../../db/schema";
+import { devices, events, houseSettings, media, mediaFailures, notices, playlistItems, uploads } from "../../db/schema";
 import type { AuthUser } from "../auth";
 import { MEDIA_MAX_BYTES, SNIFF_BYTES, UPLOAD_PART_SIZE, kindOfMime, sniffMime, type MediaKind } from "../file-sniff";
 import { mediaKeys, type MediaBucket, type R2Part } from "../r2";
@@ -335,6 +335,35 @@ export async function getActiveMedia(db: Db, id: string): Promise<MediaRow | nul
     .from(media)
     .where(and(eq(media.id, id), eq(media.state, "active")));
   return row ?? null;
+}
+
+export type MediaFailureSummary = {
+  mediaId: string;
+  deviceId: string;
+  deviceName: string;
+  reason: "download_failed" | "hash_mismatch" | "playback_failed";
+  quarantined: boolean;
+  count: number;
+  lastAt: number;
+};
+
+/** 端末が報告した画像・動画の失敗（表示バンドルの失敗は除く）。新しい報告から順に */
+export async function listMediaFailures(db: Db): Promise<MediaFailureSummary[]> {
+  const rows = await db
+    .select({
+      mediaId: mediaFailures.mediaId,
+      deviceId: mediaFailures.deviceId,
+      deviceName: devices.name,
+      reason: mediaFailures.reason,
+      quarantined: mediaFailures.quarantined,
+      count: mediaFailures.count,
+      lastAt: mediaFailures.lastAt,
+    })
+    .from(mediaFailures)
+    .innerJoin(devices, eq(mediaFailures.deviceId, devices.id))
+    .where(isNotNull(mediaFailures.mediaId))
+    .orderBy(desc(mediaFailures.lastAt), asc(mediaFailures.id));
+  return rows.map((row) => ({ ...row, mediaId: row.mediaId! }));
 }
 
 // ---------------------------------------------------------------- 削除

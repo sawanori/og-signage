@@ -5,7 +5,19 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "../../db/index";
-import { events, houseSettings, media, notices, playlistItems, playlists, uploads, users } from "../../db/schema";
+import {
+  devices,
+  displayBundles,
+  events,
+  houseSettings,
+  media,
+  mediaFailures,
+  notices,
+  playlistItems,
+  playlists,
+  uploads,
+  users,
+} from "../../db/schema";
 import type { AuthUser } from "../../lib/auth";
 import { UPLOAD_PART_SIZE } from "../../lib/file-sniff";
 import { parseRange, serveObject, type MediaBucket, type R2Multipart, type R2Part, type R2Range } from "../../lib/r2";
@@ -16,6 +28,7 @@ import {
   completeUpload,
   isPlayable,
   listMedia,
+  listMediaFailures,
   purgeDeletedMedia,
   requestMediaDeletion,
   startUpload,
@@ -453,6 +466,45 @@ describe("削除予約と削除の実行", () => {
 });
 
 // ---------------------------------------------------------------- 中継
+
+describe("listMediaFailures（端末が報告した失敗）", () => {
+  it("画像・動画の失敗を端末名つきで新しい順に返し、表示バンドルの失敗は含めない", async () => {
+    const { uploadId, parts } = await uploadVideo(1000);
+    const m = await completeUpload(deps, staff, uploadId, meta(parts));
+    const [device] = await db.insert(devices).values({ name: "エントランス", tokenHash: "h".repeat(64) }).returning();
+    const [bundle] = await db
+      .insert(displayBundles)
+      .values({ sha256: "b".repeat(64), size: 1, r2Key: "bundles/x.zip", schemaVersion: 1 })
+      .returning();
+    await db.insert(mediaFailures).values([
+      { deviceId: device.id, mediaId: m.id, reason: "download_failed", quarantined: false, count: 1, lastAt: 100 },
+      { deviceId: device.id, mediaId: m.id, reason: "playback_failed", quarantined: true, count: 3, lastAt: 200 },
+      { deviceId: device.id, bundleId: bundle.id, reason: "hash_mismatch", quarantined: false, count: 1, lastAt: 300 },
+    ]);
+
+    const failures = await listMediaFailures(db);
+    expect(failures).toEqual([
+      {
+        mediaId: m.id,
+        deviceId: device.id,
+        deviceName: "エントランス",
+        reason: "playback_failed",
+        quarantined: true,
+        count: 3,
+        lastAt: 200,
+      },
+      {
+        mediaId: m.id,
+        deviceId: device.id,
+        deviceName: "エントランス",
+        reason: "download_failed",
+        quarantined: false,
+        count: 1,
+        lastAt: 100,
+      },
+    ]);
+  });
+});
 
 describe("parseRange", () => {
   it.each<[string | null, ReturnType<typeof parseRange>]>([
