@@ -116,12 +116,25 @@ bucket list` や `turso db list` の一覧に混ざって出てくるので、�
 
 ```sh
 npm run build
+npm run check:worker   # Workers で読み込み時に落ちる require（例: fs）が無いか。1 件でもあればデプロイしない
 npm run deploy
 ```
 
 `deploy` は `vinext-cloudflare deploy --config dist/server/wrangler.json`（`package.json`）。
 デプロイ後、`npx wrangler deployments list --name sharehouse-signage` で反映されたことを確認する
 （直近 10 件が出る。`--json` を付けると機械可読な形式になる）。
+
+**デプロイ後は必ず、ログインした状態で全ページを開いて確認する。** ログイン画面や API の応答だけでは不十分
+（2026-09-25、ログイン後のダッシュボードだけが 500 になっているのを見落とした）。
+
+```sh
+SMOKE_BASE_URL=https://sharehouse-signage.snp-inc-info.workers.dev \
+SMOKE_EMAIL=<管理者のメール> SMOKE_PASSWORD=<パスワード> \
+SMOKE_EXTRA_PATHS=/admin/devices/<端末 id>/preview \
+node scripts/smoke-admin.mjs
+```
+
+1 ページでも `FAIL` があれば、下の手順で直前の版へ切り戻してから原因を調べる。
 
 ### 旧版への切り戻し
 

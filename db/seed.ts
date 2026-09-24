@@ -22,9 +22,9 @@ export const SEED_CATEGORIES = [
 
 /** 文言はモック（image/UI-V.png）のもの */
 export const SEED_HOUSE_RULES = [
-  { id: "rule_quiet", icon: "volume-x", text: "22時以降はお静かに", position: 0 },
-  { id: "rule_trash", icon: "trash-2", text: "ゴミは分別して捨てましょう", position: 1 },
-  { id: "rule_respect", icon: "users", text: "お互いを尊重して気持ちよく", position: 2 },
+  { id: "rule_quiet", icon: "bell-off", text: "22時以降は\nお静かに", position: 0 },
+  { id: "rule_trash", icon: "trash-2", text: "ゴミは分別して\n捨てましょう", position: 1 },
+  { id: "rule_respect", icon: "users", text: "お互いを尊重して\n気持ちよく", position: 2 },
 ];
 
 export async function seed(db: Db): Promise<void> {
