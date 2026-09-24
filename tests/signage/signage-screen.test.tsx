@@ -5,6 +5,7 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { SignageScreen } from "@/components/signage/SignageScreen";
+import { WEWORK_LOGO_DARK_SRC } from "@/components/signage/wework-logo";
 import type { MediaRef, SignageConfig } from "@/lib/config-schema";
 import { tokyoDateTime } from "@/lib/dates";
 import { HERO_SLIDE_SECONDS, heroSlideIndex, selectHeroSlides } from "@/lib/display-rules";
@@ -51,6 +52,15 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     expect(screen.getAllByText("17:42").length).toBeGreaterThan(0);
     expect(screen.getByTestId("weather").textContent).toContain("横浜市");
     expect(screen.getByRole("img", { name: "イベント詳細の QR コード" })).toBeTruthy();
+  });
+
+  it("ロゴ未設定なら、ヘッダーに WeWork のロゴ（組み込み）・ハウス名・EVENT INFORMATION を出す", () => {
+    const config = makeConfig();
+    renderScreen({ config: { ...config, house: { ...config.house, logo: null, name: "OCEAN GATE MINATOMIRAI" } } }, orientation);
+    const srcs = screen.getAllByAltText("WeWork").map((img) => img.getAttribute("src"));
+    expect(srcs).toContain(WEWORK_LOGO_DARK_SRC);
+    expect(screen.getByText("OCEAN GATE MINATOMIRAI")).toBeTruthy();
+    expect(screen.getByText("EVENT INFORMATION")).toBeTruthy();
   });
 
   it("天気表示時: 天気欄の近くに OpenWeatherMap の出典が出る", () => {

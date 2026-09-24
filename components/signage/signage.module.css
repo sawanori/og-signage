@@ -170,29 +170,54 @@
     );
 }
 
-.pLogo {
+/*
+ * ヘッダー左上。ロゴ｜細い縦線｜ハウス名と添え書き を横に並べる（2026-09-25 ユーザー指示）。
+ * 横長のロゴ（WeWork）でも正方形に近いロゴでも、幅に合わせて右へ続ける
+ */
+.pBrand {
   position: absolute;
   left: 60px;
   top: 30px;
-  width: 88px;
   height: 78px;
-  color: var(--ink);
+  display: flex;
+  align-items: center;
+}
+
+/* デザイン設定で登録したロゴ。正方形に近いものは今までどおり高さ 78px に収める */
+.pLogo {
+  height: 78px;
+  width: auto;
+  max-width: 240px;
+  object-fit: contain;
+}
+
+/* ロゴ未設定のときの WeWork のロゴ */
+.pWordmark {
+  height: 40px;
+}
+
+.pBrandRule {
+  width: 1px;
+  height: 62px;
+  margin: 0 24px;
+  background: rgba(27, 37, 48, 0.28);
 }
 
 .pHouseName {
-  position: absolute;
-  left: 179px;
-  top: 40px;
   font-size: 32px;
   line-height: 1;
   letter-spacing: 0.165em;
   white-space: nowrap;
 }
 
+/* 長いハウス名は、右の日付・時計にかからない大きさにする */
+.pHouseName[data-long="true"] {
+  font-size: 25px;
+  letter-spacing: 0.1em;
+}
+
 .pHouseKind {
-  position: absolute;
-  left: 180px;
-  top: 82px;
+  margin-top: 10px;
   font-size: 18.5px;
   line-height: 1;
   letter-spacing: 0.15em;
@@ -866,19 +891,37 @@
   background: linear-gradient(to bottom, #e7e2dc, #efebe7);
 }
 
-.lLogo {
+/* ヘッダー左上。ロゴ｜細い縦線｜ハウス名と添え書き（.pBrand と同じ考え方） */
+.lBrand {
   position: absolute;
   left: 62px;
   top: 40px;
-  width: 100px;
   height: 62px;
-  color: var(--ink);
+  display: flex;
+  align-items: center;
+}
+
+/* デザイン設定で登録したロゴ。正方形に近いものは今までどおり高さ 62px に収める */
+.lLogo {
+  height: 62px;
+  width: auto;
+  max-width: 260px;
+  object-fit: contain;
+}
+
+/* ロゴ未設定のときの WeWork のロゴ */
+.lWordmark {
+  height: 40px;
+}
+
+.lBrandRule {
+  width: 1px;
+  height: 52px;
+  margin: 0 24px;
+  background: rgba(27, 37, 48, 0.28);
 }
 
 .lHouseName {
-  position: absolute;
-  left: 192px;
-  top: 44px;
   font-size: 29.5px;
   line-height: 1;
   letter-spacing: 0.17em;
@@ -886,9 +929,7 @@
 }
 
 .lHouseKind {
-  position: absolute;
-  left: 193px;
-  top: 82px;
+  margin-top: 8.5px;
   font-size: 15px;
   line-height: 1;
   letter-spacing: 0.17em;

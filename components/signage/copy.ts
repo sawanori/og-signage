@@ -4,8 +4,9 @@
  * config-schema に項目を足してここから外す。
  */
 export const COPY = {
-  portraitHouseKind: "SHARE HOUSE",
-  landscapeHouseKind: "SHARE LIFE, MORE POSSIBILITIES",
+  // ハウス名の下の添え書き（2026-09-25 ユーザー指示で「WeWork Ocean Gate Minatomirai / Event Information」に）
+  portraitHouseKind: "EVENT INFORMATION",
+  landscapeHouseKind: "EVENT INFORMATION",
   portraitTagline: "Good People, Better Days.",
   landscapeTaglineScript: ["Good People", "Better Days"],
   landscapeBoxTagline: ["A SMALL COMMUNITY", "A BIGGER TOMORROW."],

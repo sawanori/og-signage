@@ -2,7 +2,7 @@
  * 横型（1920×1080）の配置。モック image/UI-H.png の画面部分に合わせる。
  */
 import { Fragment } from "react";
-import { Clock, House } from "lucide-react";
+import { Clock } from "lucide-react";
 import type { SignageConfig, SignageEvent } from "@/lib/config-schema";
 import { tokyoParts } from "@/lib/dates";
 import { COPY } from "./copy";
@@ -21,7 +21,7 @@ import {
 } from "./model";
 import { Emoji, GroupIcon, HeroDots, isQrUrl, MediaImage, PersonIcon, PinIcon, QrCode, RuleIcon, WeatherIcon } from "./parts";
 import styles from "./signage.module.css";
-import { WEWORK_LOGO_SRC } from "./wework-logo";
+import { WEWORK_LOGO_DARK_SRC, WEWORK_LOGO_SRC } from "./wework-logo";
 
 type Props = { config: SignageConfig; view: SignageView; resolveMediaUrl: ResolveMediaUrl };
 
@@ -30,18 +30,22 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
   const footer = splitFooterCopy(house.footerCopy);
   return (
     <div className={styles.landscape}>
-      {/* ヘッダー */}
+      {/* ヘッダー。ロゴ｜細い縦線｜ハウス名と添え書き。ロゴ未設定なら WeWork のロゴ */}
       <div className={styles.lHeaderBand} />
-      <div className={styles.lLogo}>
+      <div className={styles.lBrand}>
         {house.logo ? (
           // eslint-disable-next-line @next/next/no-img-element -- オフライン配信のため素の img
-          <img src={resolveMediaUrl(house.logo)} alt="" className={styles.contain} />
+          <img src={resolveMediaUrl(house.logo)} alt="" className={styles.lLogo} />
         ) : (
-          <House size={60} strokeWidth={1.6} aria-hidden />
+          // eslint-disable-next-line @next/next/no-img-element -- オフライン配信のため素の img
+          <img src={WEWORK_LOGO_DARK_SRC} alt="WeWork" className={styles.lWordmark} />
         )}
+        <span className={styles.lBrandRule} aria-hidden />
+        <div>
+          <div className={styles.lHouseName}>{house.name}</div>
+          <div className={styles.lHouseKind}>{COPY.landscapeHouseKind}</div>
+        </div>
       </div>
-      <div className={styles.lHouseName}>{house.name}</div>
-      <div className={styles.lHouseKind}>{COPY.landscapeHouseKind}</div>
       <div className={styles.lScript} aria-hidden>
         <span>{COPY.landscapeTaglineScript[0]}</span>
         <span style={{ marginLeft: 70 }}>{COPY.landscapeTaglineScript[1]}</span>

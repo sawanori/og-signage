@@ -1,7 +1,7 @@
 /**
  * 縦型（1080×1920）の配置。モック image/UI-V.png の画面部分に合わせる。
  */
-import { Clock, House } from "lucide-react";
+import { Clock } from "lucide-react";
 import type { SignageConfig, SignageEvent } from "@/lib/config-schema";
 import { COPY } from "./copy";
 import {
@@ -30,28 +30,38 @@ import {
   WeatherIcon,
 } from "./parts";
 import styles from "./signage.module.css";
+import { WEWORK_LOGO_DARK_SRC } from "./wework-logo";
 
 type Props = { config: SignageConfig; view: SignageView; resolveMediaUrl: ResolveMediaUrl };
 
 /** 縦型の Upcoming は 3 行（大きな枠を広げるため。全イベントの詳細は大きな枠のスライドショーで流す） */
 const PORTRAIT_UPCOMING_ROWS = 3;
 
+/** 長いハウス名（17 文字以上。例: OCEAN GATE MINATOMIRAI）は、右の日付・時計にかからないよう小さく出す */
+const isLongHouseName = (name: string) => [...name].length > 16;
+
 export function PortraitLayout({ config, view, resolveMediaUrl }: Props) {
   const { house } = config;
   const footer = splitFooterCopy(house.footerCopy);
   return (
     <div className={styles.portrait}>
-      {/* ヘッダー */}
-      <div className={styles.pLogo}>
+      {/* ヘッダー。ロゴ｜細い縦線｜ハウス名と添え書き。ロゴ未設定なら WeWork のロゴ */}
+      <div className={styles.pBrand}>
         {house.logo ? (
           // eslint-disable-next-line @next/next/no-img-element -- オフライン配信のため素の img
-          <img src={resolveMediaUrl(house.logo)} alt="" className={styles.contain} />
+          <img src={resolveMediaUrl(house.logo)} alt="" className={styles.pLogo} />
         ) : (
-          <House size={78} strokeWidth={1.6} aria-hidden />
+          // eslint-disable-next-line @next/next/no-img-element -- オフライン配信のため素の img
+          <img src={WEWORK_LOGO_DARK_SRC} alt="WeWork" className={styles.pWordmark} />
         )}
+        <span className={styles.pBrandRule} aria-hidden />
+        <div>
+          <div className={styles.pHouseName} data-long={isLongHouseName(house.name) ? "true" : "false"}>
+            {house.name}
+          </div>
+          <div className={styles.pHouseKind}>{COPY.portraitHouseKind}</div>
+        </div>
       </div>
-      <div className={styles.pHouseName}>{house.name}</div>
-      <div className={styles.pHouseKind}>{COPY.portraitHouseKind}</div>
       {house.headerCopy ? <div className={styles.pHeaderCopy}>{house.headerCopy}</div> : null}
       <div className={styles.pTagline}>{COPY.portraitTagline}</div>
 
