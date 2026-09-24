@@ -1178,6 +1178,7 @@
         "task_024"
       ],
       "implementation_steps": [
+        "進捗（2026-09-25）: 実施済み＝本番の作成・デプロイ・スモーク確認（/login 200、未ログイン /admin は307、別Originの更新系POSTは403、端末APIはトークンなし401、管理者ログイン成功、端末configは200→304、バンドルのRangeは206、heartbeatは204）と docs/runbook.md・scripts/backup-db.sh の作成。未実施＝バックアップからの復元と旧 Worker への戻しの実演、72 時間試験後の再確認",
         "本番を作る",
         "バックアップからの復元と、旧 Worker への戻しを実演する"
       ],
