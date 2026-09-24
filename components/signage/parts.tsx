@@ -6,62 +6,19 @@ import type { CSSProperties, ReactNode } from "react";
 // 読み込み時に require("fs") を実行し、Cloudflare Workers のサーバー描画で落ちるため使わない。
 import { create as createQrCode } from "qrcode/lib/core/qrcode";
 import {
-  BellOff,
-  Bike,
-  CigaretteOff,
   Cloud,
   CloudDrizzle,
   CloudFog,
   CloudLightning,
   CloudRain,
   CloudSnow,
-  DoorClosed,
-  Info,
-  KeyRound,
-  Lock,
-  Moon,
-  PhoneOff,
-  Recycle,
-  Smartphone,
-  Sparkles,
   Sun,
-  Trash2,
-  Users,
-  Utensils,
-  VolumeX,
-  Wifi,
   type LucideIcon,
 } from "lucide-react";
-import type { EventCategory, HouseRule, MediaRef } from "@/lib/config-schema";
+import type { EventCategory, MediaRef } from "@/lib/config-schema";
 import { httpUrlSchema } from "@/lib/validators";
 import type { ResolveMediaUrl } from "./model";
 import styles from "./signage.module.css";
-
-/** メンバー情報（旧ハウスルール）のアイコン（config の icon は Lucide のアイコン名）。未知の名前は Info */
-const RULE_ICONS: Record<string, LucideIcon> = {
-  "bell-off": BellOff,
-  bike: Bike,
-  "cigarette-off": CigaretteOff,
-  "door-closed": DoorClosed,
-  info: Info,
-  "key-round": KeyRound,
-  lock: Lock,
-  moon: Moon,
-  "phone-off": PhoneOff,
-  recycle: Recycle,
-  smartphone: Smartphone,
-  sparkles: Sparkles,
-  "trash-2": Trash2,
-  users: Users,
-  utensils: Utensils,
-  "volume-x": VolumeX,
-  wifi: Wifi,
-};
-
-export function RuleIcon({ icon, size, strokeWidth }: { icon: HouseRule["icon"]; size: number; strokeWidth: number }) {
-  const Icon = RULE_ICONS[icon] ?? Info;
-  return <Icon size={size} strokeWidth={strokeWidth} aria-hidden />;
-}
 
 /** OpenWeatherMap の weather[0].main（小文字）ごとのアイコン。未知の値は Cloud */
 const WEATHER_ICONS: Record<string, LucideIcon> = {

@@ -1,0 +1,1 @@
+ALTER TABLE `house_rules` ADD `title` text;

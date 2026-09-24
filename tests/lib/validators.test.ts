@@ -129,6 +129,14 @@ describe("デザイン設定・ハウスルール", () => {
     expect(houseRulesSchema.safeParse({ rules: [rule, rule, rule, rule] }).success).toBe(false);
     expect(houseRulesSchema.safeParse({ rules: [{ icon: "x", text: "" }] }).success).toBe(false);
   });
+
+  it("メンバー情報の見出しは任意（空欄は null）で 12 文字まで", () => {
+    expect(houseRulesSchema.parse({ rules: [{ text: "文言" }] }).rules[0].title).toBeNull();
+    expect(houseRulesSchema.parse({ rules: [{ title: "  ", text: "文言" }] }).rules[0].title).toBeNull();
+    expect(houseRulesSchema.parse({ rules: [{ title: " 受付 ", text: "文言" }] }).rules[0].title).toBe("受付");
+    expect(houseRulesSchema.safeParse({ rules: [{ title: "あ".repeat(12), text: "文言" }] }).success).toBe(true);
+    expect(houseRulesSchema.safeParse({ rules: [{ title: "あ".repeat(13), text: "文言" }] }).success).toBe(false);
+  });
 });
 
 describe("表示スケジュール入力", () => {

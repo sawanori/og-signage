@@ -141,13 +141,17 @@ export const designSettingsSchema = z.object({
 // ---------------------------------------------------------------- ハウスルール
 
 export const HOUSE_RULES_MAX = 3;
+/** メンバー情報の見出し（アイコンの代わりに出す 1 行）の文字数 */
+export const HOUSE_RULE_TITLE_MAX = 12;
+export const HOUSE_RULE_TEXT_MAX = 40;
 
+/** メンバー情報（旧ハウスルール）。2026-09-25 からアイコンではなく見出し（任意）と文言 */
 export const houseRulesSchema = z.object({
   rules: z
     .array(
       z.object({
-        icon: z.string().min(1, "アイコンを選んでください").max(64),
-        text: requiredText("メンバー情報の文言", 40),
+        title: optionalText("見出し", HOUSE_RULE_TITLE_MAX),
+        text: requiredText("メンバー情報の文言", HOUSE_RULE_TEXT_MAX),
       }),
     )
     .max(HOUSE_RULES_MAX, `メンバー情報は${HOUSE_RULES_MAX}件までです`),

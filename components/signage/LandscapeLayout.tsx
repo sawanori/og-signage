@@ -19,7 +19,7 @@ import {
   type ResolveMediaUrl,
   type SignageView,
 } from "./model";
-import { Emoji, GroupIcon, HeroDots, isQrUrl, MediaImage, PersonIcon, PinIcon, QrCode, RuleIcon, WeatherIcon } from "./parts";
+import { Emoji, GroupIcon, HeroDots, isQrUrl, MediaImage, PersonIcon, PinIcon, QrCode, WeatherIcon } from "./parts";
 import styles from "./signage.module.css";
 import { WEWORK_LOGO_DARK_SRC, WEWORK_LOGO_SRC } from "./wework-logo";
 
@@ -138,9 +138,7 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
         <div className={styles.lRules} data-testid="rules">
           {house.rules.map((rule, i) => (
             <div key={i} className={styles.lRule}>
-              <span className={styles.lRuleIcon}>
-                <RuleIcon icon={rule.icon} size={34} strokeWidth={1.8} />
-              </span>
+              {rule.title ? <span className={styles.lRuleTitle}>{rule.title}</span> : null}
               <span className={styles.lRuleText}>{rule.text}</span>
             </div>
           ))}

@@ -5,6 +5,7 @@
  *       no-image / long
  * &fill=1 で Web 公開のサイネージと同じく、ウィンドウに合わせて横型を縦に伸ばす（fillHeight）
  * &house=wework で本番に近いヘッダー（ロゴ未設定で WeWork のロゴ・ハウス名 OCEAN GATE MINATOMIRAI・本番のキャッチコピー）
+ * &member=sample でメンバー情報に見出しつきの見本（見出しの見た目の確認用）
  */
 import { SignageScreen } from "@/components/signage/SignageScreen";
 import type { Orientation } from "@/components/signage/model";
@@ -96,7 +97,7 @@ export default async function DevSignagePage({
   const orientation: Orientation = params.orientation === "landscape" ? "landscape" : "portrait";
   const state = (STATES as readonly string[]).includes(String(params.state)) ? (params.state as State) : "today";
   const s = scenario(orientation, state);
-  const config =
+  const withHouse =
     params.house === "wework"
       ? {
           ...s.config,
@@ -108,6 +109,20 @@ export default async function DevSignagePage({
           },
         }
       : s.config;
+  const config =
+    params.member === "sample"
+      ? {
+          ...withHouse,
+          house: {
+            ...withHouse.house,
+            rules: [
+              { icon: "info", title: "受付", text: "お困りのことはスタッフまでお声がけください" },
+              { icon: "info", title: "イベント", text: "参加は当日の受付でも大丈夫です" },
+              { icon: "info", title: null, text: "見出しなしの項目は文言だけを出します" },
+            ],
+          },
+        }
+      : withHouse;
   return (
     <SignageScreen
       config={config}

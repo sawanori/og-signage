@@ -284,10 +284,16 @@ export const houseSettings = sqliteTable("house_settings", {
   updatedAt: updatedAt(),
 });
 
+/** メンバー情報（旧ハウスルール）の項目。サイネージには見出しと文言を出す */
 export const houseRules = sqliteTable("house_rules", {
   id: id(),
-  /** Lucide のアイコン名 */
+  /**
+   * 旧: Lucide のアイコン名。2026-09-25 からアイコンは出さない（見出しに置き換え）。
+   * 古い表示バンドルとの互換のため列と config の項目は残す。新しく保存する行は "info"
+   */
   icon: text("icon").notNull(),
+  /** 見出し（任意）。アイコンの代わりに出す */
+  title: text("title"),
   text: text("text").notNull(),
   position: integer("position").notNull(),
 });

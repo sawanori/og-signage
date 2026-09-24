@@ -194,6 +194,21 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     expect(screen.queryByRole("img", { name: "イベント詳細の QR コード" })).toBeNull();
   });
 
+  it("メンバー情報はアイコンを出さず、見出し（任意）と文言を出す", () => {
+    const config = makeConfig();
+    const rules = [
+      { icon: "info", title: "受付", text: "お困りのことはスタッフまで" },
+      { icon: "info", title: null, text: "文言だけの項目" },
+    ];
+    renderScreen({ config: { ...config, house: { ...config.house, rules } } }, orientation);
+    expect(screen.getByText("MEMBER INFO")).toBeTruthy();
+    const section = screen.getByTestId("rules");
+    expect(section.children).toHaveLength(2);
+    expect(section.querySelector("svg")).toBeNull();
+    expect(section.children[0].textContent).toBe("受付お困りのことはスタッフまで");
+    expect(section.children[1].textContent).toBe("文言だけの項目");
+  });
+
   it("画像の URL は渡された解決関数で決める（埋め込みの WeWork のロゴを除く）", () => {
     const { container } = renderScreen({}, orientation);
     const srcs = [...container.querySelectorAll("img")].map((img) => img.getAttribute("src") ?? "");

@@ -191,7 +191,7 @@ async function readConfigBody(tx: Db, deviceId: string, now: number): Promise<Om
       footerCopy: house.footerCopy,
       logo: toMediaRef(logo),
       footerImage: toMediaRef(footerImage),
-      rules: rules.map((r) => ({ icon: r.icon, text: r.text })),
+      rules: rules.map((r) => ({ icon: r.icon, title: r.title, text: r.text })),
     },
     schedule: scheduleRows.map((s) => ({
       weekday: s.weekday as SignageConfig["schedule"][number]["weekday"],

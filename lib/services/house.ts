@@ -88,7 +88,10 @@ export async function replaceHouseRules(db: Db, user: AuthUser, input: unknown):
   return db.transaction(async (tx) => {
     await tx.delete(houseRules);
     if (data.rules.length === 0) return [];
-    await tx.insert(houseRules).values(data.rules.map((rule, index) => ({ icon: rule.icon, text: rule.text, position: index })));
+    // icon は旧列（表示には使わない。古い表示バンドルのために埋めておく）
+    await tx
+      .insert(houseRules)
+      .values(data.rules.map((rule, index) => ({ icon: "info", title: rule.title, text: rule.text, position: index })));
     return tx.select().from(houseRules).orderBy(asc(houseRules.position));
   });
 }

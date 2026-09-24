@@ -529,35 +529,7 @@
   transition: width 0.15s;
 }
 
-/* ---------------------------------------------------------------- アイコン選択 */
-
-.iconGrid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.iconButton {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border: 1px solid var(--line-strong);
-  border-radius: 9px;
-  background: #fff;
-  color: var(--ink-soft);
-  cursor: pointer;
-}
-
-.iconButton:hover {
-  background: #f3f6fb;
-}
-
-.iconButton[aria-checked="true"] {
-  border-color: var(--blue);
-  background: var(--blue-soft);
-  color: #1473f0;
-}
+/* ---------------------------------------------------------------- メンバー情報（旧ハウスルール） */
 
 .ruleRow {
   display: flex;
@@ -575,6 +547,21 @@
   font-size: 12px;
   font-weight: 700;
   color: var(--ink-mute);
+}
+
+/* 見出し（短い）と文言を横に並べる */
+.ruleFields {
+  display: flex;
+  gap: 10px;
+}
+
+.ruleFields > .input {
+  min-width: 0;
+  flex: 1;
+}
+
+.ruleFields > .ruleTitleInput {
+  flex: 0 0 220px;
 }
 
 /* ---------------------------------------------------------------- カテゴリ */

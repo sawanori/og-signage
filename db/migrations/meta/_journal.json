@@ -15,6 +15,13 @@
       "when": 1790262655761,
       "tag": "0001_login_failures",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790291458436,
+      "tag": "0002_house_rule_title",
+      "breakpoints": true
     }
   ]
 }

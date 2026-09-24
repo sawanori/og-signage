@@ -210,14 +210,18 @@ describe("house（デザイン設定・ハウスルール・カテゴリ、Admin
     );
   });
 
-  it("ハウスルールは保存のたびに全件を置き換え、最大3件まで", async () => {
+  it("メンバー情報（旧ハウスルール）は保存のたびに全件を置き換え、最大3件まで。見出しは任意", async () => {
     const rules = await houseService.replaceHouseRules(db, admin, {
       rules: [
-        { icon: "volume-x", text: "静かに" },
-        { icon: "trash-2", text: "ゴミ分別" },
+        { title: "受付", text: "お困りのことはスタッフまで" },
+        { title: "", text: "ゴミ分別" },
       ],
     });
     expect(rules.map((r) => r.position)).toEqual([0, 1]);
+    expect(rules.map((r) => r.title)).toEqual(["受付", null]);
+    expect(rules.map((r) => r.text)).toEqual(["お困りのことはスタッフまで", "ゴミ分別"]);
+    // アイコンは表示に使わないが、古い表示バンドルのために埋めておく
+    expect(rules.map((r) => r.icon)).toEqual(["info", "info"]);
 
     await expectServiceError(
       houseService.replaceHouseRules(db, admin, {

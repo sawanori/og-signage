@@ -26,7 +26,6 @@ import {
   PersonOutlineIcon,
   PinIcon,
   QrCode,
-  RuleIcon,
   WeatherIcon,
 } from "./parts";
 import styles from "./signage.module.css";
@@ -134,9 +133,7 @@ export function PortraitLayout({ config, view, resolveMediaUrl }: Props) {
       <div className={styles.pRules} data-testid="rules">
         {house.rules.map((rule, i) => (
           <div key={i} className={styles.pRule}>
-            <span className={styles.pRuleIcon}>
-              <RuleIcon icon={rule.icon} size={38} strokeWidth={1.8} />
-            </span>
+            {rule.title ? <span className={styles.pRuleTitle}>{rule.title}</span> : null}
             <span className={styles.pRuleText}>{rule.text}</span>
           </div>
         ))}

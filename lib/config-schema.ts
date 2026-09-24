@@ -72,9 +72,12 @@ export const signageNoticeSchema = z.object({
   updatedAt: unixSeconds,
 });
 
+/** メンバー情報（旧ハウスルール）の項目 */
 export const houseRuleSchema = z.object({
-  /** Lucide のアイコン名 */
+  /** 旧: Lucide のアイコン名。表示には使わない（古い表示バンドルが読めるよう送り続ける） */
   icon: z.string().min(1),
+  /** 見出し（任意。アイコンの代わりに出す）。古い Worker の config には無い */
+  title: z.string().nullable().optional(),
   text: z.string().min(1),
 });
 

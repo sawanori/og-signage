@@ -1,60 +1,19 @@
 "use client";
 
 /**
- * デザイン設定（Administrator）。ハウス基本情報・イベントカテゴリ・ハウスルールの 3 つを、それぞれ独立して保存する。
+ * デザイン設定（Administrator）。ハウス基本情報・イベントカテゴリ・メンバー情報（旧ハウスルール）の 3 つを、それぞれ独立して保存する。
  * ハウス基本情報は house_settings の revision による条件付き更新（competing edits は conflict）。
  * カテゴリとハウスルールは revision を持たず、保存のたびに全件を置き換える（lib/services/house.ts）。
  */
-import {
-  BellOff,
-  Bike,
-  CigaretteOff,
-  DoorClosed,
-  Info,
-  KeyRound,
-  Lock,
-  Moon,
-  PhoneOff,
-  Recycle,
-  Smartphone,
-  Sparkles,
-  Trash2 as Trash2Icon,
-  Users,
-  Utensils,
-  VolumeX,
-  Wifi,
-  type LucideIcon,
-} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { updateDesignSettingsAction, updateEventCategoriesAction, updateHouseRulesAction } from "@/app/admin/_actions/content";
 import type { EventCategoryRow, HouseRuleRow, HouseSettingsRow } from "@/lib/services/house";
-import { HOUSE_RULES_MAX } from "@/lib/validators";
+import { HOUSE_RULE_TEXT_MAX, HOUSE_RULE_TITLE_MAX, HOUSE_RULES_MAX } from "@/lib/validators";
 import { MediaUploadField, mediaThumbnailUrl } from "./media-upload-field";
 import styles from "./settings.module.css";
 
 const SAVED_MESSAGE = "保存しました。サイネージには 30 秒以内に反映されます。";
-
-/** メンバー情報（旧ハウスルール）のアイコン候補（components/signage/parts.tsx の RULE_ICONS と同じ名前だけを使う） */
-const ICON_OPTIONS: { value: string; label: string; Icon: LucideIcon }[] = [
-  { value: "info", label: "お知らせ", Icon: Info },
-  { value: "volume-x", label: "静かに", Icon: VolumeX },
-  { value: "smartphone", label: "スマホ", Icon: Smartphone },
-  { value: "phone-off", label: "通話禁止", Icon: PhoneOff },
-  { value: "cigarette-off", label: "禁煙", Icon: CigaretteOff },
-  { value: "trash-2", label: "ゴミ", Icon: Trash2Icon },
-  { value: "recycle", label: "リサイクル", Icon: Recycle },
-  { value: "utensils", label: "食事", Icon: Utensils },
-  { value: "door-closed", label: "ドア", Icon: DoorClosed },
-  { value: "key-round", label: "鍵", Icon: KeyRound },
-  { value: "lock", label: "施錠", Icon: Lock },
-  { value: "moon", label: "夜間", Icon: Moon },
-  { value: "bell-off", label: "静音", Icon: BellOff },
-  { value: "bike", label: "自転車", Icon: Bike },
-  { value: "sparkles", label: "清潔", Icon: Sparkles },
-  { value: "users", label: "共用", Icon: Users },
-  { value: "wifi", label: "Wi-Fi", Icon: Wifi },
-];
 
 export function DesignSettingsView({
   settings,
@@ -261,10 +220,11 @@ function HouseInfoSection({ settings }: { settings: HouseSettingsRow }) {
 
 // ---------------------------------------------------------------- ハウスルール
 
-type RuleSlot = { icon: string; text: string };
+/** メンバー情報の 1 項目。2026-09-25 からアイコンではなく見出し（任意）と文言 */
+type RuleSlot = { title: string; text: string };
 
 function toSlots(rules: HouseRuleRow[]): RuleSlot[] {
-  return Array.from({ length: HOUSE_RULES_MAX }, (_, i) => ({ icon: rules[i]?.icon ?? "info", text: rules[i]?.text ?? "" }));
+  return Array.from({ length: HOUSE_RULES_MAX }, (_, i) => ({ title: rules[i]?.title ?? "", text: rules[i]?.text ?? "" }));
 }
 
 function HouseRulesSection({ rules }: { rules: HouseRuleRow[] }) {
@@ -281,7 +241,9 @@ function HouseRulesSection({ rules }: { rules: HouseRuleRow[] }) {
     setSuccess(false);
     const filled = slots.filter((s) => s.text.trim() !== "");
     startTransition(async () => {
-      const result = await updateHouseRulesAction({ rules: filled.map((s) => ({ icon: s.icon, text: s.text.trim() })) });
+      const result = await updateHouseRulesAction({
+        rules: filled.map((s) => ({ title: s.title.trim(), text: s.text.trim() })),
+      });
       if (result.error) {
         setError(result.error.message);
         return;
@@ -295,38 +257,33 @@ function HouseRulesSection({ rules }: { rules: HouseRuleRow[] }) {
     <section className={styles.panel} aria-label="メンバー情報">
       <h2 className={styles.panelTitle}>メンバー情報</h2>
       <p className={styles.panelDesc}>
-        サイネージの「MEMBER INFO / メンバー情報」の欄に出します。最大 {HOUSE_RULES_MAX} 件まで。文言を空にした行は保存されません。
+        サイネージの「MEMBER INFO / メンバー情報」の欄に、見出し（任意・{HOUSE_RULE_TITLE_MAX}文字まで）と文言（
+        {HOUSE_RULE_TEXT_MAX}文字まで。サイネージでは 3 行まで）を出します。最大 {HOUSE_RULES_MAX} 件まで。文言を空にした行は保存されません。
       </p>
       <div>
         {slots.map((slot, i) => (
           <div key={i} className={styles.ruleRow}>
             <span className={styles.ruleNum}>項目 {i + 1}</span>
-            <div className={styles.iconGrid} role="radiogroup" aria-label={`項目 ${i + 1} のアイコン`}>
-              {ICON_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  className={styles.iconButton}
-                  role="radio"
-                  aria-checked={slot.icon === opt.value}
-                  aria-label={opt.label}
-                  title={opt.label}
-                  disabled={pending}
-                  onClick={() => setSlot(i, { icon: opt.value })}
-                >
-                  <opt.Icon size={18} strokeWidth={1.9} aria-hidden />
-                </button>
-              ))}
+            <div className={styles.ruleFields}>
+              <input
+                className={`${styles.input} ${styles.ruleTitleInput}`}
+                aria-label={`項目 ${i + 1} の見出し`}
+                value={slot.title}
+                maxLength={HOUSE_RULE_TITLE_MAX}
+                placeholder="見出し（例：受付）"
+                disabled={pending}
+                onChange={(e) => setSlot(i, { title: e.target.value })}
+              />
+              <input
+                className={styles.input}
+                aria-label={`項目 ${i + 1} の文言`}
+                value={slot.text}
+                maxLength={HOUSE_RULE_TEXT_MAX}
+                placeholder="文言（例：お困りのことはスタッフまで）"
+                disabled={pending}
+                onChange={(e) => setSlot(i, { text: e.target.value })}
+              />
             </div>
-            <input
-              className={styles.input}
-              aria-label={`項目 ${i + 1} の文言`}
-              value={slot.text}
-              maxLength={40}
-              placeholder="例：お困りのことは受付スタッフまで"
-              disabled={pending}
-              onChange={(e) => setSlot(i, { text: e.target.value })}
-            />
           </div>
         ))}
       </div>
