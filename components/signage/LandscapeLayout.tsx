@@ -53,9 +53,9 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
       <svg className={styles.lScriptLine} width="160" height="24" viewBox="0 0 160 24" aria-hidden>
         <path d="M2 20 C 50 12, 100 8, 158 6" fill="none" stroke="#1B2530" strokeWidth="2" strokeLinecap="round" />
       </svg>
+      {/* 右上の箱はキャッチコピー（ヘッダー用）だけ（2026-09-25 ユーザー指示で英語の添え書きを外した） */}
       <div className={styles.lBox}>
         {house.headerCopy ? <div className={styles.lBoxCopy}>{house.headerCopy}</div> : null}
-        <div className={styles.lBoxTagline}>{COPY.landscapeBoxTagline.join("\n")}</div>
       </div>
 
       {/* 今日のイベント */}

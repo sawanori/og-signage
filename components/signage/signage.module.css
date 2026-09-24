@@ -225,6 +225,7 @@
   white-space: nowrap;
 }
 
+/* 折り返しは文節の切れ目で（.lBoxCopy と同じ） */
 .pHeaderCopy {
   position: absolute;
   left: 78px;
@@ -234,6 +235,7 @@
   line-height: 40px;
   letter-spacing: 0.13em;
   white-space: pre-line;
+  word-break: auto-phrase;
   transform: rotate(-6deg);
   transform-origin: left top;
   color: #222a33;
@@ -959,35 +961,27 @@
   top: 108px;
 }
 
+/* 右上の箱。キャッチコピー（ヘッダー用）を上下の中央に置く */
 .lBox {
   position: absolute;
   left: 1533px;
   top: 0;
   width: 387px;
   height: 157px;
+  display: flex;
+  align-items: center;
+  padding: 0 36px 0 64px;
   background: linear-gradient(160deg, #e0d8ce, #d8cdc1);
 }
 
+/* 管理画面の入力欄は 1 行なので、折り返しは文節の切れ目で（auto-phrase。html の lang="ja" が前提） */
 .lBoxCopy {
-  position: absolute;
-  left: 64px;
-  top: 36px;
   font-weight: 700;
   font-size: 18.5px;
   line-height: 28px;
   letter-spacing: 0.13em;
   white-space: pre-line;
-}
-
-.lBoxTagline {
-  position: absolute;
-  left: 64px;
-  top: 99px;
-  font-size: 12.5px;
-  line-height: 18px;
-  letter-spacing: 0.17em;
-  white-space: pre-line;
-  color: #3c434b;
+  word-break: auto-phrase;
 }
 
 /* 主イベント（横） */

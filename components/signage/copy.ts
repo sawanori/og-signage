@@ -9,7 +9,6 @@ export const COPY = {
   landscapeHouseKind: "EVENT INFORMATION",
   portraitTagline: "Good People, Better Days.",
   landscapeTaglineScript: ["Good People", "Better Days"],
-  landscapeBoxTagline: ["A SMALL COMMUNITY", "A BIGGER TOMORROW."],
   upcoming: { en: "UPCOMING EVENTS", ja: "今後のイベント" },
   news: { en: "HOUSE NEWS", ja: "お知らせ" },
   rules: { en: "HOUSE RULES", ja: "ハウスルール" },

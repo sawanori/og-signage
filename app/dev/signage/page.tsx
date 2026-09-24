@@ -4,7 +4,7 @@
  * 状態: today（既定。モックと同じ）/ starting-soon / now-happening / next（今日のイベントなし。明日以降を流す）/ no-event / off / fade / unsynced /
  *       no-image / long
  * &fill=1 で Web 公開のサイネージと同じく、ウィンドウに合わせて横型を縦に伸ばす（fillHeight）
- * &house=wework で本番に近いヘッダー（ロゴ未設定で WeWork のロゴ・ハウス名 OCEAN GATE MINATOMIRAI）
+ * &house=wework で本番に近いヘッダー（ロゴ未設定で WeWork のロゴ・ハウス名 OCEAN GATE MINATOMIRAI・本番のキャッチコピー）
  */
 import { SignageScreen } from "@/components/signage/SignageScreen";
 import type { Orientation } from "@/components/signage/model";
@@ -98,7 +98,15 @@ export default async function DevSignagePage({
   const s = scenario(orientation, state);
   const config =
     params.house === "wework"
-      ? { ...s.config, house: { ...s.config.house, logo: null, name: "OCEAN GATE MINATOMIRAI" } }
+      ? {
+          ...s.config,
+          house: {
+            ...s.config.house,
+            logo: null,
+            name: "OCEAN GATE MINATOMIRAI",
+            headerCopy: "OGのイベント情報＆お知らせはここで見れるズラ",
+          },
+        }
       : s.config;
   return (
     <SignageScreen
