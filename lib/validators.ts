@@ -147,10 +147,10 @@ export const houseRulesSchema = z.object({
     .array(
       z.object({
         icon: z.string().min(1, "アイコンを選んでください").max(64),
-        text: requiredText("ルールの文言", 40),
+        text: requiredText("メンバー情報の文言", 40),
       }),
     )
-    .max(HOUSE_RULES_MAX, `ハウスルールは${HOUSE_RULES_MAX}件までです`),
+    .max(HOUSE_RULES_MAX, `メンバー情報は${HOUSE_RULES_MAX}件までです`),
 });
 
 // ---------------------------------------------------------------- 表示スケジュール

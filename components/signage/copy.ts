@@ -11,7 +11,8 @@ export const COPY = {
   landscapeTaglineScript: ["Good People", "Better Days"],
   upcoming: { en: "UPCOMING EVENTS", ja: "今後のイベント" },
   news: { en: "HOUSE NEWS", ja: "お知らせ" },
-  rules: { en: "HOUSE RULES", ja: "ハウスルール" },
+  // 旧ハウスルールの欄（2026-09-25 ユーザー指示でメンバー情報に。中身は管理画面のデザイン設定で変える）
+  rules: { en: "MEMBER INFO", ja: "メンバー情報" },
   week: { en: "THIS WEEK", ja: "今週の予定" },
   qrLabel: "イベント詳細",
   hostPrefix: "主催：",

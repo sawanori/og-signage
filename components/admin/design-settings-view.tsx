@@ -35,7 +35,7 @@ import styles from "./settings.module.css";
 
 const SAVED_MESSAGE = "保存しました。サイネージには 30 秒以内に反映されます。";
 
-/** ハウスルールのアイコン候補（components/signage/parts.tsx の RULE_ICONS と同じ名前だけを使う） */
+/** メンバー情報（旧ハウスルール）のアイコン候補（components/signage/parts.tsx の RULE_ICONS と同じ名前だけを使う） */
 const ICON_OPTIONS: { value: string; label: string; Icon: LucideIcon }[] = [
   { value: "info", label: "お知らせ", Icon: Info },
   { value: "volume-x", label: "静かに", Icon: VolumeX },
@@ -70,7 +70,7 @@ export function DesignSettingsView({
       <div className={styles.pageHead}>
         <div>
           <h1 className={styles.pageTitle}>デザイン設定</h1>
-          <p className={styles.pageDesc}>サイネージに表示するハウスの情報・ハウスルール・カテゴリの色を設定します。</p>
+          <p className={styles.pageDesc}>サイネージに表示するハウスの情報・メンバー情報・カテゴリの色を設定します。</p>
         </div>
       </div>
       <HouseInfoSection settings={settings} />
@@ -292,14 +292,16 @@ function HouseRulesSection({ rules }: { rules: HouseRuleRow[] }) {
   };
 
   return (
-    <section className={styles.panel} aria-label="ハウスルール">
-      <h2 className={styles.panelTitle}>ハウスルール</h2>
-      <p className={styles.panelDesc}>最大 {HOUSE_RULES_MAX} 件まで。文言を空にした行は保存されません。</p>
+    <section className={styles.panel} aria-label="メンバー情報">
+      <h2 className={styles.panelTitle}>メンバー情報</h2>
+      <p className={styles.panelDesc}>
+        サイネージの「MEMBER INFO / メンバー情報」の欄に出します。最大 {HOUSE_RULES_MAX} 件まで。文言を空にした行は保存されません。
+      </p>
       <div>
         {slots.map((slot, i) => (
           <div key={i} className={styles.ruleRow}>
-            <span className={styles.ruleNum}>ルール {i + 1}</span>
-            <div className={styles.iconGrid} role="radiogroup" aria-label={`ルール ${i + 1} のアイコン`}>
+            <span className={styles.ruleNum}>項目 {i + 1}</span>
+            <div className={styles.iconGrid} role="radiogroup" aria-label={`項目 ${i + 1} のアイコン`}>
               {ICON_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
@@ -318,10 +320,10 @@ function HouseRulesSection({ rules }: { rules: HouseRuleRow[] }) {
             </div>
             <input
               className={styles.input}
-              aria-label={`ルール ${i + 1} の文言`}
+              aria-label={`項目 ${i + 1} の文言`}
               value={slot.text}
               maxLength={40}
-              placeholder="例：22時以降は静かにお過ごしください"
+              placeholder="例：お困りのことは受付スタッフまで"
               disabled={pending}
               onChange={(e) => setSlot(i, { text: e.target.value })}
             />

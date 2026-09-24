@@ -831,6 +831,7 @@
   overflow: hidden;
   white-space: pre-line;
   line-break: strict;
+  word-break: auto-phrase;
 }
 
 /* フッター（縦） */
@@ -1531,6 +1532,7 @@
   overflow: hidden;
   white-space: pre-line;
   line-break: strict;
+  word-break: auto-phrase;
 }
 
 /* フッター（横） */

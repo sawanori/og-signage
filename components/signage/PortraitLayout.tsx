@@ -126,7 +126,7 @@ export function PortraitLayout({ config, view, resolveMediaUrl }: Props) {
       </div>
       <div className={styles.pDivider} />
 
-      {/* ハウスルール */}
+      {/* メンバー情報（config の house.rules） */}
       <div className={`${styles.pSectionTitle} ${styles.pSectionSmall}`} style={{ left: 568, top: 1623 }}>
         <span className={styles.pSectionEn}>{COPY.rules.en}</span>
         <span className={styles.pSectionJa}>{COPY.rules.ja}</span>

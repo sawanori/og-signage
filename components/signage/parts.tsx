@@ -37,7 +37,7 @@ import { httpUrlSchema } from "@/lib/validators";
 import type { ResolveMediaUrl } from "./model";
 import styles from "./signage.module.css";
 
-/** ハウスルールのアイコン（config の icon は Lucide のアイコン名）。未知の名前は Info */
+/** メンバー情報（旧ハウスルール）のアイコン（config の icon は Lucide のアイコン名）。未知の名前は Info */
 const RULE_ICONS: Record<string, LucideIcon> = {
   "bell-off": BellOff,
   bike: Bike,
