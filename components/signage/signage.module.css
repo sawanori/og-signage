@@ -350,7 +350,8 @@
 }
 
 .pBadge[data-state="starting_soon"] .pBadgeEn,
-.pBadge[data-state="now_happening"] .pBadgeEn {
+.pBadge[data-state="now_happening"] .pBadgeEn,
+.pBadge[data-state="upcoming"] .pBadgeEn {
   margin-top: 20px;
   font-size: 22px;
   letter-spacing: 0;
@@ -477,21 +478,6 @@
   text-overflow: ellipsis;
 }
 
-.pButton {
-  margin-top: 13px;
-  margin-left: 4px;
-  width: 280px;
-  height: 57px;
-  border-radius: 29px;
-  background: #f4f5f7;
-  color: #1b2530;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  font-size: 23px;
-  letter-spacing: 0.12em;
-}
 
 .pCatch {
   position: absolute;
@@ -595,18 +581,6 @@
   margin-right: -0.56em;
 }
 
-.pSeeAll {
-  position: absolute;
-  right: 44px;
-  top: 964px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  font-size: 19px;
-  letter-spacing: 0.14em;
-  color: var(--ink-soft);
-  white-space: nowrap;
-}
 
 /* Upcoming（縦） */
 .pUpcoming {
@@ -721,12 +695,6 @@
   overflow: hidden;
 }
 
-.pRowChevron {
-  position: absolute;
-  left: 949px;
-  top: 51px;
-  color: var(--ink);
-}
 
 /* お知らせ（縦） */
 .pNews {
@@ -1166,21 +1134,6 @@
   font-weight: 700;
 }
 
-.lButton {
-  margin-top: 29px;
-  width: 252px;
-  height: 62px;
-  border-radius: 31px;
-  background: #222c34;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  font-weight: 700;
-  font-size: 20px;
-  letter-spacing: 0.14em;
-}
 
 .lQr {
   position: absolute;
@@ -1348,12 +1301,6 @@
   overflow: hidden;
 }
 
-.lRowChevron {
-  position: absolute;
-  left: 587px;
-  top: 51px;
-  color: var(--ink);
-}
 
 /* 下段（横） */
 .lBottomBand {

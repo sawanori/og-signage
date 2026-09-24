@@ -2,7 +2,7 @@
  * 横型（1920×1080）の配置。モック image/UI-H.png の画面部分に合わせる。
  */
 import { Fragment } from "react";
-import { ArrowRight, ChevronRight, Clock, House } from "lucide-react";
+import { Clock, House } from "lucide-react";
 import type { SignageConfig, SignageEvent } from "@/lib/config-schema";
 import { tokyoParts } from "@/lib/dates";
 import { COPY } from "./copy";
@@ -235,10 +235,6 @@ function Hero({
         </h1>
         {event.description ? <p className={styles.lDesc}>{event.description}</p> : null}
         <EventInfo event={event} withDate={state === "upcoming"} />
-        <div className={styles.lButton} aria-hidden>
-          {COPY.detailLandscape}
-          <ArrowRight size={24} strokeWidth={1.8} />
-        </div>
       </div>
       {isQrUrl(event.qrUrl) ? (
         <div className={`${styles.lQr} ${fade}`}>
@@ -307,7 +303,6 @@ function UpcomingRow({ event, resolveMediaUrl }: { event: SignageEvent; resolveM
         resolveMediaUrl={resolveMediaUrl}
         className={styles.lRowImage}
       />
-      <ChevronRight className={styles.lRowChevron} size={24} strokeWidth={1.8} aria-hidden />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 /**
  * 縦型（1080×1920）の配置。モック image/UI-V.png の画面部分に合わせる。
  */
-import { ArrowRight, ChevronRight, Clock, House } from "lucide-react";
+import { Clock, House } from "lucide-react";
 import type { SignageConfig, SignageEvent } from "@/lib/config-schema";
 import { COPY } from "./copy";
 import {
@@ -78,9 +78,6 @@ export function PortraitLayout({ config, view, resolveMediaUrl }: Props) {
       <div className={styles.pSectionTitle} style={{ left: 42, top: 961 }}>
         <span className={styles.pSectionEn}>{COPY.upcoming.en}</span>
         <span className={styles.pSectionJa}>{COPY.upcoming.ja}</span>
-      </div>
-      <div className={styles.pSeeAll}>
-        {COPY.seeAll} <ArrowRight size={22} strokeWidth={1.6} aria-hidden />
       </div>
       <div className={styles.pUpcoming} data-testid="upcoming">
         {view.upcoming.length === 0 ? <div className={styles.pEmpty}>{COPY.noUpcoming}</div> : null}
@@ -191,10 +188,6 @@ function Hero({
         </h1>
         {event.description ? <p className={styles.pDesc}>{event.description}</p> : null}
         <EventInfo event={event} withDate={state === "upcoming"} />
-        <div className={styles.pButton} aria-hidden>
-          {COPY.detailPortrait}
-          <ArrowRight size={26} strokeWidth={1.7} />
-        </div>
       </div>
       {isQrUrl(event.qrUrl) ? (
         <div className={styles.pQr}>
@@ -280,7 +273,6 @@ function UpcomingRow({ event, resolveMediaUrl }: { event: SignageEvent; resolveM
         resolveMediaUrl={resolveMediaUrl}
         className={styles.pRowImage}
       />
-      <ChevronRight className={styles.pRowChevron} size={26} strokeWidth={1.8} aria-hidden />
     </div>
   );
 }
