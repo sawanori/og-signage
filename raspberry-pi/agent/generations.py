@@ -22,6 +22,7 @@ import json
 import os
 import shutil
 import time
+import zipfile
 from pathlib import Path
 from typing import Literal
 
@@ -82,6 +83,9 @@ class GenerationManager:
 
     def bundle_archive_path(self, bundle_id: str) -> Path:
         return self.bundle_dir(bundle_id) / "bundle.zip"
+
+    def bundle_extracted_dir(self, bundle_id: str) -> Path:
+        return self.bundle_dir(bundle_id) / "extracted"
 
     def generation_dir(self, version: str) -> Path:
         return self.generations_dir / version
@@ -211,6 +215,49 @@ class GenerationManager:
 
     def _force_current_to(self, version: str) -> None:
         self._atomic_symlink(self.current_link, self.generation_dir(version))
+
+    def rollback_to_previous(self) -> str | None:
+        """`previous` が有効なら `current` をそれに戻す。
+
+        表示バンドル切替後の生存確認（task_021）に失敗したときに watchdog から呼ぶ。
+        戻した version を返す（previous が無い・壊れている場合は None で何もしない）。
+        """
+        prev = self.previous_version()
+        if prev is None or not self.is_generation_complete(prev):
+            return None
+        self._force_current_to(prev)
+        return prev
+
+    # ---- 表示バンドルの展開（server.py が静的ファイルとして配信するため） ----
+    def ensure_bundle_extracted(self, bundle_id: str) -> Path:
+        """`bundle.zip` をまだ展開していなければ展開する。展開先ディレクトリを返す。
+
+        展開先に `.extracted` マーカーがあれば再展開しない（べき等）。zip 内のパスが
+        展開先の外へ出るエントリ（zip slip）は無視する。
+        """
+        dest = self.bundle_extracted_dir(bundle_id)
+        marker = dest / ".extracted"
+        if marker.is_file():
+            return dest
+
+        archive = self.bundle_archive_path(bundle_id)
+        if not archive.is_file():
+            raise GenerationError(f"bundle archive not found: {bundle_id}")
+
+        tmp_dest = self.bundle_dir(bundle_id) / f".extracted.tmp.{os.getpid()}.{time.time_ns()}"
+        tmp_dest.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(archive) as zf:
+            for member in zf.infolist():
+                member_path = (tmp_dest / member.filename).resolve()
+                if not str(member_path).startswith(str(tmp_dest.resolve())):
+                    continue  # zip slip 対策: 展開先の外へ出るエントリは無視する
+                zf.extract(member, tmp_dest)
+        (tmp_dest / ".extracted").write_text("", encoding="utf-8")
+
+        if dest.exists():
+            shutil.rmtree(dest, ignore_errors=True)
+        os.replace(tmp_dest, dest)
+        return dest
 
     # ---- 起動時の検査 ----
     def ensure_valid_current(self) -> str | None:

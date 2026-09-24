@@ -1,8 +1,7 @@
-"""Agent の起動エントリ（最小構成）。
+"""Agent の起動エントリ。
 
-同期・ダウンロード・Heartbeat・ローカルログ送信の各スレッドを起動する。
-mpv・ローカル表示サーバー（server.py, player.py, watchdog.py）は task_021 で追加され、
-このファイルに配線される。
+同期・ダウンロード・Heartbeat・ローカルログ送信・ローカル表示サーバー・再生・監視の
+各スレッドを起動して配線する（task_020・task_021）。
 """
 
 from __future__ import annotations
@@ -21,7 +20,12 @@ from . import downloader as downloader_module
 from . import generations as generations_module
 from . import heartbeat as heartbeat_module
 from . import logstore as logstore_module
+from . import platform as platform_module
+from . import player as player_module
+from . import schedule as schedule_module
+from . import server as server_module
 from . import sync as sync_module
+from . import watchdog as watchdog_module
 
 logger = logging.getLogger("agent")
 
@@ -44,15 +48,91 @@ def build_components(cfg: config_module.AgentConfig):
     )
     downloader.set_on_job_done(sync_engine.try_activate_pending)
 
+    clock = platform_module.SystemClock()
+    plat = platform_module.RealPlatform(gen.state_dir / "mpv-ipc")
+
+    def config_provider() -> dict | None:
+        version = gen.current_version()
+        if version is None:
+            return None
+        try:
+            return gen.load_config(version)
+        except (OSError, ValueError):
+            return None
+
+    def media_path_resolver(sha256: str) -> Path | None:
+        path = gen.media_path(sha256)
+        return path if path.is_file() else None
+
+    def time_synced_provider() -> bool:
+        return bool(heartbeat_module.get_time_synced())
+
+    def schedule_provider() -> list[schedule_module.ScheduleEntry]:
+        config = config_provider()
+        return schedule_module.parse_schedule((config or {}).get("schedule"))
+
+    # server と player は互いを必要とする（server はフェード確認 ack を player へ、
+    # player は状態遷移の通知を server の broadcaster へ渡す）ため、
+    # 差し替え可能な間接呼び出しでこの循環を解く。
+    ack_forward = {"handler": lambda transition_id, phase: None}
+
+    local_server = server_module.LocalServer(
+        gen,
+        clock,
+        port=cfg.local_server_port,
+        on_ack=lambda transition_id, phase: ack_forward["handler"](transition_id, phase),
+        on_log=on_log,
+    )
+
+    def on_media_failure(payload: dict) -> None:
+        try:
+            client.post_media_failure(payload)
+        except api_module.ApiError:
+            logger.warning("media-failures送信に失敗しました")
+
+    player = player_module.Player(
+        plat,
+        clock,
+        gen.state_dir,
+        config_provider=config_provider,
+        media_path_resolver=media_path_resolver,
+        time_synced_provider=time_synced_provider,
+        notify=local_server.broadcaster.publish,
+        on_media_failure=on_media_failure,
+        on_log=on_log,
+    )
+    ack_forward["handler"] = player.handle_ack
+
+    watchdog = watchdog_module.Watchdog(
+        plat,
+        clock,
+        gen,
+        ack_monotonic_provider=local_server.last_ack_monotonic,
+        on_log=on_log,
+    )
+
     hb = heartbeat_module.HeartbeatSender(
         client,
         gen,
         agent_version=cfg.agent_version,
         interval_seconds=cfg.heartbeat_interval_seconds,
         pending_version_provider=lambda: sync_engine.pending_version,
+        player_status_provider=player.status_for_heartbeat,
         on_log=on_log,
     )
-    return gen, client, downloader, sync_engine, hb, log_store
+    return (
+        gen,
+        client,
+        downloader,
+        sync_engine,
+        hb,
+        log_store,
+        local_server,
+        player,
+        watchdog,
+        schedule_provider,
+        time_synced_provider,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -63,7 +143,19 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
     cfg = config_module.load_config(args.config)
-    gen, client, downloader, sync_engine, hb, log_store = build_components(cfg)
+    (
+        gen,
+        client,
+        downloader,
+        sync_engine,
+        hb,
+        log_store,
+        local_server,
+        player,
+        watchdog,
+        schedule_provider,
+        time_synced_provider,
+    ) = build_components(cfg)
 
     applied = gen.ensure_valid_current()
     if applied is None:
@@ -74,6 +166,9 @@ def main(argv: list[str] | None = None) -> int:
     downloader.start()
     sync_engine.start()
     hb.start()
+    local_server.start()
+    player.start()
+    watchdog.start(schedule_provider=schedule_provider, time_synced_provider=time_synced_provider)
 
     stop_flag = {"stop": False}
 
@@ -91,6 +186,9 @@ def main(argv: list[str] | None = None) -> int:
         sync_engine.stop()
         downloader.stop()
         hb.stop()
+        player.stop()
+        watchdog.stop()
+        local_server.stop()
 
     return 0
 

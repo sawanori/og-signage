@@ -28,6 +28,7 @@ class AgentConfig:
     log_max_entries: int = 2000
     log_batch_size: int = 50
     agent_version: str = "0.0.0"
+    local_server_port: int = 8080
 
     def __repr__(self) -> str:  # トークンをログ・例外メッセージに出さない
         return (
@@ -73,4 +74,5 @@ def config_from_dict(raw: dict[str, Any]) -> AgentConfig:
         log_max_entries=int(raw.get("logMaxEntries", 2000)),
         log_batch_size=int(raw.get("logBatchSize", 50)),
         agent_version=str(raw.get("agentVersion", "0.0.0")),
+        local_server_port=int(raw.get("localServerPort", 8080)),
     )
