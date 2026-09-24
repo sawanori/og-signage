@@ -374,6 +374,9 @@
   font-weight: 700;
   line-height: 19px;
   color: #0e1a33;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .userRole {
@@ -382,10 +385,13 @@
   line-height: 17px;
   letter-spacing: 0.02em;
   color: #2a3a55;
+  white-space: nowrap;
 }
 
+/* 幅はモック（Saki）の 85px を基準に、長い名前は 160px まで広げて省略記号で切る */
 .userText {
-  width: 85px;
+  min-width: 85px;
+  max-width: 160px;
 }
 
 .chevron {
@@ -1430,6 +1436,8 @@
 .statusLabel {
   margin-left: 6px;
   font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .deviceSep {

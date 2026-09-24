@@ -2,7 +2,9 @@
  * 縦型・横型で共用する小さな部品。
  */
 import type { CSSProperties, ReactNode } from "react";
-import QRCode from "qrcode";
+// QR の配置計算（中核）だけを読む。パッケージ入口（qrcode → lib/server.js）は PNG 書き出しのために
+// 読み込み時に require("fs") を実行し、Cloudflare Workers のサーバー描画で落ちるため使わない。
+import { create as createQrCode } from "qrcode/lib/core/qrcode";
 import {
   BellOff,
   Bike,
@@ -85,7 +87,7 @@ export function WeatherIcon({ condition, size, strokeWidth }: { condition: strin
 /** QR コード（http/https 以外の URL は出さない） */
 export function QrCode({ url, size, className }: { url: string; size: number; className?: string }) {
   if (!httpUrlSchema.safeParse(url).success) return null;
-  const qr = QRCode.create(url, { errorCorrectionLevel: "M" });
+  const qr = createQrCode(url, { errorCorrectionLevel: "M" });
   const n = qr.modules.size;
   let d = "";
   for (let y = 0; y < n; y++) {

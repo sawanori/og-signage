@@ -17,7 +17,8 @@
     "test:visual": "playwright test",
     "build:display": "vite build --config display/vite.config.ts",
     "check:display": "tsx scripts/check-display-bundle.ts dist-display",
-    "publish:display": "tsx scripts/publish-display-bundle.ts"
+    "publish:display": "tsx scripts/publish-display-bundle.ts",
+    "check:worker": "tsx scripts/check-worker-bundle.ts dist/server"
   },
   "dependencies": {
     "@fontsource-variable/geist": "5.3.0",

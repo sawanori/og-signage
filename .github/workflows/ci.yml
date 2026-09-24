@@ -19,6 +19,8 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+      # Workers で読み込み時に落ちる require（例: fs）がビルドに残っていないか
+      - run: npm run check:worker
       - run: npm run build:display
       # Pi 用表示バンドルが外部 URL（http:// / https://）を読み込まないこと
       - run: npm run check:display

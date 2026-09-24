@@ -34,8 +34,9 @@ export async function seed(db: Db): Promise<void> {
     .values({
       id: SEED_HOUSE_SETTINGS_ID,
       houseName: "HARMONY HOUSE",
-      headerCopy: "ここで暮らす、ちょっと特別な毎日を。",
-      footerCopy: "いろんな出会いが、きっと明日の自分をつくる。",
+      // 改行位置と「英語 1 行目 + 日本語」の組み方はモック（image/UI-V.png）に合わせる
+      headerCopy: "ここで暮らす、\nちょっと特別な毎日を。",
+      footerCopy: "Same House, Different Stories.\nいろんな出会いが、\nきっと明日の自分をつくる。",
       weatherLocationName: "横浜市",
       weatherLatitude: 35.4437,
       weatherLongitude: 139.638,
