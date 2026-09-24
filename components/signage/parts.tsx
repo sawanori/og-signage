@@ -207,9 +207,9 @@ export function PersonIcon({ size }: SvgIconProps) {
 }
 
 /** 大きな欄のスライドショーの何枚目か（点の並び） */
-export function HeroDots({ index, count, className }: { index: number; count: number; className: string }) {
+export function HeroDots({ index, count }: { index: number; count: number }) {
   return (
-    <div className={`${styles.heroDots} ${className}`} data-testid="hero-dots" aria-hidden>
+    <div className={styles.heroDots} data-testid="hero-dots" aria-hidden>
       {Array.from({ length: count }, (_, i) => (
         <span key={i} data-active={i === index ? "true" : "false"} />
       ))}

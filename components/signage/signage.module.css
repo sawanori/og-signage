@@ -522,11 +522,8 @@
   box-shadow: 4px 12px 0 #fff;
 }
 
-/* QR は大きな枠の左端（左下）に置く（2026-09-25 ユーザー指示） */
+/* QR の置き場所は .heroCorner（点の並びの真上） */
 .pQr {
-  position: absolute;
-  left: 44px;
-  top: 675px;
   width: 171px;
   height: 185px;
   border-radius: 14px;
@@ -1140,11 +1137,8 @@
 }
 
 
-/* QR は大きな枠の左端（日付の丸い目印の下）に置く（2026-09-25 ユーザー指示） */
+/* QR の置き場所は .heroCorner（点の並びの真上） */
 .lQr {
-  position: absolute;
-  left: 60px;
-  top: 642px;
   width: 135px;
   height: 142px;
   border-radius: 10px;
@@ -1619,10 +1613,31 @@
   }
 }
 
-/* 何枚目か（点の並び）。今の 1 枚だけ白く、ほかは半透明 */
-.heroDots {
+/*
+ * 大きな枠の右下。QR を点の並び（何枚目か）の真上に置く（2026-09-25 ユーザー指示）。
+ * 縦に並べて中央をそろえるので、イベントの数で点の並びの幅が変わっても QR は真上のまま
+ */
+.heroCorner {
   position: absolute;
   z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.pCorner {
+  right: 36px;
+  bottom: 30px;
+}
+
+.lCorner {
+  right: 44px;
+  bottom: 30px;
+}
+
+/* 何枚目か（点の並び）。今の 1 枚だけ白く、ほかは半透明 */
+.heroDots {
   display: flex;
   gap: 12px;
 }
@@ -1636,15 +1651,4 @@
 
 .heroDots span[data-active="true"] {
   background: #fff;
-}
-
-.pDots {
-  left: 50%;
-  bottom: 30px;
-  transform: translateX(-50%);
-}
-
-.lDots {
-  right: 44px;
-  bottom: 30px;
 }

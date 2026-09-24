@@ -196,7 +196,7 @@ function Hero({
   const label = stateLabel(state);
   const catchLines = splitCatchCopy(event.catchCopy);
   const longTitle = [...event.title].length > 12;
-  // 写真・丸い目印・本文・QR は別々の要素なので、同じ key でまとめて入れ替え、それぞれフェードで出す
+  // 写真（QR と点の並びを含む）・丸い目印・本文は別々の要素なので、同じ key でまとめて入れ替え、それぞれフェードで出す
   const fade = count > 1 ? styles.heroFade : "";
   return (
     <Fragment key={event.id}>
@@ -218,7 +218,15 @@ function Hero({
             <span className={styles.pCatchTick2} />
           </div>
         ) : null}
-        {count > 1 ? <HeroDots index={index} count={count} className={styles.lDots} /> : null}
+        <div className={`${styles.heroCorner} ${styles.lCorner}`}>
+          {isQrUrl(event.qrUrl) ? (
+            <div className={styles.lQr}>
+              <QrCode url={event.qrUrl} size={106} />
+              <span className={styles.lQrLabel}>{COPY.qrLabel}</span>
+            </div>
+          ) : null}
+          {count > 1 ? <HeroDots index={index} count={count} /> : null}
+        </div>
       </MediaImage>
       <div className={`${styles.lCircle} ${fade}`} data-state={state} data-testid="state-badge">
         <span className={styles.lCircleEn} data-long={label.en.length > 5 ? "true" : "false"}>
@@ -236,12 +244,6 @@ function Hero({
         {event.description ? <p className={styles.lDesc}>{event.description}</p> : null}
         <EventInfo event={event} withDate={state === "upcoming"} />
       </div>
-      {isQrUrl(event.qrUrl) ? (
-        <div className={`${styles.lQr} ${fade}`}>
-          <QrCode url={event.qrUrl} size={106} />
-          <span className={styles.lQrLabel}>{COPY.qrLabel}</span>
-        </div>
-      ) : null}
     </Fragment>
   );
 }

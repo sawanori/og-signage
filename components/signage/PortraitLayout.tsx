@@ -192,13 +192,15 @@ function Hero({
         {event.description ? <p className={styles.pDesc}>{event.description}</p> : null}
         <EventInfo event={event} withDate={state === "upcoming"} />
       </div>
-      {isQrUrl(event.qrUrl) ? (
-        <div className={styles.pQr}>
-          <QrCode url={event.qrUrl} size={130} />
-          <span className={styles.pQrLabel}>{COPY.qrLabel}</span>
-        </div>
-      ) : null}
-      {count > 1 ? <HeroDots index={index} count={count} className={styles.pDots} /> : null}
+      <div className={`${styles.heroCorner} ${styles.pCorner}`}>
+        {isQrUrl(event.qrUrl) ? (
+          <div className={styles.pQr}>
+            <QrCode url={event.qrUrl} size={130} />
+            <span className={styles.pQrLabel}>{COPY.qrLabel}</span>
+          </div>
+        ) : null}
+        {count > 1 ? <HeroDots index={index} count={count} /> : null}
+      </div>
     </MediaImage>
   );
 }
