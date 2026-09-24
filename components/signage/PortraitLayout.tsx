@@ -78,7 +78,7 @@ export function PortraitLayout({ config, view, resolveMediaUrl }: Props) {
       <Hero hero={view.hero} config={config} resolveMediaUrl={resolveMediaUrl} />
 
       {/* Upcoming */}
-      <div className={styles.pSectionTitle} style={{ left: 42, top: 1089 }}>
+      <div className={styles.pSectionTitle} style={{ left: 42, top: 1230 }}>
         <span className={styles.pSectionEn}>{COPY.upcoming.en}</span>
         <span className={styles.pSectionJa}>{COPY.upcoming.ja}</span>
       </div>
@@ -90,7 +90,7 @@ export function PortraitLayout({ config, view, resolveMediaUrl }: Props) {
       </div>
 
       {/* お知らせ */}
-      <div className={`${styles.pSectionTitle} ${styles.pSectionSmall}`} style={{ left: 40, top: 1576 }}>
+      <div className={`${styles.pSectionTitle} ${styles.pSectionSmall}`} style={{ left: 40, top: 1628 }}>
         <span className={styles.pSectionEn}>{COPY.news.en}</span>
         <span className={styles.pSectionJa}>{COPY.news.ja}</span>
       </div>
@@ -117,7 +117,7 @@ export function PortraitLayout({ config, view, resolveMediaUrl }: Props) {
       <div className={styles.pDivider} />
 
       {/* ハウスルール */}
-      <div className={`${styles.pSectionTitle} ${styles.pSectionSmall}`} style={{ left: 568, top: 1571 }}>
+      <div className={`${styles.pSectionTitle} ${styles.pSectionSmall}`} style={{ left: 568, top: 1623 }}>
         <span className={styles.pSectionEn}>{COPY.rules.en}</span>
         <span className={styles.pSectionJa}>{COPY.rules.ja}</span>
       </div>
@@ -125,7 +125,7 @@ export function PortraitLayout({ config, view, resolveMediaUrl }: Props) {
         {house.rules.map((rule, i) => (
           <div key={i} className={styles.pRule}>
             <span className={styles.pRuleIcon}>
-              <RuleIcon icon={rule.icon} size={46} strokeWidth={1.8} />
+              <RuleIcon icon={rule.icon} size={38} strokeWidth={1.8} />
             </span>
             <span className={styles.pRuleText}>{rule.text}</span>
           </div>

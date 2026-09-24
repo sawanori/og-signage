@@ -302,7 +302,7 @@
   left: 36px;
   top: 284px;
   width: 1008px;
-  height: 774px;
+  height: 915px;
   border-radius: 26px;
   overflow: hidden;
   box-shadow: 0 2px 10px rgba(20, 20, 30, 0.12);
@@ -377,7 +377,7 @@
   top: 90px;
   padding-top: 40px;
   width: 560px;
-  height: 660px;
+  height: 801px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -525,7 +525,7 @@
 .pQr {
   position: absolute;
   left: 801px;
-  top: 534px;
+  top: 675px;
   width: 171px;
   height: 185px;
   border-radius: 14px;
@@ -584,14 +584,15 @@
 
 
 /* 2026-09-25 ユーザー指示: 大きな枠（スライドショー）の占有率を上げる。
-   縦は Upcoming を 3 行にして枠を 128px 高く、横は Upcoming の列を細くして枠を 100px 広くした */
+   縦は Upcoming を 3 行・各欄（Upcoming・お知らせ・ハウスルール・フッター）を小さくして枠を 646→915px 高く、
+   横は Upcoming の列を細くして枠を 100px 広く、下の段とフッターを小さくして 614→668px 高くした */
 /* Upcoming（縦） */
 .pUpcoming {
   position: absolute;
   left: 38px;
-  top: 1137px;
+  top: 1278px;
   width: 1002px;
-  height: 398px;
+  height: 310px;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -599,7 +600,7 @@
 
 .pRow {
   position: relative;
-  height: 126px;
+  height: 100px;
   flex: none;
   border-radius: 16px;
   background: #f2f3f5;
@@ -618,16 +619,16 @@
 }
 
 .pRowDay {
-  margin-top: 34px;
+  margin-top: 22px;
   font-weight: 700;
-  font-size: 36px;
+  font-size: 31px;
   line-height: 1;
   letter-spacing: 0.01em;
 }
 
 .pRowWeek {
-  margin-top: 16px;
-  font-size: 21px;
+  margin-top: 9px;
+  font-size: 18px;
   line-height: 1;
   letter-spacing: 0.04em;
 }
@@ -635,8 +636,8 @@
 .pRowDivider {
   position: absolute;
   left: 169px;
-  top: 16px;
-  bottom: 16px;
+  top: 14px;
+  bottom: 14px;
   width: 2px;
   background: #e1e3e7;
 }
@@ -644,7 +645,7 @@
 .pRowText {
   position: absolute;
   left: 200px;
-  top: 20px;
+  top: 11px;
   width: 360px;
   display: flex;
   flex-direction: column;
@@ -652,12 +653,12 @@
 }
 
 .pChip {
-  height: 28px;
+  height: 24px;
   padding: 0 14px;
   border-radius: 9px;
   color: #fff;
-  font-size: 15px;
-  line-height: 28px;
+  font-size: 13.5px;
+  line-height: 24px;
   letter-spacing: 0.2em;
   white-space: nowrap;
 }
@@ -666,8 +667,8 @@
   margin-top: 4px;
   max-width: 100%;
   font-weight: 700;
-  font-size: 26px;
-  line-height: 36px;
+  font-size: 23px;
+  line-height: 31px;
   letter-spacing: 0.01em;
   white-space: nowrap;
   overflow: hidden;
@@ -676,8 +677,8 @@
 
 .pRowMeta {
   margin-top: 4px;
-  font-size: 19.5px;
-  line-height: 26px;
+  font-size: 17px;
+  line-height: 22px;
   letter-spacing: 0.03em;
   color: var(--ink-soft);
   white-space: nowrap;
@@ -690,10 +691,10 @@
 
 .pRowImage {
   position: absolute;
-  left: 578px;
-  top: 9px;
-  width: 348px;
-  height: 115px;
+  left: 640px;
+  top: 8px;
+  width: 290px;
+  height: 84px;
   border-radius: 10px;
   overflow: hidden;
 }
@@ -703,9 +704,9 @@
 .pNews {
   position: absolute;
   left: 38px;
-  top: 1618px;
+  top: 1670px;
   width: 490px;
-  height: 145px;
+  height: 120px;
   border-radius: 16px;
   background: #f1f2f4;
   box-shadow: 0 1px 2px rgba(20, 20, 30, 0.06);
@@ -713,19 +714,19 @@
 
 .pNewsImage {
   position: absolute;
-  left: 20px;
-  top: 24px;
-  width: 98px;
-  height: 99px;
+  left: 18px;
+  top: 18px;
+  width: 84px;
+  height: 84px;
   border-radius: 12px;
   overflow: hidden;
 }
 
 .pNewsText {
   position: absolute;
-  left: 144px;
+  left: 122px;
   right: 18px;
-  top: 30px;
+  top: 20px;
 }
 
 .pNewsText[data-has-image="false"] {
@@ -734,8 +735,8 @@
 
 .pNewsTitle {
   font-weight: 700;
-  font-size: 22px;
-  line-height: 28px;
+  font-size: 20px;
+  line-height: 26px;
   letter-spacing: 0.06em;
   white-space: nowrap;
   overflow: hidden;
@@ -743,9 +744,9 @@
 }
 
 .pNewsBody {
-  margin-top: 12px;
-  font-size: 17.5px;
-  line-height: 29px;
+  margin-top: 6px;
+  font-size: 16px;
+  line-height: 24px;
   letter-spacing: 0.06em;
   color: var(--ink-mute);
   white-space: pre-line;
@@ -758,9 +759,9 @@
 .pDivider {
   position: absolute;
   left: 547px;
-  top: 1592px;
+  top: 1644px;
   width: 2px;
-  height: 170px;
+  height: 146px;
   background: #dcdde0;
 }
 
@@ -768,9 +769,9 @@
 .pRules {
   position: absolute;
   left: 567px;
-  top: 1614px;
+  top: 1666px;
   width: 473px;
-  height: 146px;
+  height: 120px;
   display: flex;
   gap: 10px;
 }
@@ -788,15 +789,15 @@
 }
 
 .pRuleIcon {
-  margin-top: 21px;
+  margin-top: 14px;
   line-height: 0;
 }
 
 .pRuleText {
-  margin-top: 10px;
+  margin-top: 6px;
   padding: 0 4px;
-  font-size: 16px;
-  line-height: 26px;
+  font-size: 15px;
+  line-height: 22px;
   letter-spacing: 0.04em;
   text-align: center;
   display: -webkit-box;
@@ -811,9 +812,9 @@
 .pFooter {
   position: absolute;
   left: 0;
-  top: 1770px;
+  top: 1804px;
   width: 1080px;
-  height: 150px;
+  height: 116px;
   overflow: hidden;
   color: #fff;
 }
@@ -821,7 +822,7 @@
 .pFooterLead {
   position: absolute;
   left: 44px;
-  top: 90px;
+  top: 62px;
   font-family: var(--font-script);
   font-size: 35px;
   line-height: 1;
@@ -834,7 +835,7 @@
 .pFooterSub {
   position: absolute;
   left: 785px;
-  top: 60px;
+  top: 32px;
   font-size: 18px;
   line-height: 29px;
   letter-spacing: 0.08em;
@@ -956,7 +957,7 @@
   left: 0;
   top: 138px;
   width: 1331px;
-  height: 614px;
+  height: 668px;
   border-top-right-radius: 16px;
   overflow: hidden;
   color: #fff;
@@ -1036,7 +1037,7 @@
   left: 252px;
   top: 189px;
   width: 560px;
-  height: 540px;
+  height: 594px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -1141,7 +1142,7 @@
 .lQr {
   position: absolute;
   left: 535px;
-  top: 588px;
+  top: 642px;
   width: 135px;
   height: 142px;
   border-radius: 10px;
@@ -1312,26 +1313,26 @@
 .lBottomBand {
   position: absolute;
   left: 0;
-  top: 752px;
+  top: 806px;
   width: 1920px;
-  height: 220px;
+  height: 190px;
   background: linear-gradient(to bottom, #efece8, #ebe7e2);
 }
 
 .lDivider {
   position: absolute;
-  top: 780px;
+  top: 834px;
   width: 2px;
-  height: 172px;
+  height: 148px;
   background: #e0dcd6;
 }
 
 .lNews {
   position: absolute;
   left: 45px;
-  top: 820px;
+  top: 874px;
   width: 522px;
-  height: 132px;
+  height: 108px;
   border-radius: 16px;
   background: #f3f2f0;
   box-shadow: 0 1px 2px rgba(40, 30, 20, 0.05);
@@ -1339,19 +1340,19 @@
 
 .lNewsImage {
   position: absolute;
-  left: 24px;
-  top: 21px;
-  width: 99px;
-  height: 92px;
+  left: 18px;
+  top: 14px;
+  width: 84px;
+  height: 80px;
   border-radius: 12px;
   overflow: hidden;
 }
 
 .lNewsText {
   position: absolute;
-  left: 149px;
+  left: 120px;
   right: 16px;
-  top: 25px;
+  top: 14px;
 }
 
 .lNewsText[data-has-image="false"] {
@@ -1360,8 +1361,8 @@
 
 .lNewsTitle {
   font-weight: 700;
-  font-size: 21.5px;
-  line-height: 28px;
+  font-size: 20px;
+  line-height: 26px;
   letter-spacing: 0.06em;
   white-space: nowrap;
   overflow: hidden;
@@ -1369,9 +1370,9 @@
 }
 
 .lNewsBody {
-  margin-top: 8px;
-  font-size: 17px;
-  line-height: 27px;
+  margin-top: 5px;
+  font-size: 15.5px;
+  line-height: 23px;
   letter-spacing: 0.08em;
   color: var(--ink-mute);
   white-space: pre-line;
@@ -1384,9 +1385,9 @@
 .lWeek {
   position: absolute;
   left: 616px;
-  top: 820px;
+  top: 874px;
   width: 650px;
-  height: 132px;
+  height: 108px;
   border-radius: 16px;
   background: #f3f2f1;
   box-shadow: 0 1px 2px rgba(40, 30, 20, 0.05);
@@ -1405,21 +1406,21 @@
   content: "";
   position: absolute;
   left: 0;
-  top: 18px;
-  bottom: 18px;
+  top: 14px;
+  bottom: 14px;
   width: 2px;
   background: #e6e4e1;
 }
 
 .lWeekName {
-  margin-top: 22px;
+  margin-top: 14px;
   font-size: 14px;
   line-height: 1;
   letter-spacing: 0.06em;
 }
 
 .lWeekNum {
-  margin-top: 10px;
+  margin-top: 8px;
   font-size: 23px;
   line-height: 1;
 }
@@ -1429,12 +1430,12 @@
 }
 
 .lWeekMark {
-  margin-top: 8px;
-  height: 40px;
+  margin-top: 4px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 34px;
+  font-size: 30px;
 }
 
 .lWeekDash {
@@ -1452,9 +1453,9 @@
 .lRules {
   position: absolute;
   left: 1313px;
-  top: 820px;
+  top: 874px;
   width: 571px;
-  height: 132px;
+  height: 108px;
   display: flex;
   gap: 10px;
 }
@@ -1471,15 +1472,15 @@
 }
 
 .lRuleIcon {
-  margin-top: 21px;
+  margin-top: 12px;
   line-height: 0;
 }
 
 .lRuleText {
-  margin-top: 8px;
+  margin-top: 5px;
   padding: 0 8px;
-  font-size: 15.5px;
-  line-height: 23px;
+  font-size: 14.5px;
+  line-height: 20px;
   letter-spacing: 0.06em;
   text-align: center;
   display: -webkit-box;
@@ -1494,9 +1495,9 @@
 .lFooter {
   position: absolute;
   left: 0;
-  top: 972px;
+  top: 996px;
   width: 1920px;
-  height: 108px;
+  height: 84px;
   background: #1b2023;
   color: #f2f2f2;
 }
@@ -1504,9 +1505,9 @@
 .lFooterTime {
   position: absolute;
   left: 48px;
-  top: 25px;
+  top: 15px;
   font-weight: 700;
-  font-size: 57px;
+  font-size: 50px;
   line-height: 1;
   letter-spacing: 0.01em;
 }
@@ -1514,7 +1515,7 @@
 .lFooterDate {
   position: absolute;
   left: 230px;
-  top: 43px;
+  top: 30px;
   font-size: 22px;
   line-height: 1;
   letter-spacing: 0.02em;
@@ -1524,7 +1525,7 @@
 .lFooterWeather {
   position: absolute;
   left: 477px;
-  top: 34px;
+  top: 20px;
   display: flex;
   align-items: center;
   white-space: nowrap;
@@ -1559,7 +1560,7 @@
 .lFooterDivider {
   position: absolute;
   left: 830px;
-  top: 32px;
+  top: 19px;
   width: 2px;
   height: 46px;
   background: rgba(255, 255, 255, 0.35);
@@ -1569,7 +1570,7 @@
   position: absolute;
   left: 860px;
   width: 660px;
-  top: 30px;
+  top: 16px;
   text-align: center;
 }
 
@@ -1591,7 +1592,7 @@
 .lFooterHouse {
   position: absolute;
   left: 1630px;
-  top: 34px;
+  top: 22px;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -1602,9 +1603,9 @@
 
 /* ---- 大きな欄のスライドショー（lib/display-rules.ts の selectHeroSlides） */
 
-/* 1 枚ごとにフェードで出す（React の key で要素が入れ替わるたびに再生される） */
+/* 1 枚ごとにゆっくりフェードで出す（React の key で要素が入れ替わるたびに再生される） */
 .heroFade {
-  animation: heroFadeIn 700ms ease-out;
+  animation: heroFadeIn 1500ms ease-in-out;
 }
 
 @keyframes heroFadeIn {

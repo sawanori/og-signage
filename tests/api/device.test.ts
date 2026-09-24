@@ -190,6 +190,11 @@ describe("認証", () => {
 // ---------------------------------------------------------------- config
 
 describe("GET /api/device/config", () => {
+  it("QR の飛び先が未登録のイベントには、要求元のサイトのイベント詳細ページの URL を入れる", async () => {
+    const config = await fetchConfig();
+    expect(config.events.find((e) => e.id === "ev_pub")?.qrUrl).toBe(`${BASE}/events/ev_pub`);
+  });
+
   it("200 で ETag は version。本文は SignageConfig の Zod 検査を通る", async () => {
     const res = await getConfig(req("/api/device/config", { token: tokenA }));
     expect(res.status).toBe(200);

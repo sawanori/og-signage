@@ -11,6 +11,7 @@ import { AuthzError, requireRole } from "@/lib/auth";
 import { ConfigUnavailableError, buildDeviceConfig } from "@/lib/config-builder";
 import type { SignageConfig } from "@/lib/config-schema";
 import { getDb } from "@/lib/runtime";
+import { currentSiteUrl } from "@/lib/site-url";
 import { PreviewScreen } from "./preview-screen";
 import { ADMIN_TITLE } from "@/components/admin/brand";
 
@@ -36,7 +37,7 @@ export default async function DevicePreviewPage({ params }: { params: Promise<{ 
   const now = nowSeconds();
   let config: SignageConfig;
   try {
-    config = await buildDeviceConfig(db, id, now);
+    config = await buildDeviceConfig(db, id, now, await currentSiteUrl());
   } catch (e) {
     if (e instanceof ConfigUnavailableError) {
       if (e.code === "device_not_found") notFound();

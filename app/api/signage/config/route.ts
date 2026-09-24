@@ -14,7 +14,7 @@ export async function GET(request: Request): Promise<Response> {
     return Response.json({ error: { code: "not_found", message: "表示できるサイネージがありません" } }, { status: 404 });
   }
   try {
-    const config = await buildPublicSignageConfig(db, deviceId, nowSeconds());
+    const config = await buildPublicSignageConfig(db, deviceId, nowSeconds(), new URL(request.url).origin);
     return Response.json(config, { headers: { "Cache-Control": "no-store", "X-Robots-Tag": "noindex" } });
   } catch (e) {
     if (e instanceof ConfigUnavailableError) {

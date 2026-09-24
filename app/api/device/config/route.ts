@@ -14,7 +14,7 @@ export async function GET(request: Request): Promise<Response> {
   const db = getDb();
   try {
     const device = await authenticateDevice(db, request);
-    const config = await buildDeviceConfig(db, device.id, nowSeconds());
+    const config = await buildDeviceConfig(db, device.id, nowSeconds(), new URL(request.url).origin);
     const headers = { etag: `"${config.version}"`, "cache-control": "private, no-cache" };
     if (matchesIfNoneMatch(request.headers.get("if-none-match"), config.version)) {
       return new Response(null, { status: 304, headers });

@@ -222,11 +222,12 @@ describe("大きな欄のスライドショー", () => {
   });
 
   it(`${HERO_SLIDE_SECONDS} 秒ごとに次の 1 枚へ進み、最後の次は最初に戻る`, () => {
-    const t = 1_000_000_000; // 10 の倍数
-    expect(heroSlideIndex(t, 3)).toBe(Math.floor(t / 10) % 3);
-    expect(heroSlideIndex(t + 9, 3)).toBe(heroSlideIndex(t, 3));
-    expect(heroSlideIndex(t + 10, 3)).toBe((heroSlideIndex(t, 3) + 1) % 3);
-    expect(heroSlideIndex(t + 30, 3)).toBe(heroSlideIndex(t, 3));
+    const H = HERO_SLIDE_SECONDS;
+    const t = 1_000_000_000 - (1_000_000_000 % H); // 1 枚の切れ目
+    expect(heroSlideIndex(t, 3)).toBe((t / H) % 3);
+    expect(heroSlideIndex(t + H - 1, 3)).toBe(heroSlideIndex(t, 3));
+    expect(heroSlideIndex(t + H, 3)).toBe((heroSlideIndex(t, 3) + 1) % 3);
+    expect(heroSlideIndex(t + 3 * H, 3)).toBe(heroSlideIndex(t, 3));
   });
 
   it("0 件・1 件なら常に 0", () => {

@@ -9,6 +9,7 @@ import { nowSeconds } from "@/db/schema";
 import { ConfigUnavailableError } from "@/lib/config-builder";
 import { buildPublicSignageConfig, resolvePublicDeviceId } from "@/lib/public-signage";
 import { getDb } from "@/lib/runtime";
+import { currentSiteUrl } from "@/lib/site-url";
 import { PublicSignage } from "./public-signage";
 
 export const dynamic = "force-dynamic";
@@ -43,7 +44,7 @@ export default async function PublicSignagePage({ searchParams }: { searchParams
 /** 表示の準備ができていない（表示バンドル未公開など）ときは null */
 async function loadConfig(db: ReturnType<typeof getDb>, deviceId: string, now: number) {
   try {
-    return await buildPublicSignageConfig(db, deviceId, now);
+    return await buildPublicSignageConfig(db, deviceId, now, await currentSiteUrl());
   } catch (e) {
     if (e instanceof ConfigUnavailableError) return null;
     throw e;

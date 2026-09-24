@@ -70,8 +70,8 @@ export type MainEventSelection<E extends SignageEvent = SignageEvent> =
   /** 表示するイベントがない（ハウスのキャッチコピーを出す） */
   | { kind: "none" };
 
-/** 大きな欄のスライドショーで 1 枚を出す秒数 */
-export const HERO_SLIDE_SECONDS = 10;
+/** 大きな欄のスライドショーで 1 枚を出す秒数（説明と日時・場所を読み切れる長さ。2026-09-25 ユーザー指示で 10→15 秒） */
+export const HERO_SLIDE_SECONDS = 15;
 
 export type HeroSlideState = Exclude<EventState, "ended">;
 export type HeroSlide<E extends SignageEvent = SignageEvent> = { event: E; state: HeroSlideState };

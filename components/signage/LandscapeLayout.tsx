@@ -70,7 +70,7 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
 
       {/* 下段 */}
       <div className={styles.lBottomBand} />
-      <div className={styles.lSectionTitle} style={{ left: 50, top: 779 }}>
+      <div className={styles.lSectionTitle} style={{ left: 50, top: 833 }}>
         <span className={styles.lSectionEn}>{COPY.news.en}</span>
         <span className={styles.lSectionJa}>{COPY.news.ja}</span>
       </div>
@@ -96,7 +96,7 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
       </div>
       <div className={styles.lDivider} style={{ left: 592 }} />
 
-      <div className={styles.lSectionTitle} style={{ left: 618, top: 779 }}>
+      <div className={styles.lSectionTitle} style={{ left: 618, top: 833 }}>
         <span className={styles.lSectionEn}>{COPY.week.en}</span>
         <span className={styles.lSectionJa}>{COPY.week.ja}</span>
       </div>
@@ -125,7 +125,7 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
       </div>
       <div className={styles.lDivider} style={{ left: 1290 }} />
 
-      <div className={styles.lSectionTitle} style={{ left: 1317, top: 779 }}>
+      <div className={styles.lSectionTitle} style={{ left: 1317, top: 833 }}>
         <span className={styles.lSectionEn}>{COPY.rules.en}</span>
         <span className={styles.lSectionJa}>{COPY.rules.ja}</span>
       </div>
@@ -133,7 +133,7 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
         {house.rules.map((rule, i) => (
           <div key={i} className={styles.lRule}>
             <span className={styles.lRuleIcon}>
-              <RuleIcon icon={rule.icon} size={40} strokeWidth={1.8} />
+              <RuleIcon icon={rule.icon} size={34} strokeWidth={1.8} />
             </span>
             <span className={styles.lRuleText}>{rule.text}</span>
           </div>
@@ -148,7 +148,7 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
         </div>
         {view.weather ? (
           <div className={styles.lFooterWeather} data-testid="weather">
-            <WeatherIcon condition={view.weather.condition} size={42} strokeWidth={1.7} />
+            <WeatherIcon condition={view.weather.condition} size={38} strokeWidth={1.7} />
             <span className={styles.lFooterTemp}>{Math.round(view.weather.temperatureC)}
             <span className={styles.deg}>°</span>C
           </span>

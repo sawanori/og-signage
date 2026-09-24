@@ -37,6 +37,7 @@ import {
 } from "./config-schema";
 import { SECONDS_PER_DAY, startOfTokyoDay, endOfTokyoDay } from "./dates";
 import { effectiveEndAt } from "./display-rules";
+import { eventDetailUrl } from "./event-links";
 
 /** イベントを載せる期間。前日の 0:00 から 30 日後の 23:59:59 まで（日本時間） */
 export const EVENT_WINDOW_PAST_DAYS = 1;
@@ -229,8 +230,15 @@ async function readConfigBody(tx: Db, deviceId: string, now: number): Promise<Om
 /**
  * 端末の config を組み立てる。読み取りは 1 つの読み取りトランザクション内。
  * 返り値は signageConfigSchema の検査済み。
+ * siteUrl を渡すと、QR の飛び先が未登録のイベントにイベント詳細ページの URL を入れる
+ * （すべてのスライドに QR を出すため。2026-09-25 ユーザー指示）。
  */
-export async function buildDeviceConfig(db: Db, deviceId: string, now: number): Promise<SignageConfig> {
+export async function buildDeviceConfig(
+  db: Db,
+  deviceId: string,
+  now: number,
+  siteUrl: string | null = null,
+): Promise<SignageConfig> {
   const client = db.$client;
   const readTx = await client.transaction("read");
   let body: Omit<SignageConfig, "version">;
@@ -240,6 +248,12 @@ export async function buildDeviceConfig(db: Db, deviceId: string, now: number): 
     await readTx.commit();
   } finally {
     readTx.close();
+  }
+  if (siteUrl) {
+    body = {
+      ...body,
+      events: body.events.map((event) => (event.qrUrl ? event : { ...event, qrUrl: eventDetailUrl(siteUrl, event.id) })),
+    };
   }
   const version = await computeConfigVersion(body);
   return signageConfigSchema.parse({ ...body, version });

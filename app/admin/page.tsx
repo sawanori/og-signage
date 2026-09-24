@@ -7,6 +7,7 @@ import { Dashboard } from "@/components/admin/dashboard";
 import { ConfigUnavailableError, buildDeviceConfig } from "@/lib/config-builder";
 import type { MediaRef, SignageConfig } from "@/lib/config-schema";
 import { getDb } from "@/lib/runtime";
+import { currentSiteUrl } from "@/lib/site-url";
 import { requirePageUser } from "./_components/current-user";
 import { loadDashboard } from "./_components/load-dashboard";
 import { ADMIN_TITLE } from "@/components/admin/brand";
@@ -26,7 +27,7 @@ export default async function AdminDashboardPage() {
   let previewConfig: SignageConfig | null = null;
   if (data.device) {
     try {
-      previewConfig = await buildDeviceConfig(db, data.device.id, now);
+      previewConfig = await buildDeviceConfig(db, data.device.id, now, await currentSiteUrl());
     } catch (e) {
       if (!(e instanceof ConfigUnavailableError)) throw e;
     }

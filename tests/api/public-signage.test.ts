@@ -10,6 +10,7 @@ import { SEED_PLAYLIST_ID, seed } from "../../db/seed";
 import { signageConfigSchema, type SignageConfig } from "../../lib/config-schema";
 import type { MediaBucket, R2ObjectWithBody } from "../../lib/r2";
 import { registerDevice } from "../../lib/services/devices";
+import { getPublicEvent } from "../../lib/public-signage";
 import { handlePublicSignageMedia } from "../../worker/public-signage-relay";
 import { openTempDb } from "../helpers/temp-db";
 
@@ -126,6 +127,13 @@ describe("GET /api/signage/config（ログイン不要）", () => {
     expect((await fetchConfig()).status).toBe(404);
   });
 
+  it("QR の飛び先が未登録のイベントには、イベント詳細ページの URL を入れる（登録済みはそのまま）", async () => {
+    await db.insert(events).values({ id: "ev_link", title: "外部リンクあり", startAt: Math.floor(Date.now() / 1000) + 7200, qrUrl: "https://example.org/x", status: "published" });
+    const config = (await (await fetchConfig()).json()) as SignageConfig;
+    expect(config.events.find((e) => e.id === "ev_pub")?.qrUrl).toBe(`${BASE}/events/ev_pub`);
+    expect(config.events.find((e) => e.id === "ev_link")?.qrUrl).toBe("https://example.org/x");
+  });
+
   it("表示バンドルが未公開なら 503", async () => {
     await db.delete(displayBundles);
     expect((await fetchConfig()).status).toBe(503);
@@ -150,7 +158,28 @@ describe("GET /api/signage/media/[mediaId]（公開中の画像だけ）", () =>
     expect((await relay("/api/signage/media/img_event"))?.status).toBe(404);
   });
 
+  it("表示期間（30 日先まで）より先でも、公開中のイベントの画像は返す（イベント詳細ページ用）", async () => {
+    await insertMedia("img_far", "image", 9);
+    const far = Math.floor(Date.now() / 1000) + 60 * 24 * 3600;
+    await db.insert(events).values({ id: "ev_far", title: "遠い先", startAt: far, imageMediaId: "img_far", status: "published" });
+    expect((await relay("/api/signage/media/img_far"))?.status).toBe(200);
+  });
+
   it("別の経路は扱わない", async () => {
     expect(await relay("/api/media/img_event/file")).toBeNull();
+  });
+});
+
+describe("イベント詳細ページのデータ（getPublicEvent）", () => {
+  it("公開中のイベントはカテゴリと画像つきで返す", async () => {
+    const event = await getPublicEvent(db, "ev_pub");
+    expect(event?.title).toBe("映画会");
+    expect(event?.category?.name).toBe("映画");
+    expect(event?.imageMediaId).toBe("img_event");
+  });
+
+  it("下書き・存在しないイベントは null", async () => {
+    expect(await getPublicEvent(db, "ev_draft")).toBeNull();
+    expect(await getPublicEvent(db, "nope")).toBeNull();
   });
 });
