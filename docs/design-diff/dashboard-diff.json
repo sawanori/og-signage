@@ -3,15 +3,15 @@
   "width": 1536,
   "height": 1024,
   "threshold": 0.1,
-  "mismatchedPercent": 17.34,
+  "mismatchedPercent": 23.26,
   "regions": {
-    "sidebar": 5.1,
-    "header": 7.46,
+    "sidebar": 25.56,
+    "header": 8.54,
     "calendar": 6.58,
-    "todayEvent": 22,
-    "eventList": 7.71,
-    "video": 12.46,
+    "todayEvent": 23.26,
+    "eventList": 13.01,
+    "video": 20.39,
     "notice": 10.31,
-    "preview": 48.29
+    "preview": 49.58
   }
 }

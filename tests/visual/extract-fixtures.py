@@ -1,4 +1,6 @@
 """
+現在のサンプル写真は tests/visual/apply-generated-fixtures.py で生成画像から作る（本スクリプトは使わない）。
+
 開発用 fixture の写真を、平面化したモック（tests/visual/reference/mock-*.png）から切り出して
 public/fixtures/<orientation>/<mediaId>.(jpg|png) に保存する。本番データには使わない。
 
