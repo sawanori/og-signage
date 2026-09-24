@@ -5,7 +5,7 @@
  * config が無いときは空状態を出す。画像 URL の解決関数を受け取るため、サーバー部品として使う。
  */
 import { CANVAS_SIZE, SignageScreen } from "@/components/signage/SignageScreen";
-import type { ResolveMediaUrl } from "@/components/signage/model";
+import type { Orientation, ResolveMediaUrl } from "@/components/signage/model";
 import type { SignageConfig } from "@/lib/config-schema";
 import styles from "./admin.module.css";
 import { ScaleBox } from "./scale-box";
@@ -20,6 +20,8 @@ export type SignagePreviewProps = {
   resolveMediaUrl: ResolveMediaUrl;
   /** 空状態の文言 */
   emptyMessage?: string;
+  /** 描く向き。省略時は端末の向き（管理画面で縦 / 横を選べる。preview-orientation.ts） */
+  orientation?: Orientation;
 };
 
 export function SignagePreview({
@@ -27,6 +29,7 @@ export function SignagePreview({
   now,
   resolveMediaUrl,
   emptyMessage = "プレビューはまだ表示できません。",
+  orientation,
 }: SignagePreviewProps) {
   if (!config) {
     return (
@@ -35,11 +38,12 @@ export function SignagePreview({
       </div>
     );
   }
-  const size = CANVAS_SIZE[config.device.orientation];
+  const shown = orientation ?? config.device.orientation;
+  const size = CANVAS_SIZE[shown];
   return (
-    <div className={styles.bezel} data-testid="signage-preview">
+    <div className={styles.bezel} data-testid="signage-preview" data-orientation={shown}>
       <ScaleBox width={size.width} height={size.height} initialWidth={MOCK_SCREEN_WIDTH}>
-        <SignageScreen config={config} now={now} resolveMediaUrl={resolveMediaUrl} fit={false} />
+        <SignageScreen config={config} now={now} resolveMediaUrl={resolveMediaUrl} orientation={shown} fit={false} />
       </ScaleBox>
     </div>
   );

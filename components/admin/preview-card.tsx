@@ -3,11 +3,12 @@
  */
 import { Maximize } from "lucide-react";
 import Link from "next/link";
-import type { ResolveMediaUrl } from "@/components/signage/model";
+import type { Orientation, ResolveMediaUrl } from "@/components/signage/model";
 import type { SignageConfig } from "@/lib/config-schema";
 import styles from "./admin.module.css";
 import type { DashboardDevice } from "./dashboard-types";
 import { formatHm, formatMonthDay } from "./format";
+import { PreviewOrientationToggle } from "./preview-orientation-toggle";
 import { SignagePreview } from "./signage-preview";
 import { TestPlayButton } from "./test-play-button";
 
@@ -24,29 +25,39 @@ export function PreviewCard({
   config,
   now,
   resolveMediaUrl,
+  orientation,
 }: {
   device: DashboardDevice | null;
   config: SignageConfig | null;
   now: number;
   resolveMediaUrl: ResolveMediaUrl;
+  /** プレビューの向き（管理画面で選んだもの。未選択なら端末の向き） */
+  orientation: Orientation;
 }) {
   return (
-    <section className={`${styles.card} ${styles.previewCard}`} aria-label="サイネージプレビュー">
+    <section
+      className={`${styles.card} ${styles.previewCard}`}
+      aria-label="サイネージプレビュー"
+      data-orientation={orientation}
+    >
       <div className={styles.previewHead}>
         <h2 className={styles.cardTitleSmall}>サイネージプレビュー</h2>
         {device ? (
-          <Link
-            href={`/admin/devices/${device.id}/preview`}
-            className={styles.previewExpand}
-            aria-label="プレビューを大きく表示"
-          >
-            <Maximize size={18} strokeWidth={2} aria-hidden />
-          </Link>
+          <div className={styles.previewTools}>
+            <PreviewOrientationToggle value={orientation} />
+            <Link
+              href={`/admin/devices/${device.id}/preview?orientation=${orientation}`}
+              className={styles.previewExpand}
+              aria-label="プレビューを大きく表示"
+            >
+              <Maximize size={18} strokeWidth={2} aria-hidden />
+            </Link>
+          </div>
         ) : null}
       </div>
       <div className={styles.previewArea}>
         {device ? (
-          <SignagePreview config={config} now={now} resolveMediaUrl={resolveMediaUrl} />
+          <SignagePreview config={config} now={now} resolveMediaUrl={resolveMediaUrl} orientation={orientation} />
         ) : (
           <div className={styles.previewEmpty} data-testid="signage-preview-empty">
             <p>

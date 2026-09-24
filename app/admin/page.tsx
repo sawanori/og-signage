@@ -1,9 +1,12 @@
 /**
  * ダッシュボード（/admin、Staff 以上）。
  * プレビューは先頭の端末の config（lib/config-builder.ts）で描く。端末が無い・表示の設定がそろっていない場合は空状態。
+ * プレビューの向きは管理画面で選んだもの（cookie）。選んでいなければ端末の向き。
  */
+import { cookies } from "next/headers";
 import { nowSeconds } from "@/db/schema";
 import { Dashboard } from "@/components/admin/dashboard";
+import { PREVIEW_ORIENTATION_COOKIE, parsePreviewOrientation } from "@/components/admin/preview-orientation";
 import { ConfigUnavailableError, buildDeviceConfig } from "@/lib/config-builder";
 import type { MediaRef, SignageConfig } from "@/lib/config-schema";
 import { getDb } from "@/lib/runtime";
@@ -32,5 +35,14 @@ export default async function AdminDashboardPage() {
       if (!(e instanceof ConfigUnavailableError)) throw e;
     }
   }
-  return <Dashboard data={data} previewConfig={previewConfig} resolveMediaUrl={resolveMediaUrl} />;
+  const chosen = parsePreviewOrientation((await cookies()).get(PREVIEW_ORIENTATION_COOKIE)?.value);
+  const previewOrientation = chosen ?? previewConfig?.device.orientation ?? "portrait";
+  return (
+    <Dashboard
+      data={data}
+      previewConfig={previewConfig}
+      previewOrientation={previewOrientation}
+      resolveMediaUrl={resolveMediaUrl}
+    />
+  );
 }

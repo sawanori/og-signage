@@ -12,6 +12,7 @@ import { ConfigUnavailableError, buildDeviceConfig } from "@/lib/config-builder"
 import type { SignageConfig } from "@/lib/config-schema";
 import { getDb } from "@/lib/runtime";
 import { currentSiteUrl } from "@/lib/site-url";
+import { parsePreviewOrientation } from "@/components/admin/preview-orientation";
 import { PreviewScreen } from "./preview-screen";
 import { ADMIN_TITLE } from "@/components/admin/brand";
 
@@ -21,8 +22,16 @@ export const metadata = { title: `端末プレビュー | ${ADMIN_TITLE}` };
 
 const ORIENTATION_LABEL = { portrait: "縦型", landscape: "横型" } as const;
 
-export default async function DevicePreviewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function DevicePreviewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  /** ?orientation=portrait|landscape（ダッシュボードで選んだ向き）。無ければ端末の向き */
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { id } = await params;
+  const { orientation: requested } = await searchParams;
   try {
     await requireRole("staff");
   } catch (e) {
@@ -50,11 +59,13 @@ export default async function DevicePreviewPage({ params }: { params: Promise<{ 
     }
     throw e;
   }
+  const orientation =
+    parsePreviewOrientation(typeof requested === "string" ? requested : null) ?? config.device.orientation;
 
   return (
     <main className="p-8">
       <h1 className="mb-4 text-xl font-bold">
-        {device.name} のプレビュー（{ORIENTATION_LABEL[config.device.orientation]}）
+        {device.name} のプレビュー（{ORIENTATION_LABEL[orientation]}）
       </h1>
       <p className="mb-4 text-sm">
         この表示はログインなしで Web に公開しています:{" "}
@@ -62,7 +73,7 @@ export default async function DevicePreviewPage({ params }: { params: Promise<{ 
           /signage?device={id}
         </a>
       </p>
-      <PreviewScreen config={config} initialNow={now} />
+      <PreviewScreen config={config} initialNow={now} orientation={orientation} />
     </main>
   );
 }

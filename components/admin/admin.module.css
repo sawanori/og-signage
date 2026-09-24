@@ -1345,6 +1345,77 @@
   color: #1c2940;
 }
 
+/* 見出しの右側（縦 / 横の切り替えと拡大表示）。切り替えは見出しの行の高さを変えずに上下へはみ出して置く */
+.previewTools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* プレビューの縦 / 横の切り替え。イベント一覧の絞り込みと同じ色づかい */
+.orientationToggle {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 14px;
+  background: #f4f6fa;
+}
+
+.orientationToggle button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 10px 0 8px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  font-size: 12px;
+  color: #3a4a64;
+  cursor: pointer;
+}
+
+.orientationToggle button[aria-pressed="true"] {
+  background: var(--blue-soft);
+  color: #1d73ee;
+  font-weight: 700;
+  cursor: default;
+}
+
+.orientationToggle[data-pending="true"] {
+  opacity: 0.6;
+}
+
+/*
+ * 横のプレビューのときの右の列。横長のプレビューを上に置き、その下に「今日のイベント」と「お知らせ表示」を並べる
+ * （components/admin/dashboard.tsx）。お知らせ表示が残りの高さを埋めて、左の列と下端をそろえる
+ */
+.rightColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  min-width: 0;
+}
+
+.previewCard[data-orientation="landscape"] {
+  flex: none;
+  height: auto;
+}
+
+.previewCard[data-orientation="landscape"] .previewArea {
+  flex: none;
+}
+
+.rightColumn > .todayCard {
+  flex: none;
+  height: 188px;
+}
+
+.rightColumn > .noticeCard {
+  flex: 1;
+  min-height: 0;
+}
+
 .previewArea {
   flex: 1;
   min-height: 0;

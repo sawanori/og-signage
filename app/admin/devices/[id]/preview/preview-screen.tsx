@@ -8,11 +8,20 @@
  */
 import { useEffect, useState } from "react";
 import { CANVAS_SIZE, SignageScreen } from "@/components/signage/SignageScreen";
+import type { Orientation } from "@/components/signage/model";
 import type { MediaRef, SignageConfig } from "@/lib/config-schema";
 
 const resolveMediaUrl = (ref: MediaRef) => `/api/media/${encodeURIComponent(ref.mediaId)}/file`;
 
-export function PreviewScreen({ config, initialNow }: { config: SignageConfig; initialNow: number }) {
+export function PreviewScreen({
+  config,
+  initialNow,
+  orientation,
+}: {
+  config: SignageConfig;
+  initialNow: number;
+  orientation: Orientation;
+}) {
   const [now, setNow] = useState(initialNow);
 
   useEffect(() => {
@@ -22,7 +31,7 @@ export function PreviewScreen({ config, initialNow }: { config: SignageConfig; i
     return () => clearInterval(timer);
   }, []);
 
-  const size = CANVAS_SIZE[config.device.orientation];
+  const size = CANVAS_SIZE[orientation];
   return (
     <div
       data-testid="device-preview"
@@ -36,7 +45,7 @@ export function PreviewScreen({ config, initialNow }: { config: SignageConfig; i
         background: "#000",
       }}
     >
-      <SignageScreen config={config} now={now} resolveMediaUrl={resolveMediaUrl} />
+      <SignageScreen config={config} now={now} resolveMediaUrl={resolveMediaUrl} orientation={orientation} />
     </div>
   );
 }
