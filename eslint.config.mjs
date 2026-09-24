@@ -5,7 +5,7 @@ const config = [
   ...nextVitals,
   ...nextTs,
   {
-    ignores: ["node_modules/**", "dist/**", ".wrangler/**", ".vinext/**", "worker-configuration.d.ts", "spikes/**", "raspberry-pi/**"],
+    ignores: ["node_modules/**", "dist/**", "dist-display/**", ".wrangler/**", ".vinext/**", "worker-configuration.d.ts", "spikes/**", "raspberry-pi/**"],
   },
 ];
 

@@ -14,7 +14,10 @@
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx db/seed.ts",
     "admin:create": "tsx scripts/create-admin.ts",
-    "test:visual": "playwright test"
+    "test:visual": "playwright test",
+    "build:display": "vite build --config display/vite.config.ts",
+    "check:display": "tsx scripts/check-display-bundle.ts dist-display",
+    "publish:display": "tsx scripts/publish-display-bundle.ts"
   },
   "dependencies": {
     "@fontsource-variable/geist": "5.3.0",

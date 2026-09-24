@@ -19,6 +19,9 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+      - run: npm run build:display
+      # Pi 用表示バンドルが外部 URL（http:// / https://）を読み込まないこと
+      - run: npm run check:display
 
   pi-agent:
     runs-on: ubuntu-latest
