@@ -18,11 +18,12 @@
     }
   ],
 
-  // Cron Trigger（天気 30 分ごと・R2 削除予約・未完了アップロード掃除・device_logs 掃除）。
-  // scheduled ハンドラ（worker/scheduled.ts）を作るタスクで有効化する。
-  // "triggers": {
-  //   "crons": ["*/30 * * * *", "0 19 * * *"]
-  // },
+  // Cron Trigger（天気 30 分ごと・R2 削除予約の実行・未完了アップロード掃除・device_logs 掃除）。
+  // scheduled ハンドラは worker/index.ts の scheduled から worker/scheduled.ts を呼ぶ。
+  // "0 19 * * *" は日本時間 4:00（Pi の Chromium 毎日再起動と同じ時間帯。計画 7 節）。
+  "triggers": {
+    "crons": ["*/30 * * * *", "0 19 * * *"]
+  },
 
   // Rate Limiting binding（ログインの IP / メールアドレス単位、lib/rate-limit.ts）。
   // マシンごとの概算で厳密な回数制限ではない（docs/spikes/workers.md 7 節）。同じメールの連続失敗は DB でも止める。

@@ -8,7 +8,7 @@
  * 追記する場所:
  * - task_012: 端末向けの中継（/api/device/media/[mediaId]、/api/device/bundles/[bundleId]）を
  *   fetch の「大きな本文の中継」の並びに足す。
- * - task_013: Cron の scheduled をこのファイルの default export に足す（本体は worker/scheduled.ts）。
+ * - task_013: Cron Trigger（天気・掃除）。scheduled の本体は worker/scheduled.ts。
  */
 import handler from "vinext/server/fetch-handler";
 import { getToken } from "next-auth/jwt";
@@ -16,9 +16,12 @@ import { loadSessionUser } from "../lib/auth";
 import { getMediaBucket, serveObject } from "../lib/r2";
 import { getDb } from "../lib/runtime";
 import { getActiveMedia } from "../lib/services/media";
+import { handleDeviceRelay } from "./device-relay";
+import { scheduled } from "./scheduled";
 
 type Env = { AUTH_SECRET: string };
 type ExecutionContext = { waitUntil(promise: Promise<unknown>): void; passThroughOnException(): void };
+type ScheduledController = { cron: string };
 
 const ADMIN_MEDIA_PATH = /^\/api\/media\/([^/]+)\/(file|thumbnail)$/;
 
@@ -58,12 +61,19 @@ const worker = {
     if (request.method === "GET" || request.method === "HEAD") {
       const adminMedia = ADMIN_MEDIA_PATH.exec(pathname);
       if (adminMedia) return serveAdminMedia(request, env, decodeURIComponent(adminMedia[1]), adminMedia[2] as "file" | "thumbnail");
-      // task_012: 端末向けの中継をここに足す
+      // task_012: 端末向けの中継（worker/device-relay.ts）
+      if (pathname.startsWith("/api/device/")) {
+        const deviceRelay = await handleDeviceRelay(request, pathname, { db: getDb(), bucket: getMediaBucket() });
+        if (deviceRelay) return deviceRelay;
+      }
     }
 
     return handler.fetch(request, env, ctx);
   },
-  // task_013: async scheduled(controller, env, ctx) { ... }（worker/scheduled.ts）
+  // Cron Trigger（worker/scheduled.ts）。scheduled は早く戻る必要があるため、本体は ctx.waitUntil で待つ
+  async scheduled(controller: ScheduledController, _env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(scheduled(controller.cron));
+  },
 };
 
 export default worker;
