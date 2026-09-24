@@ -13,3 +13,5 @@ node_modules/
 coverage/
 npm-debug.log*
 next-env.d.ts
+__pycache__/
+.pytest_cache/
