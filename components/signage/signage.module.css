@@ -522,9 +522,10 @@
   box-shadow: 4px 12px 0 #fff;
 }
 
+/* QR は大きな枠の左端（左下）に置く（2026-09-25 ユーザー指示） */
 .pQr {
   position: absolute;
-  left: 801px;
+  left: 44px;
   top: 675px;
   width: 171px;
   height: 185px;
@@ -1139,9 +1140,10 @@
 }
 
 
+/* QR は大きな枠の左端（日付の丸い目印の下）に置く（2026-09-25 ユーザー指示） */
 .lQr {
   position: absolute;
-  left: 535px;
+  left: 60px;
   top: 642px;
   width: 135px;
   height: 142px;
