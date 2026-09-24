@@ -1,0 +1,1704 @@
+/*
+ * サイネージ表示の見た目。座標はキャンバス（縦 1080×1920 / 横 1920×1080）の画素で、
+ * モック image/UI-V.png・UI-H.png の画面部分を平面化した画像から実測した値。
+ */
+
+/* ---------------------------------------------------------------- 共通 */
+
+.frame {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+}
+
+.scaler {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform-origin: center center;
+}
+
+.canvas {
+  --ink: #1b2530;
+  --ink-soft: #3c434b;
+  --ink-mute: #5b626b;
+  --font-sans: "LINE Seed JP", sans-serif;
+  /* 絵文字は端末の絵文字フォント（Pi は fonts-noto-color-emoji）で描く。fontsource 版は SVG 形式で Chromium が描けない */
+  --font-emoji: "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+  --font-script: "Kalam", "LINE Seed JP", cursive;
+  position: relative;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  color: var(--ink);
+  font-kerning: normal;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+.canvas * {
+  box-sizing: border-box;
+}
+
+:where(.canvas) h1,
+:where(.canvas) p,
+:where(.canvas) ul {
+  margin: 0;
+  padding: 0;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+:where(.canvas) ul {
+  list-style: none;
+}
+
+.off {
+  background: #000;
+}
+
+.fade {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 600ms ease;
+  z-index: 50;
+}
+
+.fade[data-active="true"] {
+  opacity: 1;
+}
+
+.cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.contain {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.emoji {
+  font-family: var(--font-emoji);
+  font-weight: 400;
+  line-height: 1;
+}
+
+.unsynced {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  display: grid;
+  place-items: center;
+  z-index: 40;
+}
+
+.unsyncedDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #f59e0b;
+}
+
+.pEmpty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  color: var(--ink-mute);
+  letter-spacing: 0.08em;
+}
+
+/* 今日のイベントがないとき */
+.quietCopy {
+  position: absolute;
+  left: 60px;
+  right: 60px;
+  top: 150px;
+  font-size: 52px;
+  line-height: 1.5;
+  white-space: pre-line;
+  color: #fff;
+}
+
+.quietNote {
+  position: absolute;
+  left: 62px;
+  top: 90px;
+  font-size: 22px;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.pNextLabel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.pNextLabel small {
+  font-weight: 400;
+  font-size: 15px;
+  color: var(--ink-mute);
+}
+
+.pNextImage {
+  position: relative;
+  width: 150px;
+  height: 96px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex: none;
+}
+
+.pNextDate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-weight: 700;
+  font-size: 34px;
+  line-height: 1.1;
+}
+
+.pNextDate small {
+  font-weight: 400;
+  font-size: 18px;
+}
+
+.pNextText {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pNextTitle {
+  font-weight: 700;
+  font-size: 28px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pNextMeta {
+  font-size: 19px;
+  color: var(--ink-soft);
+}
+
+/* ---------------------------------------------------------------- 縦型 */
+
+.portrait {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      to bottom,
+      #dbdce2 0,
+      #e4e5e9 110px,
+      #e6e6ea 260px,
+      #e8e8eb 600px,
+      #ececee 960px,
+      #e6e6e8 1560px,
+      #e2e2e3 1770px
+    );
+}
+
+.pLogo {
+  position: absolute;
+  left: 60px;
+  top: 30px;
+  width: 88px;
+  height: 78px;
+  color: var(--ink);
+}
+
+.pHouseName {
+  position: absolute;
+  left: 179px;
+  top: 40px;
+  font-size: 32px;
+  line-height: 1;
+  letter-spacing: 0.165em;
+  white-space: nowrap;
+}
+
+.pHouseKind {
+  position: absolute;
+  left: 180px;
+  top: 82px;
+  font-size: 18.5px;
+  line-height: 1;
+  letter-spacing: 0.15em;
+  color: #46505a;
+  white-space: nowrap;
+}
+
+.pHeaderCopy {
+  position: absolute;
+  left: 78px;
+  top: 152px;
+  width: 480px;
+  font-size: 31px;
+  line-height: 40px;
+  letter-spacing: 0.13em;
+  white-space: pre-line;
+  transform: rotate(-6deg);
+  transform-origin: left top;
+  color: #222a33;
+}
+
+.pTagline {
+  position: absolute;
+  left: 74px;
+  top: 234px;
+  font-size: 23px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transform: rotate(-3deg);
+  transform-origin: left top;
+  color: #222a33;
+}
+
+.pDate {
+  position: absolute;
+  right: 62px;
+  top: 41px;
+  font-size: 27px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.pTime {
+  position: absolute;
+  right: 60px;
+  top: 80px;
+  font-size: 75px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.pWeather {
+  position: absolute;
+  left: 837px;
+  top: 171px;
+  width: 180px;
+  height: 80px;
+}
+
+.pWeatherIcon {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  line-height: 0;
+}
+
+.pTemp {
+  position: absolute;
+  font-feature-settings: "palt";
+  left: 90px;
+  top: 8px;
+  font-size: 38px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.pPlace {
+  position: absolute;
+  left: 90px;
+  top: 52px;
+  font-size: 23px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* 主イベント */
+.pHero {
+  position: absolute;
+  left: 36px;
+  top: 284px;
+  width: 1008px;
+  height: 646px;
+  border-radius: 26px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(20, 20, 30, 0.12);
+  color: #fff;
+}
+
+.pHeroShade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(18, 12, 8, 0.62) 0%,
+    rgba(18, 12, 8, 0.5) 35%,
+    rgba(18, 12, 8, 0) 65%,
+    rgba(18, 12, 8, 0) 100%
+  );
+}
+
+.pHeroQuiet {
+  background: linear-gradient(135deg, #2b3440, #1b2530);
+}
+
+.pNext {
+  position: absolute;
+  left: 40px;
+  right: 40px;
+  bottom: 40px;
+  height: 136px;
+  padding: 0 28px;
+  border-radius: 18px;
+  background: #f2f3f5;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.pBadge {
+  position: absolute;
+  left: 24px;
+  top: 21px;
+  width: 213px;
+  height: 85px;
+  border-radius: 17px;
+  background: #f2c830;
+  color: #16202b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pBadgeEn {
+  margin-top: 14px;
+  font-weight: 700;
+  font-size: 35px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.pBadge[data-state="starting_soon"] .pBadgeEn,
+.pBadge[data-state="now_happening"] .pBadgeEn {
+  margin-top: 20px;
+  font-size: 22px;
+  letter-spacing: 0;
+}
+
+.pBadgeJa {
+  margin-top: 9px;
+  font-size: 17px;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+.pBadge[data-state="now_happening"] {
+  background: #ef6b4a;
+  color: #fff;
+}
+
+/* 本文は枠の高さに収め、あふれそうなときは情報の行間を詰める */
+.pHeroBody {
+  position: absolute;
+  left: 36px;
+  top: 90px;
+  padding-top: 40px;
+  width: 560px;
+  height: 532px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.pHeroBody > * {
+  flex: none;
+}
+
+.pTitle {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  min-height: 100px;
+  margin-bottom: -4px;
+  font-family: var(--font-script);
+  font-weight: 400;
+  font-size: 90px;
+  line-height: 100px;
+  letter-spacing: 0.01em;
+}
+
+.pTitleText {
+  transform: rotate(-6deg);
+  transform-origin: left bottom;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  max-width: 470px;
+}
+
+.pTitle[data-long="true"] {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 50px;
+  line-height: 60px;
+  min-height: 0;
+  margin-bottom: 0;
+}
+
+.pTitle[data-long="true"] .pTitleText {
+  transform: none;
+  max-height: 120px;
+}
+
+.pTitleEmoji {
+  font-size: 56px;
+  margin-top: 4px;
+}
+
+.pDesc {
+  margin-top: 5px;
+  margin-left: 8px;
+  width: 334px;
+  font-size: 24px;
+  line-height: 39px;
+  letter-spacing: 0.08em;
+  white-space: pre-line;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.pInfo {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.pHeroBody > .pInfo,
+.lHeroBody > .lInfo {
+  flex: 0 1 auto;
+  min-height: 0;
+}
+
+.pInfo li {
+  display: flex;
+  align-items: center;
+  flex: 0 1 48px;
+  min-height: 38px;
+  gap: 0;
+  font-size: 26px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.pInfo li > svg {
+  flex: none;
+  margin-left: 8px;
+  width: 34px;
+}
+
+.pInfo li > span {
+  margin-left: 26px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pButton {
+  margin-top: 13px;
+  margin-left: 4px;
+  width: 280px;
+  height: 57px;
+  border-radius: 29px;
+  background: #f4f5f7;
+  color: #1b2530;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-size: 23px;
+  letter-spacing: 0.12em;
+}
+
+.pCatch {
+  position: absolute;
+  left: 684px;
+  top: 92px;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-script);
+  font-weight: 300;
+  font-size: 46px;
+  line-height: 48px;
+  white-space: nowrap;
+  transform: rotate(-17deg);
+  transform-origin: left top;
+}
+
+.pCatchLine {
+  display: block;
+}
+
+.pCatchTick1,
+.pCatchTick2 {
+  position: absolute;
+  height: 2px;
+  background: #fff;
+  border-radius: 2px;
+}
+
+.pCatchTick1 {
+  left: 238px;
+  top: 12px;
+  width: 16px;
+  transform: rotate(-50deg);
+}
+
+.pCatchTick2 {
+  left: -16px;
+  top: 96px;
+  width: 22px;
+  box-shadow: 4px 12px 0 #fff;
+}
+
+.pQr {
+  position: absolute;
+  left: 801px;
+  top: 406px;
+  width: 171px;
+  height: 185px;
+  border-radius: 14px;
+  background: #f7f8f9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 20px;
+}
+
+.pQrLabel {
+  margin-top: 8px;
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  color: #3c434b;
+}
+
+/* セクション見出し */
+.pSectionTitle,
+.lSectionTitle {
+  position: absolute;
+  display: flex;
+  align-items: baseline;
+  white-space: nowrap;
+}
+
+.pSectionEn {
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1;
+  letter-spacing: 0.07em;
+}
+
+.pSectionJa {
+  margin-left: 36px;
+  font-size: 19px;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  color: var(--ink-soft);
+}
+
+.pSectionSmall .pSectionEn {
+  font-size: 25px;
+  letter-spacing: 0.05em;
+}
+
+.pSectionSmall .pSectionJa {
+  margin-left: 34px;
+  font-size: 18px;
+}
+
+/* LINE Seed JP の「°」は全角幅で字面が左に寄っているため、後ろを詰める */
+.deg {
+  margin-right: -0.56em;
+}
+
+.pSeeAll {
+  position: absolute;
+  right: 44px;
+  top: 964px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 19px;
+  letter-spacing: 0.14em;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+/* Upcoming（縦） */
+.pUpcoming {
+  position: absolute;
+  left: 38px;
+  top: 1009px;
+  width: 1002px;
+  height: 526px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pRow {
+  position: relative;
+  height: 126px;
+  flex: none;
+  border-radius: 16px;
+  background: #f2f3f5;
+  box-shadow: 0 1px 2px rgba(20, 20, 30, 0.06);
+}
+
+.pRowDate {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 172px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pRowDay {
+  margin-top: 34px;
+  font-weight: 700;
+  font-size: 36px;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.pRowWeek {
+  margin-top: 16px;
+  font-size: 21px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+
+.pRowDivider {
+  position: absolute;
+  left: 169px;
+  top: 16px;
+  bottom: 16px;
+  width: 2px;
+  background: #e1e3e7;
+}
+
+.pRowText {
+  position: absolute;
+  left: 200px;
+  top: 20px;
+  width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.pChip {
+  height: 28px;
+  padding: 0 14px;
+  border-radius: 9px;
+  color: #fff;
+  font-size: 15px;
+  line-height: 28px;
+  letter-spacing: 0.2em;
+  white-space: nowrap;
+}
+
+.pRowTitle {
+  margin-top: 4px;
+  max-width: 100%;
+  font-weight: 700;
+  font-size: 26px;
+  line-height: 36px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pRowMeta {
+  margin-top: 4px;
+  font-size: 19.5px;
+  line-height: 26px;
+  letter-spacing: 0.03em;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.pRowSep {
+  margin: 0 12px;
+  color: #b9bdc3;
+}
+
+.pRowImage {
+  position: absolute;
+  left: 578px;
+  top: 9px;
+  width: 348px;
+  height: 115px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.pRowChevron {
+  position: absolute;
+  left: 949px;
+  top: 51px;
+  color: var(--ink);
+}
+
+/* お知らせ（縦） */
+.pNews {
+  position: absolute;
+  left: 38px;
+  top: 1618px;
+  width: 490px;
+  height: 145px;
+  border-radius: 16px;
+  background: #f1f2f4;
+  box-shadow: 0 1px 2px rgba(20, 20, 30, 0.06);
+}
+
+.pNewsImage {
+  position: absolute;
+  left: 20px;
+  top: 24px;
+  width: 98px;
+  height: 99px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.pNewsText {
+  position: absolute;
+  left: 144px;
+  right: 18px;
+  top: 30px;
+}
+
+.pNewsText[data-has-image="false"] {
+  left: 28px;
+}
+
+.pNewsTitle {
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 28px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pNewsBody {
+  margin-top: 12px;
+  font-size: 17.5px;
+  line-height: 29px;
+  letter-spacing: 0.06em;
+  color: var(--ink-mute);
+  white-space: pre-line;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.pDivider {
+  position: absolute;
+  left: 547px;
+  top: 1592px;
+  width: 2px;
+  height: 170px;
+  background: #dcdde0;
+}
+
+/* ハウスルール（縦） */
+.pRules {
+  position: absolute;
+  left: 567px;
+  top: 1614px;
+  width: 473px;
+  height: 146px;
+  display: flex;
+  gap: 10px;
+}
+
+.pRule {
+  position: relative;
+  flex: 1 1 0;
+  height: 100%;
+  border-radius: 16px;
+  background: #f1f2f4;
+  box-shadow: 0 1px 2px rgba(20, 20, 30, 0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pRuleIcon {
+  margin-top: 21px;
+  line-height: 0;
+}
+
+.pRuleText {
+  margin-top: 10px;
+  padding: 0 4px;
+  font-size: 16px;
+  line-height: 26px;
+  letter-spacing: 0.04em;
+  text-align: center;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  white-space: pre-line;
+  line-break: strict;
+}
+
+/* フッター（縦） */
+.pFooter {
+  position: absolute;
+  left: 0;
+  top: 1770px;
+  width: 1080px;
+  height: 150px;
+  overflow: hidden;
+  color: #fff;
+}
+
+.pFooterLead {
+  position: absolute;
+  left: 44px;
+  top: 90px;
+  font-family: var(--font-script);
+  font-size: 35px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transform: rotate(-5deg);
+  transform-origin: left top;
+}
+
+.pFooterSub {
+  position: absolute;
+  left: 785px;
+  top: 60px;
+  font-size: 18px;
+  line-height: 29px;
+  letter-spacing: 0.08em;
+  white-space: pre-line;
+}
+
+/* ---------------------------------------------------------------- 横型 */
+
+.landscape {
+  position: absolute;
+  inset: 0;
+  background: #f0ede9;
+}
+
+.landscape::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 75% 85% at 50% 50%, rgba(80, 60, 40, 0) 60%, rgba(80, 60, 40, 0.07) 100%);
+  z-index: 30;
+}
+
+.lHeaderBand {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1920px;
+  height: 138px;
+  background: linear-gradient(to bottom, #e7e2dc, #efebe7);
+}
+
+.lLogo {
+  position: absolute;
+  left: 62px;
+  top: 40px;
+  width: 100px;
+  height: 62px;
+  color: var(--ink);
+}
+
+.lHouseName {
+  position: absolute;
+  left: 192px;
+  top: 44px;
+  font-size: 29.5px;
+  line-height: 1;
+  letter-spacing: 0.17em;
+  white-space: nowrap;
+}
+
+.lHouseKind {
+  position: absolute;
+  left: 193px;
+  top: 82px;
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: 0.17em;
+  white-space: nowrap;
+  color: #2c343d;
+}
+
+.lScript {
+  position: absolute;
+  left: 1134px;
+  top: 76px;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-script);
+  font-weight: 300;
+  font-size: 41px;
+  line-height: 46px;
+  white-space: nowrap;
+  transform: rotate(-16deg);
+  transform-origin: left top;
+  color: var(--ink);
+}
+
+.lScriptLine {
+  position: absolute;
+  left: 1300px;
+  top: 108px;
+}
+
+.lBox {
+  position: absolute;
+  left: 1533px;
+  top: 0;
+  width: 387px;
+  height: 157px;
+  background: linear-gradient(160deg, #e0d8ce, #d8cdc1);
+}
+
+.lBoxCopy {
+  position: absolute;
+  left: 64px;
+  top: 36px;
+  font-weight: 700;
+  font-size: 18.5px;
+  line-height: 28px;
+  letter-spacing: 0.13em;
+  white-space: pre-line;
+}
+
+.lBoxTagline {
+  position: absolute;
+  left: 64px;
+  top: 99px;
+  font-size: 12.5px;
+  line-height: 18px;
+  letter-spacing: 0.17em;
+  white-space: pre-line;
+  color: #3c434b;
+}
+
+/* 主イベント（横） */
+.lHero {
+  position: absolute;
+  left: 0;
+  top: 138px;
+  width: 1231px;
+  height: 614px;
+  border-top-right-radius: 16px;
+  overflow: hidden;
+  color: #fff;
+}
+
+.lHeroShade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(240, 237, 233, 0.55) 0%,
+    rgba(240, 237, 233, 0.85) 20%,
+    rgba(240, 237, 233, 0.86) 30%,
+    rgba(240, 237, 233, 0.55) 45%,
+    rgba(240, 237, 233, 0) 62%,
+    rgba(240, 237, 233, 0) 100%
+  );
+}
+
+.lHeroQuiet {
+  background: linear-gradient(135deg, #2b3440, #1b2530);
+}
+
+.lNext {
+  position: absolute;
+  left: 60px;
+  right: 60px;
+  bottom: 60px;
+  height: 150px;
+  padding: 0 32px;
+  border-radius: 18px;
+  background: #f5f5f5;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.lCircle {
+  position: absolute;
+  left: 39px;
+  top: 138px;
+  width: 192px;
+  height: 192px;
+  border-radius: 50%;
+  background: #f9d164;
+  color: #16202b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.lCircle[data-state="now_happening"] {
+  background: #ef6b4a;
+  color: #fff;
+}
+
+.lCircleEn {
+  margin-top: 36px;
+  font-weight: 700;
+  font-size: 29px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.lCircleEn[data-long="true"] {
+  margin-top: 42px;
+  font-size: 16.5px;
+  letter-spacing: 0;
+}
+
+.lCircleDate {
+  margin-top: 10px;
+  font-weight: 700;
+  font-size: 57px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.lCircleWeek {
+  margin-top: 6px;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+
+.lHeroBody {
+  position: absolute;
+  left: 252px;
+  top: 189px;
+  width: 560px;
+  height: 540px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.lHeroBody > * {
+  flex: none;
+}
+
+.lPill {
+  height: 41px;
+  padding: 0 24px;
+  border-radius: 21px;
+  background: #f7cb61;
+  font-size: 20px;
+  line-height: 41px;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+.lTitle {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-weight: 700;
+  font-size: 59px;
+  line-height: 70px;
+  letter-spacing: 0.005em;
+}
+
+.lTitleText {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  max-width: 480px;
+}
+
+.lTitle[data-long="true"] {
+  font-size: 40px;
+  line-height: 48px;
+}
+
+.lTitle[data-long="true"] .lTitleText {
+  max-height: 96px;
+}
+
+.lTitle[data-long="true"] + .lDesc {
+  margin-top: 14px;
+}
+
+.lTitleEmoji {
+  font-size: 58px;
+}
+
+.lDesc {
+  margin-top: 26px;
+  width: 530px;
+  font-size: 20px;
+  line-height: 33px;
+  letter-spacing: 0.1em;
+  color: #333a42;
+  white-space: pre-line;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.lInfo {
+  margin-top: 21px;
+  display: flex;
+  flex-direction: column;
+  color: #1b2530;
+}
+
+.lInfo li {
+  display: flex;
+  align-items: center;
+  flex: 0 1 50px;
+  min-height: 38px;
+  font-size: 22px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.lInfo li > svg {
+  flex: none;
+}
+
+.lInfo li > span {
+  margin-left: 16px;
+}
+
+.lInfoStrong {
+  font-weight: 700;
+}
+
+.lButton {
+  margin-top: 29px;
+  width: 252px;
+  height: 62px;
+  border-radius: 31px;
+  background: #222c34;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.14em;
+}
+
+.lQr {
+  position: absolute;
+  left: 535px;
+  top: 588px;
+  width: 135px;
+  height: 142px;
+  border-radius: 10px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 14px;
+}
+
+.lQrLabel {
+  margin-top: 3px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: #3c434b;
+}
+
+.lCatch {
+  position: absolute;
+  left: 922px;
+  top: 92px;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-script);
+  font-weight: 300;
+  font-size: 44px;
+  line-height: 48px;
+  white-space: nowrap;
+  transform: rotate(-20deg);
+  transform-origin: left top;
+}
+
+.lCatchLine {
+  display: block;
+}
+
+/* セクション見出し（横） */
+.lSectionEn {
+  font-weight: 700;
+  font-size: 23.5px;
+  line-height: 1;
+  letter-spacing: 0.03em;
+}
+
+.lSectionJa {
+  margin-left: 32px;
+  font-size: 17.5px;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  color: var(--ink-soft);
+}
+
+/* Upcoming（横） */
+.lUpcoming {
+  position: absolute;
+  left: 1268px;
+  top: 220px;
+  width: 616px;
+  height: 512px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lRow {
+  position: relative;
+  height: 124px;
+  flex: none;
+  border-radius: 14px;
+  background: #f5f5f5;
+  box-shadow: 0 1px 2px rgba(40, 30, 20, 0.06);
+}
+
+.lRowDate {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 124px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.lRowDay {
+  margin-top: 31px;
+  font-weight: 700;
+  font-size: 29px;
+  line-height: 1;
+}
+
+.lRowWeek {
+  margin-top: 14px;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+
+.lRowDivider {
+  position: absolute;
+  left: 120px;
+  top: 20px;
+  bottom: 22px;
+  width: 2px;
+  background: #e6e6e6;
+}
+
+.lRowText {
+  position: absolute;
+  left: 140px;
+  top: 14px;
+  width: 270px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.lChip {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  line-height: 28px;
+  letter-spacing: 0.18em;
+  white-space: nowrap;
+}
+
+.lRowTitle {
+  margin-top: 8px;
+  max-width: 100%;
+  font-weight: 700;
+  font-size: 23.5px;
+  line-height: 32px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lRowMeta {
+  margin-top: 5px;
+  font-size: 17px;
+  line-height: 24px;
+  letter-spacing: 0.01em;
+  color: #2c343d;
+  white-space: nowrap;
+}
+
+.lRowPlace {
+  margin-left: 20px;
+}
+
+.lRowImage {
+  position: absolute;
+  left: 418px;
+  top: 11px;
+  width: 163px;
+  height: 104px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.lRowChevron {
+  position: absolute;
+  left: 587px;
+  top: 51px;
+  color: var(--ink);
+}
+
+/* 下段（横） */
+.lBottomBand {
+  position: absolute;
+  left: 0;
+  top: 752px;
+  width: 1920px;
+  height: 220px;
+  background: linear-gradient(to bottom, #efece8, #ebe7e2);
+}
+
+.lDivider {
+  position: absolute;
+  top: 780px;
+  width: 2px;
+  height: 172px;
+  background: #e0dcd6;
+}
+
+.lNews {
+  position: absolute;
+  left: 45px;
+  top: 820px;
+  width: 522px;
+  height: 132px;
+  border-radius: 16px;
+  background: #f3f2f0;
+  box-shadow: 0 1px 2px rgba(40, 30, 20, 0.05);
+}
+
+.lNewsImage {
+  position: absolute;
+  left: 24px;
+  top: 21px;
+  width: 99px;
+  height: 92px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.lNewsText {
+  position: absolute;
+  left: 149px;
+  right: 16px;
+  top: 25px;
+}
+
+.lNewsText[data-has-image="false"] {
+  left: 28px;
+}
+
+.lNewsTitle {
+  font-weight: 700;
+  font-size: 21.5px;
+  line-height: 28px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lNewsBody {
+  margin-top: 8px;
+  font-size: 17px;
+  line-height: 27px;
+  letter-spacing: 0.08em;
+  color: var(--ink-mute);
+  white-space: pre-line;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.lWeek {
+  position: absolute;
+  left: 616px;
+  top: 820px;
+  width: 650px;
+  height: 132px;
+  border-radius: 16px;
+  background: #f3f2f1;
+  box-shadow: 0 1px 2px rgba(40, 30, 20, 0.05);
+  display: flex;
+}
+
+.lWeekDay {
+  position: relative;
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.lWeekDay + .lWeekDay::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 18px;
+  bottom: 18px;
+  width: 2px;
+  background: #e6e4e1;
+}
+
+.lWeekName {
+  margin-top: 22px;
+  font-size: 14px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+}
+
+.lWeekNum {
+  margin-top: 10px;
+  font-size: 23px;
+  line-height: 1;
+}
+
+.lWeekDay[data-today="true"] .lWeekNum {
+  font-weight: 700;
+}
+
+.lWeekMark {
+  margin-top: 8px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+}
+
+.lWeekDash {
+  width: 22px;
+  height: 2px;
+  background: #1b2530;
+}
+
+.lWeekDot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+.lRules {
+  position: absolute;
+  left: 1313px;
+  top: 820px;
+  width: 571px;
+  height: 132px;
+  display: flex;
+  gap: 10px;
+}
+
+.lRule {
+  flex: 1 1 0;
+  height: 100%;
+  border-radius: 16px;
+  background: #f3f2f0;
+  box-shadow: 0 1px 2px rgba(40, 30, 20, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.lRuleIcon {
+  margin-top: 21px;
+  line-height: 0;
+}
+
+.lRuleText {
+  margin-top: 8px;
+  padding: 0 8px;
+  font-size: 15.5px;
+  line-height: 23px;
+  letter-spacing: 0.06em;
+  text-align: center;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  white-space: pre-line;
+  line-break: strict;
+}
+
+/* フッター（横） */
+.lFooter {
+  position: absolute;
+  left: 0;
+  top: 972px;
+  width: 1920px;
+  height: 108px;
+  background: #1b2023;
+  color: #f2f2f2;
+}
+
+.lFooterTime {
+  position: absolute;
+  left: 48px;
+  top: 25px;
+  font-weight: 700;
+  font-size: 57px;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.lFooterDate {
+  position: absolute;
+  left: 230px;
+  top: 43px;
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.lFooterWeather {
+  position: absolute;
+  left: 477px;
+  top: 34px;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.lFooterTemp {
+  font-feature-settings: "palt";
+  margin-left: 12px;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.lFooterPlace {
+  margin-left: 18px;
+  font-size: 17px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+
+.lFooterDivider {
+  position: absolute;
+  left: 830px;
+  top: 32px;
+  width: 2px;
+  height: 46px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.lFooterCopy {
+  position: absolute;
+  left: 860px;
+  width: 660px;
+  top: 30px;
+  text-align: center;
+}
+
+.lFooterLead {
+  font-size: 22px;
+  line-height: 28px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.lFooterSub {
+  margin-top: 2px;
+  font-size: 15px;
+  line-height: 22px;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+.lFooterHouse {
+  position: absolute;
+  left: 1630px;
+  top: 34px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 17px;
+  letter-spacing: 0.17em;
+  white-space: nowrap;
+}

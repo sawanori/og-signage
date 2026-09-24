@@ -19,3 +19,6 @@ __pycache__/
 # ローカルの libSQL
 local.db
 local.db-*
+test-results/
+playwright-report/
+docs/design-diff/*.png
