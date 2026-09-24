@@ -1,7 +1,6 @@
+import { redirect } from "next/navigation";
+
+/** トップページは管理画面へ（未ログインなら /admin 側で /login へ転送される） */
 export default function Home() {
-  return (
-    <main className="flex min-h-screen items-center justify-center p-8">
-      <h1 className="text-2xl font-bold">シェアハウス サイネージ</h1>
-    </main>
-  );
+  redirect("/admin");
 }
