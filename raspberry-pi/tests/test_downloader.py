@@ -148,12 +148,11 @@ def test_size_mismatch_is_treated_like_sha_mismatch(data_dir: Path, fake_server)
     assert fake_server.media_failures[0]["failures"][0]["mediaId"] == "media02"
 
 
-def test_bundle_mismatch_quarantines_locally_but_is_not_reported_to_media_failures_api(
+def test_bundle_mismatch_quarantines_locally_and_is_reported_to_media_failures_api(
     data_dir: Path, fake_server
 ):
-    """mediaFailuresSchema（lib/validators.ts）には mediaId しかなく bundleId 用の欄がない。
-    そのため bundle の隔離はローカルで止める（再取得しない）が、API へは報告しない
-    （既知の制約。TS 側スキーマの拡張が必要になれば見直す）。"""
+    """mediaFailuresSchema（lib/validators.ts）は mediaId か bundleId のどちらか一方を持てる。
+    bundle が3回不一致で隔離されたときは、bundleId で media-failures を1回だけ報告する。"""
     wrong_content = b"not-a-real-bundle"
     declared_sha = "9" * 64
     fake_server.bundles["bundleX"] = wrong_content
@@ -167,8 +166,20 @@ def test_bundle_mismatch_quarantines_locally_but_is_not_reported_to_media_failur
         downloader.process(job)
 
     assert downloader.is_quarantined("bundleX") is True
-    assert fake_server.media_failures == []  # 報告できないので送られない
+
+    assert len(fake_server.media_failures) == 1
+    failure = fake_server.media_failures[0]["failures"][0]
+    assert failure["bundleId"] == "bundleX"
+    assert failure.get("mediaId") is None
+    assert failure["reason"] == "hash_mismatch"
+    assert failure["quarantined"] is True
+    assert isinstance(failure["occurredAt"], int)
+
+    requests_before = len(fake_server.request_log)
     assert downloader.process(job) is False  # 以後は再取得しない
+    # 4回目は隔離済みのためサーバーへ問い合わせず、再報告もしない
+    assert len(fake_server.request_log) == requests_before
+    assert len(fake_server.media_failures) == 1
 
 
 def test_network_unreachable_returns_false_without_raising(data_dir: Path, fake_server):

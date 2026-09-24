@@ -127,7 +127,9 @@ class DeviceApiClient:
 
     def post_media_failure(self, failure: dict[str, Any]) -> None:
         # lib/validators.ts の mediaFailuresSchema:
-        # { failures: [{ mediaId, reason, quarantined, occurredAt }], 1〜50件 }
+        # { failures: [{ mediaId?, bundleId?, reason, quarantined, occurredAt }], 1〜50件 }
+        # mediaId と bundleId はどちらか一方だけを failure に含める（media の失敗は mediaId、
+        # 表示バンドルの失敗は bundleId）。
         self._post_json("/api/device/media-failures", {"failures": [failure]})
 
     def _post_json(self, path: str, payload: dict[str, Any]) -> dict[str, Any] | None:

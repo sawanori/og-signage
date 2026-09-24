@@ -38,7 +38,7 @@ class DownloadJob:
     sha256: str
     size: int
     # POST /api/device/media-failures の mediaId（lib/validators.ts の mediaFailuresSchema）。
-    # media のみ設定される。bundle には対応する ID がないため報告できない（既知の制約）。
+    # media のみ設定される。bundle の隔離報告は key（= bundleId）をそのまま使う。
     media_id: str | None = None
 
 
@@ -155,12 +155,17 @@ class Downloader:
         }
         self._quarantine_marker_path(job.key).write_text(json.dumps(marker, ensure_ascii=False), encoding="utf-8")
 
-        # lib/validators.ts の mediaFailuresSchema は mediaId しか持たない（bundleId 用の
-        # 欄がない）ため、bundle の隔離は API へ報告できない。ローカルの隔離・再取得停止は行うが、
-        # media-failures の送信は media のときだけにする（既知の制約。TS 側で拡張が必要）。
+        # lib/validators.ts の mediaFailuresSchema は mediaId / bundleId のどちらか一方を
+        # 持てる。media は job.media_id、bundle は job.key（= bundleId）をそのまま送る。
+        id_field: dict[str, str] | None = None
         if job.kind == "media" and job.media_id:
+            id_field = {"mediaId": job.media_id}
+        elif job.kind == "bundle":
+            id_field = {"bundleId": job.key}
+
+        if id_field is not None:
             payload = {
-                "mediaId": job.media_id,
+                **id_field,
                 "reason": "hash_mismatch",
                 "quarantined": True,
                 "occurredAt": int(time.time()),

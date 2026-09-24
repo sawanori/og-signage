@@ -122,14 +122,27 @@ class FakeDeviceServer:
                 if range_header:
                     spec = range_header.replace("bytes=", "")
                     start_s, _, end_s = spec.partition("-")
-                    start = int(start_s) if start_s else 0
-                    if start >= total:
-                        self.send_response(416)
-                        self.send_header("Content-Range", f"bytes */{total}")
-                        self.send_header("Content-Length", "0")
-                        self.end_headers()
-                        return
-                    end = int(end_s) if end_s else total - 1
+                    if start_s == "":
+                        # `bytes=-n`: 末尾 n バイト（lib/r2.ts の parseRange と同じ挙動）。
+                        if end_s == "":
+                            self._send_full(data, total)
+                            return
+                        suffix = int(end_s)
+                        if suffix == 0 or total == 0:
+                            self._send_unsatisfiable(total)
+                            return
+                        start = max(0, total - suffix)
+                        end = total - 1
+                    else:
+                        start = int(start_s)
+                        if start >= total:
+                            self._send_unsatisfiable(total)
+                            return
+                        end = int(end_s) if end_s != "" else total - 1
+                        end = min(end, total - 1)
+                        if end < start:
+                            self._send_full(data, total)
+                            return
                     chunk = data[start : end + 1]
                     self.send_response(206)
                     self.send_header("Content-Range", f"bytes {start}-{end}/{total}")
@@ -137,6 +150,15 @@ class FakeDeviceServer:
                     self.end_headers()
                     self.wfile.write(chunk)
                     return
+                self._send_full(data, total)
+
+            def _send_unsatisfiable(self, total: int) -> None:
+                self.send_response(416)
+                self.send_header("Content-Range", f"bytes */{total}")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+
+            def _send_full(self, data: bytes, total: int) -> None:
                 self.send_response(200)
                 self.send_header("Content-Length", str(total))
                 self.end_headers()
