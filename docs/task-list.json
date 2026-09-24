@@ -1,6 +1,6 @@
 {
   "feature": "share_house_signage_mvp",
-  "version": 2.1,
+  "version": 2.2,
   "tasks": [
     {
       "task_id": "task_001",
@@ -941,11 +941,9 @@
       "files_to_modify": [
         ".github/workflows/ci.yml"
       ],
-      "dependencies": [
-        "task_003",
-        "task_012"
-      ],
+      "dependencies": [],
       "implementation_steps": [
+        "ロジック（世代・ダウンロード・同期・Heartbeat）と pytest は task_003・task_012 を待たずに先行実装してよい。API との結合確認は task_012 完了後、実機確認は task_003 完了後に行う（2026-09-24 変更: 並列化のため）",
         "切替の各段階で処理を中断させるテストを書く",
         "容量不足・SHA 不一致・ネット不通のテストを書く"
       ],

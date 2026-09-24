@@ -1,0 +1,35 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sharehouse-signage",
+  "compatibility_date": "2026-09-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "vinext/server/fetch-handler",
+  "assets": {
+    "directory": "dist/client",
+    "not_found_handling": "none",
+    "binding": "ASSETS"
+  },
+
+  // 画像・動画の保存先（実ファイル）。メタデータは Turso に置く。
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "sharehouse-signage"
+    }
+  ]
+
+  // Cron Trigger（天気 30 分ごと・R2 削除予約・未完了アップロード掃除・device_logs 掃除）。
+  // scheduled ハンドラ（worker/scheduled.ts）を作るタスクで有効化する。
+  // "triggers": {
+  //   "crons": ["*/30 * * * *", "0 19 * * *"]
+  // },
+
+  // Rate Limiting binding（ログインの IP / メールアドレス単位）。認証タスクで有効化する。
+  // "ratelimits": [
+  //   {
+  //     "name": "LOGIN_RATE_LIMITER",
+  //     "namespace_id": "<数値の namespace ID>",
+  //     "simple": { "limit": 10, "period": 60 }
+  //   }
+  // ]
+}

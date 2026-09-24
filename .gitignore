@@ -1,1 +1,15 @@
 .DS_Store
+node_modules/
+.next/
+/dist/
+.vinext/
+.wrangler/
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.env
+.env.*
+*.tsbuildinfo
+coverage/
+npm-debug.log*
+next-env.d.ts
