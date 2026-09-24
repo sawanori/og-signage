@@ -59,7 +59,9 @@ export function buildView(config: SignageConfig, now: number, timeSynced: boolea
     visible: isWithinDisplaySchedule(config.schedule, now, timeSynced),
     main,
     hero: slides.length > 0 ? { slide: slides[index], index, count: slides.length } : null,
-    upcoming: selectUpcomingEvents(config.events, now, main),
+    // Upcoming から外すのは今日の主イベントだけ。今日のイベントが無い日は、次のイベント（明日など）も先頭に出す
+    // （次のイベントを出していた NEXT EVENT の欄は外したため）
+    upcoming: selectUpcomingEvents(config.events, now, main.kind === "today" ? main : { kind: "none" }),
     week: selectThisWeek(config.events, now),
     notice: selectNotice(config.notices, now),
     weather: shouldShowWeather(config.weather, now, timeSynced) ? config.weather : null,

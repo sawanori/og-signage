@@ -86,6 +86,8 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     expect(screen.getByTestId("main-title").textContent).toContain("Movie Night");
     expect(screen.getByText(/9月26日（金） 20:00/)).toBeTruthy();
     expect(screen.queryByTestId("no-event")).toBeNull();
+    // 次のイベント（明日）も Upcoming の先頭に出す
+    expect(screen.getByTestId("upcoming").firstElementChild?.textContent).toContain("Movie Night");
   });
 
   it("イベント 0 件: キャッチコピーと空の Upcoming", () => {
