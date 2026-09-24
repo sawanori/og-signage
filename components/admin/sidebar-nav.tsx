@@ -10,12 +10,13 @@ import type { Role } from "@/lib/auth";
 import styles from "./admin.module.css";
 import { HomeFillIcon } from "./icons";
 
-type NavItem = { href: string; label: string; icon: LucideIcon; adminOnly?: boolean };
+/** alsoCurrentFor: href 以外で選択中にするパス（その下の階層も含む） */
+type NavItem = { href: string; label: string; icon: LucideIcon; adminOnly?: boolean; alsoCurrentFor?: readonly string[] };
 
 export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/admin", label: "ダッシュボード", icon: House },
   { href: "/admin/events", label: "イベント管理", icon: CalendarDays },
-  { href: "/admin/media", label: "動画・メディア", icon: SquarePlay },
+  { href: "/admin/media", label: "動画・メディア", icon: SquarePlay, alsoCurrentFor: ["/admin/videos"] },
   { href: "/admin/schedule", label: "表示スケジュール", icon: Clock, adminOnly: true },
   { href: "/admin/devices", label: "サイネージ端末", icon: Monitor, adminOnly: true },
   { href: "/admin/design", label: "デザイン設定", icon: Palette, adminOnly: true },
@@ -27,9 +28,9 @@ export function visibleNavItems(role: Role): NavItem[] {
   return NAV_ITEMS.filter((item) => !item.adminOnly || role === "administrator");
 }
 
-function isCurrent(href: string, path: string): boolean {
+function isCurrent({ href, alsoCurrentFor = [] }: NavItem, path: string): boolean {
   if (href === "/admin") return path === "/admin";
-  return path === href || path.startsWith(`${href}/`);
+  return [href, ...alsoCurrentFor].some((base) => path === base || path.startsWith(`${base}/`));
 }
 
 export function SidebarNav({ role, currentPath }: { role: Role; currentPath?: string }) {
@@ -37,8 +38,9 @@ export function SidebarNav({ role, currentPath }: { role: Role; currentPath?: st
   const path = currentPath ?? pathname;
   return (
     <nav className={styles.nav} aria-label="メニュー">
-      {visibleNavItems(role).map(({ href, label, icon: Icon }) => {
-        const current = isCurrent(href, path);
+      {visibleNavItems(role).map((item) => {
+        const { href, label, icon: Icon } = item;
+        const current = isCurrent(item, path);
         return (
           <Link key={href} href={href} className={styles.navItem} aria-current={current ? "page" : undefined}>
             {current && href === "/admin" ? (

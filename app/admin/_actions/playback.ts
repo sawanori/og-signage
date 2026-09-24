@@ -14,10 +14,12 @@ import {
   removePlaylistItem,
   reorderPlaylistItems,
   requestTestPlay,
+  saveDevicePlayback,
   updateDevicePlaybackSettings,
   type DevicePlaybackSettings,
   type PlaylistItemWithMedia,
   type PlaylistMutationResult,
+  type SavePlaybackResult,
 } from "../../../lib/services/playback";
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; error: { code: string; message: string } };
@@ -72,6 +74,11 @@ export async function updateDevicePlaybackSettingsAction(
   input: unknown,
 ): Promise<ActionResult<DevicePlaybackSettings>> {
   return run(() => updateDevicePlaybackSettings(getDb(), deviceId, input));
+}
+
+/** プレイリストの中身と再生設定を 1 回で丸ごと保存する（途中まで保存されることはない） */
+export async function saveDevicePlaybackAction(deviceId: string, input: unknown): Promise<ActionResult<SavePlaybackResult>> {
+  return run(() => saveDevicePlayback(getDb(), deviceId, input));
 }
 
 // ---------------------------------------------------------------- テスト表示

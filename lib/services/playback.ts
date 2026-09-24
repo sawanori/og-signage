@@ -9,6 +9,7 @@
  * - テスト表示の要求は devices.test_play_requested_at に現在時刻を入れるだけ（1 回限りの消費は
  *   Pi 側・config-builder 側の責務）。
  * - content_version のような版の加算は行わない。config の版は config JSON の SHA-256 で決まる。
+ * - 画面の「保存する」は saveDevicePlayback でプレイリストと再生設定を 1 トランザクションで丸ごと保存する。
  * - 権限（Staff 以上）は呼び出し側（app/admin/_actions/playback.ts）で確認する。
  */
 import { and, asc, eq } from "drizzle-orm";
@@ -264,6 +265,85 @@ export async function updateDevicePlaybackSettings(
 
     await tx.update(devices).set({ volume: data.volume, updatedAt: nowSeconds() }).where(eq(devices.id, deviceId));
     return { ...updated, volume: data.volume };
+  });
+}
+
+// ---------------------------------------------------------------- まとめて保存
+
+const savePlaybackSchema = z.object({
+  settings: devicePlaybackSettingsUpdateSchema,
+  /** 端末にプレイリストが無いときは null。mediaIds は新しい並び順の全件（空配列で全部外す） */
+  playlist: z
+    .object({
+      revision: z.int().nonnegative(),
+      mediaIds: z.array(z.string().min(1, "動画を選んでください")),
+    })
+    .nullable(),
+});
+
+export type SavePlaybackResult = { settings: DevicePlaybackSettings; playlist: PlaylistMutationResult | null };
+
+/**
+ * 端末のプレイリストの中身（mediaId の順序付き配列）と再生設定を 1 トランザクションで丸ごと保存する。
+ * プレイリストは video_playback_settings.playlist_id のもの。両方の revision が一致しなければ 409 で、
+ * 途中で不正な動画が見つかれば 400 で、どちらも何も書かない。検証規則は addPlaylistItem・
+ * updateDevicePlaybackSettings と同じ（新しく加える動画だけ再生可否を確かめる）。
+ */
+export async function saveDevicePlayback(db: Db, deviceId: string, input: unknown): Promise<SavePlaybackResult> {
+  const data = parse(savePlaybackSchema, input);
+  return db.transaction(async (tx) => {
+    const { settings } = await loadDeviceAndSettings(tx, deviceId);
+    if (settings.revision !== data.settings.revision) throw conflict();
+    if ((data.playlist === null) !== (settings.playlistId === null)) {
+      throw new PlaybackServiceError("invalid_input", "この端末の再生リストが変わりました。最新の内容を読み込んでください");
+    }
+
+    let playlistResult: PlaylistMutationResult | null = null;
+    if (data.playlist && settings.playlistId) {
+      const playlistId = settings.playlistId;
+      const playlist = await loadPlaylist(tx, playlistId);
+      if (playlist.revision !== data.playlist.revision) throw conflict();
+
+      const current = await tx
+        .select({ mediaId: playlistItems.mediaId })
+        .from(playlistItems)
+        .where(eq(playlistItems.playlistId, playlistId));
+      const existing = new Set(current.map((row) => row.mediaId));
+      for (const mediaId of new Set(data.playlist.mediaIds)) {
+        if (!existing.has(mediaId)) await assertMediaEligible(tx, mediaId);
+      }
+
+      await tx.delete(playlistItems).where(eq(playlistItems.playlistId, playlistId));
+      if (data.playlist.mediaIds.length > 0) {
+        await tx
+          .insert(playlistItems)
+          .values(data.playlist.mediaIds.map((mediaId, position) => ({ playlistId, mediaId, position })));
+      }
+      const [updated] = await tx
+        .update(playlists)
+        .set({ revision: data.playlist.revision + 1, updatedAt: nowSeconds() })
+        .where(and(eq(playlists.id, playlistId), eq(playlists.revision, data.playlist.revision)))
+        .returning();
+      if (!updated) throw conflict();
+      playlistResult = { playlist: updated, items: await loadItemsWithMedia(tx, playlistId) };
+    }
+
+    const s = data.settings;
+    const [updatedSettings] = await tx
+      .update(videoPlaybackSettings)
+      .set({
+        enabled: s.enabled,
+        intervalMinutes: s.intervalMinutes,
+        playbackMode: s.mode,
+        revision: s.revision + 1,
+        updatedAt: nowSeconds(),
+      })
+      .where(and(eq(videoPlaybackSettings.deviceId, deviceId), eq(videoPlaybackSettings.revision, s.revision)))
+      .returning();
+    if (!updatedSettings) throw conflict();
+    await tx.update(devices).set({ volume: s.volume, updatedAt: nowSeconds() }).where(eq(devices.id, deviceId));
+
+    return { settings: { ...updatedSettings, volume: s.volume }, playlist: playlistResult };
   });
 }
 

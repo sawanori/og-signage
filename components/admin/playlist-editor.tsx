@@ -4,20 +4,14 @@
  * 定期動画の設定（要件定義書 14 節）。ON/OFF・間隔・再生する動画（並べ替え・追加・外す）・再生順を
  * 画面上で変えてから「保存する」でまとめて保存する。
  *
- * 保存は既存の Server Actions を順に呼ぶ（外す → 追加 → 並べ替え → 再生設定）。それぞれ revision で
- * 条件付き更新なので、他の人が先に更新していれば最初の呼び出しで止まり、入力は画面に残る。
+ * 保存は saveDevicePlaybackAction の 1 回で、プレイリストの中身（mediaId の並び）と再生設定を
+ * 1 トランザクションで丸ごと保存する。revision が合わなければ何も書かれず、入力は画面に残る。
  */
 import { Check, CircleAlert, CircleHelp, GripVertical, Play, Plus, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition, type KeyboardEvent } from "react";
-import {
-  addPlaylistItemAction,
-  removePlaylistItemAction,
-  reorderPlaylistItemsAction,
-  updateDevicePlaybackSettingsAction,
-  type ActionResult,
-} from "@/app/admin/_actions/playback";
+import { saveDevicePlaybackAction } from "@/app/admin/_actions/playback";
 import { VIDEO_INTERVAL_MINUTES } from "@/lib/config-schema";
 import admin from "./admin.module.css";
 import { formatDuration } from "./format";
@@ -39,15 +33,6 @@ type Entry = Omit<PlaylistEntry, "itemId"> & { key: string; itemId: string | nul
 
 type Notice = { tone: "info" | "error"; text: string; reload?: boolean };
 
-class SaveStop extends Error {
-  constructor(
-    readonly error: { code: string; message: string },
-    readonly partial: boolean,
-  ) {
-    super(error.message);
-  }
-}
-
 export function PlaylistEditor({ data, devices }: { data: VideosPageData; devices: DeviceOption[] }) {
   const [notice, setNotice] = useState<Notice | null>(null);
   // 保存後の読み直しで revision が変わると、フォームを最新の内容で作り直す
@@ -61,11 +46,6 @@ export function PlaylistEditor({ data, devices }: { data: VideosPageData; device
 
 function toEntries(items: PlaylistEntry[]): Entry[] {
   return items.map((item) => ({ ...item, key: item.itemId }));
-}
-
-function unwrap<T>(result: ActionResult<T>, partial: boolean): T {
-  if (!result.ok) throw new SaveStop(result.error, partial);
-  return result.data;
 }
 
 function VideosForm({
@@ -147,68 +127,27 @@ function VideosForm({
   const save = () => {
     setNotice(null);
     startTransition(async () => {
-      let applied = false;
-      try {
-        if (playlist && playlistDirty) {
-          let revision = playlist.revision;
-          let serverIds = playlist.items.map((item) => item.itemId);
-          const keep = new Set(entries.flatMap((e) => (e.itemId ? [e.itemId] : [])));
-          for (const itemId of serverIds.filter((id) => !keep.has(id))) {
-            const result = unwrap(await removePlaylistItemAction(playlist.id, { revision, itemId }), applied);
-            applied = true;
-            revision = result.playlist.revision;
-            serverIds = result.items.map((item) => item.id);
-          }
-          const idByKey = new Map<string, string>();
-          for (const entry of entries.filter((e) => e.itemId === null)) {
-            const result = unwrap(
-              await addPlaylistItemAction(playlist.id, { revision, mediaId: entry.mediaId }),
-              applied,
-            );
-            applied = true;
-            const known = new Set(serverIds);
-            const added = result.items.find((item) => !known.has(item.id));
-            if (added) idByKey.set(entry.key, added.id);
-            revision = result.playlist.revision;
-            serverIds = result.items.map((item) => item.id);
-          }
-          const desired = entries.map((e) => e.itemId ?? idByKey.get(e.key) ?? "");
-          if (desired.length > 0 && desired.join(",") !== serverIds.join(",")) {
-            unwrap(await reorderPlaylistItemsAction(playlist.id, { revision, itemIds: desired }), applied);
-            applied = true;
-          }
-        }
-        if (settingsDirty) {
-          unwrap(
-            await updateDevicePlaybackSettingsAction(data.deviceId, {
-              revision: data.settings.revision,
-              enabled: settings.enabled,
-              intervalMinutes: settings.intervalMinutes,
-              mode: settings.mode,
-              volume: data.settings.volume,
-            }),
-            applied,
-          );
-        }
+      const result = await saveDevicePlaybackAction(data.deviceId, {
+        settings: {
+          revision: data.settings.revision,
+          enabled: settings.enabled,
+          intervalMinutes: settings.intervalMinutes,
+          mode: settings.mode,
+          volume: data.settings.volume,
+        },
+        playlist: playlist ? { revision: playlist.revision, mediaIds: entries.map((e) => e.mediaId) } : null,
+      });
+      if (result.ok) {
         setNotice({ tone: "info", text: "保存しました。次の同期でサイネージに反映されます" });
         router.refresh();
-      } catch (e) {
-        if (!(e instanceof SaveStop)) throw e;
-        if (e.partial) {
-          setNotice({
-            tone: "error",
-            text: `途中までしか保存できませんでした（${e.error.message}）。最新の内容を読み込んで確かめてください`,
-            reload: true,
-          });
-        } else if (e.error.code === "conflict") {
-          setNotice({
-            tone: "error",
-            text: "他の人が先に更新しました。最新の内容を読み込んでから、もう一度変更してください",
-            reload: true,
-          });
-        } else {
-          setNotice({ tone: "error", text: e.error.message });
-        }
+      } else if (result.error.code === "conflict") {
+        setNotice({
+          tone: "error",
+          text: "他の人が先に更新しました。最新の内容を読み込んでから、もう一度変更してください",
+          reload: true,
+        });
+      } else {
+        setNotice({ tone: "error", text: result.error.message });
       }
     });
   };

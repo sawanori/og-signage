@@ -15,6 +15,7 @@ import {
   removePlaylistItem,
   reorderPlaylistItems,
   requestTestPlay,
+  saveDevicePlayback,
   updateDevicePlaybackSettings,
 } from "../../lib/services/playback";
 import { openTempDb } from "../helpers/temp-db";
@@ -304,6 +305,124 @@ describe("端末ごとの再生設定", () => {
     const settings = await getDevicePlaybackSettings(db, "d1");
     expect(settings.revision).toBe(0);
     expect(settings.volume).toBe(0);
+  });
+});
+
+describe("プレイリストと再生設定をまとめて保存", () => {
+  async function fixture() {
+    await addPlaylist("pl1");
+    await addDevice("d1", { volume: 30 });
+    await addSettings("d1", { playlistId: "pl1" });
+    const v1 = await addMedia({ name: "v1.mp4" });
+    const v2 = await addMedia({ name: "v2.mp4" });
+    const v3 = await addMedia({ name: "v3.mp4" });
+    const a = await addPlaylistItem(db, "pl1", { revision: 0, mediaId: v1 });
+    const b = await addPlaylistItem(db, "pl1", { revision: a.playlist.revision, mediaId: v2 });
+    return { v1, v2, v3, playlistRevision: b.playlist.revision };
+  }
+
+  const settingsInput = { revision: 0, enabled: false, intervalMinutes: 30, mode: "random" as const, volume: 70 };
+
+  async function snapshot() {
+    return {
+      items: (await getPlaylistItems(db, "pl1")).map((i) => [i.mediaId, i.position]),
+      playlistRevision: (await db.select().from(playlists).where(eq(playlists.id, "pl1")))[0].revision,
+      settings: await getDevicePlaybackSettings(db, "d1"),
+    };
+  }
+
+  it("外す・追加・並べ替え・再生設定を 1 回で丸ごと保存する", async () => {
+    const { v1, v3, playlistRevision } = await fixture();
+
+    const result = await saveDevicePlayback(db, "d1", {
+      settings: settingsInput,
+      playlist: { revision: playlistRevision, mediaIds: [v3, v1] },
+    });
+    expect(result.playlist?.playlist.revision).toBe(playlistRevision + 1);
+    expect(result.playlist?.items.map((i) => [i.mediaId, i.position])).toEqual([
+      [v3, 0],
+      [v1, 1],
+    ]);
+    expect(result.settings).toMatchObject({ enabled: false, intervalMinutes: 30, playbackMode: "random", volume: 70, revision: 1 });
+
+    const after = await snapshot();
+    expect(after.items).toEqual([
+      [v3, 0],
+      [v1, 1],
+    ]);
+    expect(after.settings).toMatchObject({ enabled: false, intervalMinutes: 30, playbackMode: "random", volume: 70, revision: 1 });
+  });
+
+  it("途中に再生できない動画があれば 400 で、プレイリストも再生設定も何も書かれない", async () => {
+    const { v1, v3, playlistRevision } = await fixture();
+    const notPlayable = await addMedia({ playable: false });
+    const deleting = await addMedia({ state: "deleting", deleteAfter: 1 });
+    const image = await addMedia({ type: "image", playable: false });
+    const before = await snapshot();
+
+    for (const bad of [notPlayable, deleting, image, "none"]) {
+      await expectServiceError(
+        saveDevicePlayback(db, "d1", {
+          settings: settingsInput,
+          playlist: { revision: playlistRevision, mediaIds: [v3, bad, v1] },
+        }),
+        "invalid_media",
+        400,
+      );
+    }
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it("間隔・音量の不正は 400 で何も書かれない", async () => {
+    const { v1, playlistRevision } = await fixture();
+    const before = await snapshot();
+    for (const patch of [{ intervalMinutes: 7 }, { volume: -1 }, { volume: 101 }]) {
+      await expectServiceError(
+        saveDevicePlayback(db, "d1", {
+          settings: { ...settingsInput, ...patch },
+          playlist: { revision: playlistRevision, mediaIds: [v1] },
+        }),
+        "invalid_input",
+        400,
+      );
+    }
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it("プレイリストか再生設定の revision が古ければ 409 で、何も書かれない", async () => {
+    const { v1, v3, playlistRevision } = await fixture();
+    const before = await snapshot();
+
+    await expectServiceError(
+      saveDevicePlayback(db, "d1", {
+        settings: settingsInput,
+        playlist: { revision: playlistRevision - 1, mediaIds: [v3, v1] },
+      }),
+      "conflict",
+      409,
+    );
+    await expectServiceError(
+      saveDevicePlayback(db, "d1", {
+        settings: { ...settingsInput, revision: 5 },
+        playlist: { revision: playlistRevision, mediaIds: [v3, v1] },
+      }),
+      "conflict",
+      409,
+    );
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it("Server Action から Staff が保存でき、未ログインは何も書かれない", async () => {
+    const { v2, playlistRevision } = await fixture();
+    const input = { settings: settingsInput, playlist: { revision: playlistRevision, mediaIds: [v2] } };
+
+    expect(await actions.saveDevicePlaybackAction("d1", input)).toEqual({
+      ok: false,
+      error: { code: "unauthorized", message: "ログインしてください" },
+    });
+    await login("staff");
+    const saved = await actions.saveDevicePlaybackAction("d1", input);
+    expect(saved.ok && saved.data.playlist?.items.map((i) => i.mediaId)).toEqual([v2]);
   });
 });
 

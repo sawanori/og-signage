@@ -259,9 +259,14 @@ export async function videoThumbnail(file: Blob): Promise<{ blob: Blob | null; d
 
 type ApiError = { error?: { message?: string } };
 
+/** 画面に出す文言。ステータスコードは出さず console にだけ残す（要件定義書 28 節） */
 async function errorMessage(res: Response): Promise<string> {
   const body = (await res.json().catch(() => null)) as ApiError | null;
-  return body?.error?.message ?? `アップロードに失敗しました（${res.status}）`;
+  console.error("upload request failed", res.status, res.url);
+  if (body?.error?.message) return body.error.message;
+  if (res.status === 413) return "ファイルが大きすぎます（動画は 500MB、画像は 20MB まで）";
+  if (res.status === 415) return "この形式のファイルは使えません（JPEG・PNG・WebP・MP4）";
+  return "アップロードに失敗しました。時間をおいてもう一度お試しください";
 }
 
 const retryable = (status: number) => status >= 500 || status === 408 || status === 429;

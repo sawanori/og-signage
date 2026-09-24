@@ -46,7 +46,7 @@ function downloadOnce(content: string, fileName: string) {
 }
 
 const DOWNLOADED =
-  "設定ファイル（config.json）をダウンロードしました。この画面で再び取り出すことはできません。見当たらない場合はトークンを再発行してください。";
+  "設定ファイル（config.json）をダウンロードしました。この画面で再び取り出すことはできません。見当たらない場合は設定ファイルを再発行してください。";
 
 function formatDateTime(unix: number | null): string {
   return unix === null ? "—" : `${formatMonthDay(unix)} ${formatHm(unix)}`;
@@ -191,7 +191,7 @@ function DeviceCard({ device, onConfirm }: { device: DeviceView; onConfirm: (r: 
 
   const reissue = () =>
     onConfirm({
-      title: "トークンを再発行しますか？",
+      title: "設定ファイルを再発行しますか？",
       body: "今の設定ファイルは使えなくなり、Pi は新しい設定ファイルを置き直すまで表示を更新できません。新しい設定ファイルは 1 回だけダウンロードされます。",
       confirmLabel: "再発行する",
       onConfirm: () =>
@@ -199,7 +199,7 @@ function DeviceCard({ device, onConfirm }: { device: DeviceView; onConfirm: (r: 
           const result = await regenerateDeviceTokenAction(device.id);
           if (!result.ok) return setNotice({ text: result.error, error: true });
           downloadOnce(result.data.content, result.data.fileName);
-          setNotice({ text: `トークンを再発行しました。${DOWNLOADED}`, error: false });
+          setNotice({ text: `再発行しました。${DOWNLOADED}`, error: false });
         }),
     });
 
@@ -246,7 +246,7 @@ function DeviceCard({ device, onConfirm }: { device: DeviceView; onConfirm: (r: 
           </button>
           <button type="button" className={`${styles.outlineButton} ${d.actionButton}`} disabled={pending} onClick={reissue}>
             <RefreshCw size={15} aria-hidden />
-            トークン再発行
+            設定ファイル再発行
           </button>
           <button
             type="button"
