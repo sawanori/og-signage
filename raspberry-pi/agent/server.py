@@ -11,8 +11,12 @@
 ## /local/* の取り決め（表示ページ側が守ること）
 
 - `/local/events` は Server-Sent Events。1 イベントは `data: <JSON>\\n\\n` の 1 行 JSON。
+  接続直後に、現在の再生状態機械の遷移イベントと時刻同期状態イベントを 1 回ずつ送ってから
+  購読を始める（表示ページの再読み込みが動画再生中に起きても、次の遷移を待たずに
+  黒くなる・時刻未同期の印がすぐ出るようにするため。実装計画 8.3 節・6 節前提13）。
   - 再生状態機械の遷移: `{"transitionId": "<hex>" | null, "mode": "fading_out"|"playing"|"fading_in"|"display"|"off"}`
   - config 更新: `{"type": "config_updated", "version": "<config の version>"}`
+  - 時刻同期状態: `{"type": "status", "timeSynced": true|false}`（接続直後と、状態が変わった時に送る）
   - 接続維持のための空コメント行（`: keep-alive`）が挟まることがあるので、
     `data:` で始まらない行は無視すること。
 - `POST /local/ack` は表示ページがおよそ 5 秒ごとに送る生存応答。本文は `{}` でよい。
@@ -165,12 +169,14 @@ class LocalServer:
         broadcaster: EventBroadcaster | None = None,
         on_ack: Callable[[str | None, str | None], None] | None = None,
         on_log: Callable[[str, str], None] | None = None,
+        current_state_provider: Callable[[], list[dict[str, Any]]] | None = None,
     ) -> None:
         self._gen = gen
         self._clock = clock
         self._broadcaster = broadcaster or EventBroadcaster()
         self._on_ack = on_ack or (lambda transition_id, phase: None)
         self._on_log = on_log or (lambda level, msg: None)
+        self._current_state_provider = current_state_provider or (lambda: [])
 
         self._lock = threading.Lock()
         self._last_ack_monotonic = clock.monotonic()
@@ -338,6 +344,10 @@ class LocalServer:
             handler.send_header("Cache-Control", "no-cache")
             handler.send_header("Connection", "keep-alive")
             handler.end_headers()
+            for event in self._current_state_provider():
+                data = json.dumps(event, ensure_ascii=False).encode("utf-8")
+                handler.wfile.write(b"data: " + data + b"\n\n")
+            handler.wfile.flush()
             while True:
                 try:
                     event = q.get(timeout=SSE_KEEPALIVE_SECONDS)

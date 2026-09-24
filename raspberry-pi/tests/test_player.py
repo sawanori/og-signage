@@ -377,6 +377,44 @@ def test_empty_playlist_never_plays(tmp_path: Path):
     assert h.platform.started == []
 
 
+# ---------------------------------------------------------------- 新規 SSE 接続時の初期状態スナップショット
+
+
+def test_current_state_events_reflects_live_mode_and_transition_id(tmp_path: Path):
+    h = PlayerHarness(tmp_path, make_config(interval_minutes=5))
+    assert h.player.current_state_events()[0] == {"transitionId": None, "mode": "display"}
+
+    transition_id = advance_to_fading_out(h)
+    assert h.player.current_state_events()[0] == {"transitionId": transition_id, "mode": "fading_out"}
+
+    cross_fade_out_deadline(h)
+    assert h.player.state == player_mod.PLAYING
+    assert h.player.current_state_events()[0] == {"transitionId": transition_id, "mode": "playing"}
+
+
+def test_current_state_events_includes_time_synced_status(tmp_path: Path):
+    h = PlayerHarness(tmp_path, make_config(interval_minutes=5), time_synced=False)
+    assert h.player.current_state_events()[1] == {"type": "status", "timeSynced": False}
+
+
+def test_time_synced_status_event_sent_only_on_change(tmp_path: Path):
+    h = PlayerHarness(tmp_path, make_config(interval_minutes=5), time_synced=True)
+    h.tick()
+    assert h.events == []  # 初期値のままなら通知しない
+
+    h.time_synced = False
+    h.tick()
+    assert h.events[-1] == {"type": "status", "timeSynced": False}
+
+    h.tick()
+    assert h.events[-1] == {"type": "status", "timeSynced": False}  # 変化なしなら再送しない
+    assert len([e for e in h.events if e.get("type") == "status"]) == 1
+
+    h.time_synced = True
+    h.tick()
+    assert h.events[-1] == {"type": "status", "timeSynced": True}
+
+
 # ---------------------------------------------------------------- SSE と ack の往復（player + server 結合）
 
 
@@ -444,5 +482,116 @@ def test_transition_round_trip_via_server_sse_and_ack(tmp_path: Path):
 
         player.tick()
         assert player.state == player_mod.PLAYING
+    finally:
+        server.stop()
+
+
+def test_new_sse_connection_receives_current_playing_state_immediately(tmp_path: Path):
+    """動画再生中に表示ページが再読み込みされた場合の再現。
+
+    次の遷移を待たずに、新規接続の最初のイベントとして現在の mode ("playing") が届くこと。
+    """
+
+    class DummyGen:
+        def current_version(self):
+            return None
+
+    clock = platform_mod.FakeClock()
+    server = server_mod.LocalServer(DummyGen(), clock, port=0)
+    server.start()
+    try:
+        platform_fake = platform_mod.FakePlatform()
+        config = make_config(interval_minutes=5)
+        player = player_mod.Player(
+            platform_fake,
+            clock,
+            tmp_path / "state",
+            config_provider=lambda: config,
+            media_path_resolver=lambda sha256: Path(f"/fake/media/{sha256}"),
+            time_synced_provider=lambda: True,
+            notify=server.broadcaster.publish,
+            on_media_failure=lambda f: None,
+        )
+        server._current_state_provider = player.current_state_events  # noqa: SLF001 (main.py 相当の配線)
+
+        clock.advance(5 * 60)
+        player.tick()
+        assert player.state == player_mod.FADING_OUT
+
+        clock.advance(player_mod.FADE_ACK_TIMEOUT_SECONDS)
+        player.tick()
+        assert player.state == player_mod.PLAYING
+
+        # ここで表示ページが再読み込みされ、新規に /local/events へ接続したことを模す
+        req = urllib.request.Request(f"http://127.0.0.1:{server.port}/local/events")
+        resp = urllib.request.urlopen(req, timeout=10)
+        first_event = None
+        for raw_line in resp:
+            line = raw_line.decode("utf-8").strip()
+            if line.startswith("data: "):
+                first_event = json.loads(line[len("data: ") :])
+                break
+        resp.close()
+
+        assert first_event is not None
+        assert first_event["mode"] == "playing"
+    finally:
+        server.stop()
+
+
+def test_sse_status_event_sent_on_connect_and_on_time_sync_change(tmp_path: Path):
+    """/local/events が接続直後と変化時に {type: "status", timeSynced} を送ること。"""
+
+    class DummyGen:
+        def current_version(self):
+            return None
+
+    clock = platform_mod.FakeClock()
+    server = server_mod.LocalServer(DummyGen(), clock, port=0)
+    server.start()
+    try:
+        time_synced_holder = {"value": False}
+        platform_fake = platform_mod.FakePlatform()
+        config = make_config(interval_minutes=5)
+        player = player_mod.Player(
+            platform_fake,
+            clock,
+            tmp_path / "state",
+            config_provider=lambda: config,
+            media_path_resolver=lambda sha256: Path(f"/fake/media/{sha256}"),
+            time_synced_provider=lambda: time_synced_holder["value"],
+            notify=server.broadcaster.publish,
+            on_media_failure=lambda f: None,
+        )
+        server._current_state_provider = player.current_state_events  # noqa: SLF001 (main.py 相当の配線)
+
+        received: list[dict] = []
+
+        def reader():
+            req = urllib.request.Request(f"http://127.0.0.1:{server.port}/local/events")
+            resp = urllib.request.urlopen(req, timeout=10)
+            for raw_line in resp:
+                line = raw_line.decode("utf-8").strip()
+                if line.startswith("data: "):
+                    received.append(json.loads(line[len("data: ") :]))
+                    if len(received) >= 3:
+                        break
+
+        thread = threading.Thread(target=reader, daemon=True)
+        thread.start()
+
+        deadline = time.monotonic() + 5
+        while server.broadcaster.subscriber_count < 1 and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert server.broadcaster.subscriber_count == 1
+
+        time_synced_holder["value"] = True
+        player.tick()
+
+        thread.join(timeout=5)
+
+        assert received[0] == {"transitionId": None, "mode": "display"}
+        assert received[1] == {"type": "status", "timeSynced": False}
+        assert received[2] == {"type": "status", "timeSynced": True}
     finally:
         server.stop()

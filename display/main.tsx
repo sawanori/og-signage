@@ -29,14 +29,16 @@ function overlayStyle(mode: DisplayMode): CSSProperties {
   };
 }
 
-function DisplayApp() {
+export function DisplayApp() {
   const [config, setConfig] = useState<SignageConfig | null>(null);
   const [mode, setMode] = useState<DisplayMode>("display");
+  // 接続直後に status イベントが届くまでの既定値は「同期済み」（安全側：印を誤って出し続けない）。
+  const [timeSynced, setTimeSynced] = useState(true);
   const [now, setNow] = useState(nowSeconds);
 
   useEffect(() => {
     const controller = startDisplayController(
-      { onConfig: setConfig, onMode: setMode },
+      { onConfig: setConfig, onMode: setMode, onTimeSynced: setTimeSynced },
       { fetch: (input, init) => fetch(input, init), createEventSource: (url) => new EventSource(url) },
     );
     return () => controller.stop();
@@ -49,10 +51,17 @@ function DisplayApp() {
 
   return (
     <>
-      {config ? <SignageScreen config={config} now={now} resolveMediaUrl={resolveMediaUrl} /> : null}
+      {config ? (
+        <SignageScreen config={config} now={now} resolveMediaUrl={resolveMediaUrl} timeSynced={timeSynced} />
+      ) : null}
       <div style={overlayStyle(mode)} data-mode={mode} data-testid="display-overlay" />
     </>
   );
 }
 
-createRoot(document.getElementById("root")!).render(<DisplayApp />);
+// テスト（tests/display/）から DisplayApp を直接 render できるよう、
+// #root が存在するとき（実機・Vite ビルドの index.html）だけ自動マウントする。
+const rootEl = document.getElementById("root");
+if (rootEl) {
+  createRoot(rootEl).render(<DisplayApp />);
+}

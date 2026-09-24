@@ -52,8 +52,9 @@ function setup(options: { configStatus?: number[] } = {}) {
   const sources: FakeEventSource[] = [];
   const configs: unknown[] = [];
   const modes: DisplayMode[] = [];
+  const timeSyncedEvents: boolean[] = [];
   const controller = startDisplayController(
-    { onConfig: (c) => configs.push(c), onMode: (m) => modes.push(m) },
+    { onConfig: (c) => configs.push(c), onMode: (m) => modes.push(m), onTimeSynced: (v) => timeSyncedEvents.push(v) },
     {
       fetch,
       createEventSource: (url) => {
@@ -66,7 +67,7 @@ function setup(options: { configStatus?: number[] } = {}) {
   const acks = () =>
     calls.filter((c) => c.url === "/local/ack").map((c) => JSON.parse(String(c.init?.body)) as Record<string, unknown>);
   const configFetches = () => calls.filter((c) => c.url === "/local/config.json").length;
-  return { controller, config, sources, configs, modes, acks, configFetches };
+  return { controller, config, sources, configs, modes, timeSyncedEvents, acks, configFetches };
 }
 
 let current: DisplayController | null = null;
@@ -176,6 +177,37 @@ describe("遷移", () => {
     t.sources[0].send({ transitionId: "t1", mode: "unknown" });
     t.sources[0].onmessage?.(new MessageEvent("message", { data: "{not json" }));
     expect(t.modes).toEqual([]);
+  });
+});
+
+describe("時刻同期状態", () => {
+  it("status イベントの timeSynced をそのままコールバックへ渡す", async () => {
+    const t = setup();
+    current = t.controller;
+    await vi.advanceTimersByTimeAsync(0);
+    t.sources[0].send({ type: "status", timeSynced: false });
+    expect(t.timeSyncedEvents).toEqual([false]);
+    t.sources[0].send({ type: "status", timeSynced: true });
+    expect(t.timeSyncedEvents).toEqual([false, true]);
+  });
+
+  it("接続直後に届く status（再読み込み対策）も反映する", async () => {
+    const t = setup();
+    current = t.controller;
+    await vi.advanceTimersByTimeAsync(0);
+    // サーバーは接続直後に現在の mode と status を送る（server.py の取り決め）
+    t.sources[0].send({ transitionId: "t1", mode: "playing" });
+    t.sources[0].send({ type: "status", timeSynced: false });
+    expect(t.modes).toEqual(["playing"]);
+    expect(t.timeSyncedEvents).toEqual([false]);
+  });
+
+  it("timeSynced が boolean でなければ無視する", async () => {
+    const t = setup();
+    current = t.controller;
+    await vi.advanceTimersByTimeAsync(0);
+    t.sources[0].send({ type: "status", timeSynced: "yes" });
+    expect(t.timeSyncedEvents).toEqual([]);
   });
 });
 

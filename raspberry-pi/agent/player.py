@@ -7,6 +7,12 @@
 
 mpv・Chromium・HDMI 出力制御・時計はすべて `platform.py` のインターフェース越しに呼ぶため、
 実機がなくても pytest で完全に検証できる。
+
+`notify`（server.py の `EventBroadcaster.publish`）へは、遷移イベント
+`{"transitionId", "mode"}` に加えて、時刻同期状態が変化したときに
+`{"type": "status", "timeSynced": bool}` も送る。`current_state_events()` は
+新規 SSE 接続直後にこの2種類の最新値を返す（表示ページの再読み込みで
+黒くならない・時刻未同期の印が出ない、を防ぐ。実装計画 8.3 節・6 節前提13）。
 """
 
 from __future__ import annotations
@@ -79,6 +85,7 @@ class Player:
         self._state = DISPLAY
         self._mode_for_report = DISPLAY
         self._display_healthy = True
+        self._time_synced = bool(self._time_synced_provider())
 
         self._transition_id: str | None = None
         self._transition_deadline: float | None = None
@@ -147,6 +154,19 @@ class Player:
                 ),
             }
 
+    def current_state_events(self) -> list[dict[str, Any]]:
+        """server.py の `/local/events` が新規接続直後に送る初期状態（実装計画 8.3 節・6 節前提13）。
+
+        表示ページの再読み込み直後でも、次の遷移を待たずに現在の再生状態機械の状態
+        （動画再生中なら黒くする等）と時刻同期状態（画面隅の印・天気欄の表示可否）を
+        すぐ反映できるようにする。
+        """
+        with self._lock:
+            return [
+                {"transitionId": self._transition_id, "mode": self._mode_for_report},
+                {"type": "status", "timeSynced": self._time_synced},
+            ]
+
     # ---- ack 受信（server.py の /local/ack から呼ばれる） ----
     def handle_ack(self, transition_id: str | None, phase: str | None) -> None:
         """フェード完了確認 {transitionId, phase} を受け取る。期限を待たず即座に次へ進める。"""
@@ -167,6 +187,9 @@ class Player:
         config = self._config_provider()
         now_wall = self._clock.wall_time()
         time_synced = bool(self._time_synced_provider())
+        if time_synced != self._time_synced:
+            self._time_synced = time_synced
+            self._notify({"type": "status", "timeSynced": time_synced})
         schedule = schedule_module.parse_schedule((config or {}).get("schedule"))
 
         self._reset_excluded_if_new_day(now_wall)

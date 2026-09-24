@@ -72,9 +72,10 @@ def build_components(cfg: config_module.AgentConfig):
         return schedule_module.parse_schedule((config or {}).get("schedule"))
 
     # server と player は互いを必要とする（server はフェード確認 ack を player へ、
-    # player は状態遷移の通知を server の broadcaster へ渡す）ため、
-    # 差し替え可能な間接呼び出しでこの循環を解く。
+    # player は状態遷移の通知を server の broadcaster へ渡し、server は新規 SSE 接続時に
+    # player の現在状態を取得する）ため、差し替え可能な間接呼び出しでこの循環を解く。
     ack_forward = {"handler": lambda transition_id, phase: None}
+    state_forward = {"handler": lambda: []}
 
     local_server = server_module.LocalServer(
         gen,
@@ -82,6 +83,7 @@ def build_components(cfg: config_module.AgentConfig):
         port=cfg.local_server_port,
         on_ack=lambda transition_id, phase: ack_forward["handler"](transition_id, phase),
         on_log=on_log,
+        current_state_provider=lambda: state_forward["handler"](),
     )
 
     def on_media_failure(payload: dict) -> None:
@@ -102,6 +104,7 @@ def build_components(cfg: config_module.AgentConfig):
         on_log=on_log,
     )
     ack_forward["handler"] = player.handle_ack
+    state_forward["handler"] = player.current_state_events
 
     watchdog = watchdog_module.Watchdog(
         plat,

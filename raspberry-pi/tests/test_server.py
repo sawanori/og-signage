@@ -202,6 +202,86 @@ def test_ack_with_transition_forwards_to_callback(data_dir: Path):
         server.stop()
 
 
+def test_sse_sends_current_state_events_immediately_on_connect():
+    """新規接続直後に current_state_provider の値を1回ずつ送ること（表示ページの再読み込み対策）。"""
+
+    class DummyGen:
+        def current_version(self):
+            return None
+
+    clock = platform_mod.FakeClock()
+    server = server_mod.LocalServer(
+        DummyGen(),
+        clock,
+        port=0,
+        current_state_provider=lambda: [
+            {"transitionId": "t9", "mode": "playing"},
+            {"type": "status", "timeSynced": True},
+        ],
+    )
+    server.start()
+    try:
+        req = urllib.request.Request(f"http://127.0.0.1:{server.port}/local/events")
+        resp = urllib.request.urlopen(req, timeout=10)
+        received: list[dict] = []
+        for raw_line in resp:
+            line = raw_line.decode("utf-8").strip()
+            if line.startswith("data: "):
+                received.append(json.loads(line[len("data: ") :]))
+                if len(received) >= 2:
+                    break
+        resp.close()
+        assert received == [
+            {"transitionId": "t9", "mode": "playing"},
+            {"type": "status", "timeSynced": True},
+        ]
+    finally:
+        server.stop()
+
+
+def test_sse_without_current_state_provider_sends_nothing_extra():
+    """current_state_provider を渡さない場合は既定の空リストで、初期イベントを送らない。"""
+
+    class DummyGen:
+        def current_version(self):
+            return None
+
+    clock = platform_mod.FakeClock()
+    server = server_mod.LocalServer(DummyGen(), clock, port=0)
+    server.start()
+    try:
+        received: list[dict] = []
+        stop = threading.Event()
+
+        def reader():
+            req = urllib.request.Request(f"http://127.0.0.1:{server.port}/local/events")
+            resp = urllib.request.urlopen(req, timeout=10)
+            for raw_line in resp:
+                if stop.is_set():
+                    break
+                line = raw_line.decode("utf-8").strip()
+                if line.startswith("data: "):
+                    received.append(json.loads(line[len("data: ") :]))
+                    if len(received) >= 1:
+                        break
+
+        thread = threading.Thread(target=reader, daemon=True)
+        thread.start()
+
+        deadline = time.monotonic() + 5
+        while server.broadcaster.subscriber_count < 1 and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert server.broadcaster.subscriber_count == 1
+
+        server.broadcaster.publish({"transitionId": "t1", "mode": "fading_out"})
+        thread.join(timeout=5)
+        stop.set()
+
+        assert received == [{"transitionId": "t1", "mode": "fading_out"}]
+    finally:
+        server.stop()
+
+
 def test_sse_receives_published_events():
     import agent.generations as gm_mod
 
