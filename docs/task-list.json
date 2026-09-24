@@ -1,6 +1,6 @@
 {
   "feature": "share_house_signage_mvp",
-  "version": 2.2,
+  "version": 2.4,
   "tasks": [
     {
       "task_id": "task_001",
@@ -138,6 +138,7 @@
       ],
       "dependencies": [],
       "implementation_steps": [
+        "実機（Pi 4・DS3231）の調達後に実施（2026-09-24 ユーザー指示で後回し）",
         "OS を導入し各項目を試す",
         "切替を動画撮影して確認する",
         "再生条件（解像度・プロファイル・レベル・フレームレート・ビットレート上限）を表にする",
@@ -365,11 +366,11 @@
       ],
       "files_to_modify": [],
       "dependencies": [
-        "task_003",
         "task_004",
         "task_006"
       ],
       "implementation_steps": [
+        "task_003 は後回し（2026-09-24 ユーザー指示）。playable の判定は当面、要件定義書15節の推奨（MP4・H.264・1080p以下・30fps以下・yuv420p）で行い、task_003 の実測後に条件を更新する",
         "サーバーがキーを決め、クライアント指定のキーを受けない",
         "complete の二重送信・応答喪失・DB 失敗をテストする"
       ],
@@ -621,19 +622,24 @@
       ],
       "files_to_create": [
         "components/signage/**",
-        "tests/signage/*.test.tsx"
+        "tests/signage/*.test.tsx",
+        "tests/visual/signage.spec.ts",
+        "docs/design-diff/**",
+        "public/fixtures/**"
       ],
       "files_to_modify": [],
       "dependencies": [
         "task_005"
       ],
       "implementation_steps": [
+        "デザインはモック（image/）への完全一致を目標にする（2026-09-24 ユーザー指示）。配置・余白・角丸・影・配色・文字サイズ・字間・アイコン・写真のトリミングまで合わせる。固定日時 2025-09-24(水)17:42 と tests/fixtures/config.fixture.ts の固定データで描画し、Playwright でモックと同じ解像度のスクリーンショットを撮り、モックと並べた比較画像と画素差分（pixelmatch）を docs/design-diff/ に保存して、差の大きい領域がなくなるまで直す。写真素材は開発用 fixture に限りモック画像から切り出して使ってよい（本番データには使わない）。フォントは web-typography スキルのルールでモックに最も近いものを選ぶ（英字見出しの幾何学サンセリフ、Pizza Night 等の筆記体、日本語の角ゴシック）。",
         "fixture でモックを再現する",
         "状態ごとのテストを書く"
       ],
       "done_definition": [
         "固定日時・固定データでモックと主要要素・配置が一致（check の比較手順に従う）",
-        "全状態のテストが通る"
+        "全状態のテストが通る",
+        "docs/design-diff/ に縦型・横型のモック比較画像と差分率があり、主要領域の差分が目視で判別できない水準"
       ],
       "verify_commands": [
         "npm run typecheck",
@@ -710,7 +716,8 @@
       "files_to_create": [
         "app/admin/layout.tsx",
         "app/admin/page.tsx",
-        "components/admin/**"
+        "components/admin/**",
+        "tests/visual/dashboard.spec.ts"
       ],
       "files_to_modify": [],
       "dependencies": [
@@ -721,12 +728,14 @@
         "task_014b"
       ],
       "implementation_steps": [
+        "デザインはモック（image/）への完全一致を目標にする（2026-09-24 ユーザー指示）。配置・余白・角丸・影・配色・文字サイズ・字間・アイコン・写真のトリミングまで合わせる。固定日時 2025-09-24(水)17:42 と tests/fixtures/config.fixture.ts の固定データで描画し、Playwright でモックと同じ解像度のスクリーンショットを撮り、モックと並べた比較画像と画素差分（pixelmatch）を docs/design-diff/ に保存して、差の大きい領域がなくなるまで直す。写真素材は開発用 fixture に限りモック画像から切り出して使ってよい（本番データには使わない）。フォントは web-typography スキルのルールでモックに最も近いものを選ぶ（英字見出しの幾何学サンセリフ、Pizza Night 等の筆記体、日本語の角ゴシック）。",
         "各カードをサービスにつなぐ"
       ],
       "done_definition": [
         "1280px 幅でモックの主要要素と一致",
         "空状態で崩れない",
-        "技術用語が出ない"
+        "技術用語が出ない",
+        "docs/design-diff/ にダッシュボードのモック比較画像と差分率があり、主要領域の差分が目視で判別できない水準"
       ],
       "verify_commands": [
         "npm run typecheck",
@@ -765,6 +774,7 @@
         "task_015"
       ],
       "implementation_steps": [
+        "デザインはモック（image/）への完全一致を目標にする（2026-09-24 ユーザー指示）。配置・余白・角丸・影・配色・文字サイズ・字間・アイコン・写真のトリミングまで合わせる。固定日時 2025-09-24(水)17:42 と tests/fixtures/config.fixture.ts の固定データで描画し、Playwright でモックと同じ解像度のスクリーンショットを撮り、モックと並べた比較画像と画素差分（pixelmatch）を docs/design-diff/ に保存して、差の大きい領域がなくなるまで直す。写真素材は開発用 fixture に限りモック画像から切り出して使ってよい（本番データには使わない）。フォントは web-typography スキルのルールでモックに最も近いものを選ぶ（英字見出しの幾何学サンセリフ、Pizza Night 等の筆記体、日本語の角ゴシック）。",
         "フォームを作る"
       ],
       "done_definition": [
@@ -808,6 +818,7 @@
         "task_015"
       ],
       "implementation_steps": [
+        "デザインはモック（image/）への完全一致を目標にする（2026-09-24 ユーザー指示）。配置・余白・角丸・影・配色・文字サイズ・字間・アイコン・写真のトリミングまで合わせる。固定日時 2025-09-24(水)17:42 と tests/fixtures/config.fixture.ts の固定データで描画し、Playwright でモックと同じ解像度のスクリーンショットを撮り、モックと並べた比較画像と画素差分（pixelmatch）を docs/design-diff/ に保存して、差の大きい領域がなくなるまで直す。写真素材は開発用 fixture に限りモック画像から切り出して使ってよい（本番データには使わない）。フォントは web-typography スキルのルールでモックに最も近いものを選ぶ（英字見出しの幾何学サンセリフ、Pizza Night 等の筆記体、日本語の角ゴシック）。",
         "画面を作る"
       ],
       "done_definition": [
@@ -851,6 +862,7 @@
         "task_015"
       ],
       "implementation_steps": [
+        "デザインはモック（image/）への完全一致を目標にする（2026-09-24 ユーザー指示）。配置・余白・角丸・影・配色・文字サイズ・字間・アイコン・写真のトリミングまで合わせる。固定日時 2025-09-24(水)17:42 と tests/fixtures/config.fixture.ts の固定データで描画し、Playwright でモックと同じ解像度のスクリーンショットを撮り、モックと並べた比較画像と画素差分（pixelmatch）を docs/design-diff/ に保存して、差の大きい領域がなくなるまで直す。写真素材は開発用 fixture に限りモック画像から切り出して使ってよい（本番データには使わない）。フォントは web-typography スキルのルールでモックに最も近いものを選ぶ（英字見出しの幾何学サンセリフ、Pizza Night 等の筆記体、日本語の角ゴシック）。",
         "画面を作る"
       ],
       "done_definition": [
@@ -890,6 +902,7 @@
         "task_015"
       ],
       "implementation_steps": [
+        "デザインはモック（image/）への完全一致を目標にする（2026-09-24 ユーザー指示）。配置・余白・角丸・影・配色・文字サイズ・字間・アイコン・写真のトリミングまで合わせる。固定日時 2025-09-24(水)17:42 と tests/fixtures/config.fixture.ts の固定データで描画し、Playwright でモックと同じ解像度のスクリーンショットを撮り、モックと並べた比較画像と画素差分（pixelmatch）を docs/design-diff/ に保存して、差の大きい領域がなくなるまで直す。写真素材は開発用 fixture に限りモック画像から切り出して使ってよい（本番データには使わない）。フォントは web-typography スキルのルールでモックに最も近いものを選ぶ（英字見出しの幾何学サンセリフ、Pizza Night 等の筆記体、日本語の角ゴシック）。",
         "画面を作る"
       ],
       "done_definition": [

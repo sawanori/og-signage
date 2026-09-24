@@ -292,10 +292,10 @@
     {
       "id": "check_037",
       "target": "回帰 モック一致",
-      "rule": "ダッシュボード・縦型・横型",
-      "expected_result": "固定日時 2025-09-24(水)17:42 と固定データで、各画面の主要要素（ヘッダー・時計・天気・今日のイベント・Upcoming・今週・お知らせ・ハウスルール・フッター／ダッシュボードの各カード）の有無と配置順がモックと一致。日付・人数などの値は 8.1 節の規則を正とする",
-      "manual_or_automated": "manual",
-      "verification_method": "スクリーンショットとモックを並べて確認"
+      "rule": "ダッシュボード・縦型・横型をモックと同じ解像度・固定日時・固定データで描画",
+      "expected_result": "配置・余白・配色・文字サイズ・アイコン・写真のトリミングがモックと一致。Playwright のスクリーンショットとモックの画素差分画像で、主要領域に目視で判別できる差がない",
+      "manual_or_automated": "automated",
+      "verification_method": "Playwright スクリーンショット + pixelmatch。比較画像を docs/design-diff/ に保存し目視確認"
     },
     {
       "id": "check_038",

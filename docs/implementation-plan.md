@@ -13,6 +13,8 @@
 3. 要件定義書の記述
 4. モックの配置・配色・文字組み（モック中の日付や人数などの値は例示であり、正としない）
 
+**デザインはモックへの完全一致を目標とする**（2026-09-24 ユーザー指示）。固定日時・固定データで描画したスクリーンショットをモックと画素単位で比較し、差を詰める。
+
 本計画と要件定義書が食い違う箇所は、要件定義書を本計画に合わせて改訂済み（21 節ポーリング間隔ほか。14 節末尾に一覧）。
 
 ## 1. Overview
@@ -182,7 +184,7 @@
 
 | メソッド・パス | 役割 |
 |---|---|
-| `GET /api/device/config` | 要件定義書 39 節の形。`schemaVersion`、`version`（SHA-256）、`events`（前日〜30 日後の公開分）、`notices`、`house`、`schedule`、`weather`、`playlist`（`mediaId`、`sha256`、`size`、`durationSeconds`）、`displayBundle`（`id`、`sha256`、`size`）、`device`（向き、音量）、`commands`（テスト表示）。`If-None-Match` 一致で 304 |
+| `GET /api/device/config` | 要件定義書 39 節の形。`schemaVersion`、`version`（SHA-256）、`events`（前日〜30 日後の公開分）、`notices`、`house`、`schedule`、`weather`、`playlist`（`mediaId`、`sha256`、`size`、`durationSeconds`）、`displayBundle`（`id`、`sha256`、`size`）、`device`（向き、音量）、`commands`（テスト表示）、`video`（`enabled`、`intervalMinutes`、`mode`）。画像参照は `{ mediaId, sha256, size }` のオブジェクトで `house.logo`・`house.footerImage`・`events[].image`・`notices[].image` に置く。`schedule[].weekday` は 0=日曜〜6=土曜。正確な型は `lib/config-schema.ts` を正とする。`If-None-Match` 一致で 304 |
 | `GET /api/device/media/[mediaId]` | R2 の中継。Range 対応。その端末の現行 config に含まれるものだけ |
 | `GET /api/device/bundles/[bundleId]` | 表示バンドル（zip）の中継 |
 | `POST /api/device/heartbeat` | `{ agentVersion, bundleId, appliedVersion, pendingVersion, mode, displayHealthy, nextVideoAt, lastVideoFinishedAt, timeSynced, diskFreeBytes, cpuTempC, memAvailableBytes }` |
