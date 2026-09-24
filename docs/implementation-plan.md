@@ -88,10 +88,11 @@
 
 - Next.js（App Router）+ React + TypeScript + Tailwind CSS + shadcn/ui + Lucide + React Hook Form + Zod + date-fns。vinext で Workers にデプロイ。
 - Turso は `@libsql/client` の Web 版で接続する。config の組み立ては読み取りトランザクション内で行う。
-- Cron Trigger: 天気取得（30 分ごと）、R2 削除予約の実行、未完了アップロードの掃除、古い `device_logs` の削除（毎日）。
-- 認証: Auth.js（Credentials、JWT）。JWT に `userId` と `sessionVersion` を載せ、保護操作ごとに DB の `is_active`・`role`・`session_version` と照合する。パスワードは Web Crypto の PBKDF2。task_002 で動かなければ署名付き Cookie の自前セッションへ切り替え、同じ試験をやり直す。
-- CSRF: Cookie は `SameSite=Lax; Secure; HttpOnly`。更新系の Route Handler は `Origin` が自サイトでなければ 403。Server Actions の Origin 検査が vinext で効くかを task_002 で試験する。
-- レート制限: ログインは IP とメールアドレス単位（Workers の Rate Limiting binding）。
+- Cron Trigger: 天気取得（30 分ごと）、R2 削除予約の実行、未完了アップロードの掃除、古い `device_logs` の削除（毎日）。`wrangler.jsonc` の `main` を `./worker/index.ts`（独自エントリ）にし、vinext の `fetch` に `scheduled` を足して公開する（task_002 で確認）。
+- 大きなファイルの中継（端末向けの媒体・バンドル、管理画面の動画）は `worker/index.ts` で vinext より前に処理し、R2 の本文をそのまま返す。vinext の Route Handler を通すと本文が JS で包み直され、500MB で CPU 17〜20 秒を使うため（task_002 実測。独自エントリでは CPU 0〜1ms）。アップロードのパート受信は Route Handler でよい（1 パート CPU 16〜44ms）。
+- 認証: Auth.js（`next-auth@5.0.0-beta.32`、Credentials、JWT）。JWT に `userId` と `sessionVersion` を載せ、保護操作ごとに DB の `is_active`・`role`・`session_version` と照合する（task_002 で Route Handler・Server Action とも動作確認済み）。パスワードは Web Crypto の PBKDF2（SHA-256、100,000 回。Workers は 100,000 回を超える反復に対応しない）。
+- CSRF: Cookie は `SameSite=Lax; Secure; HttpOnly`。更新系の Route Handler は `proxy.ts`（Next.js 16 での `middleware.ts` の名前）で `Origin` が自サイトでなければ 403（`Origin` なしも 403）。vinext は Route Handler の Origin を検査しない。Server Actions は vinext 本体が別 Origin を 403 にする（task_002 で確認）。
+- レート制限: ログインは IP とメールアドレス単位（Workers の Rate Limiting binding）。binding はマシンごとの概算で、接続が分かれると制限がかからないことがある（task_002）。同じメールアドレスへの連続失敗は DB の失敗回数でも止める。
 
 ### 表示ページ
 
@@ -218,13 +219,13 @@
 | `package.json`、`tsconfig.json`、`vite.config.ts`、`wrangler.jsonc`、`drizzle.config.ts`、`.github/workflows/ci.yml` | 作成 | 基盤・CI | 中 |
 | `db/schema.ts`、`db/index.ts`、`db/migrations/**`、`db/seed.ts` | 作成 | スキーマ | 中 |
 | `lib/config-schema.ts`、`lib/display-rules.ts`、`lib/dates.ts` | 作成 | config の型と業務規則 | 高 |
-| `lib/auth.ts`、`lib/password.ts`、`lib/csrf.ts`、`lib/rate-limit.ts`、`middleware.ts` | 作成 | 認証・権限・CSRF | 高 |
+| `lib/auth.ts`、`lib/password.ts`、`lib/csrf.ts`、`lib/rate-limit.ts`、`proxy.ts` | 作成 | 認証・権限・CSRF | 高 |
 | `lib/r2.ts`、`lib/services/*.ts`、`lib/validators.ts`、`lib/device-auth.ts`、`lib/config-builder.ts`、`lib/weather.ts`、`lib/file-sniff.ts` | 作成 | サービス層 | 高 |
 | `app/api/**/route.ts` | 作成 | 9 節の API | 高 |
 | `app/login/**`、`app/admin/**` | 作成 | 管理画面 | 中 |
 | `components/signage/**`、`components/admin/**`、`components/ui/**` | 作成 | 部品 | 中〜高 |
 | `display/**` | 作成 | Pi 用バンドル | 高 |
-| `worker/scheduled.ts` | 作成 | Cron | 中 |
+| `worker/index.ts`、`worker/scheduled.ts` | 作成 | Worker の入口（vinext・大きなファイルの中継・Cron） | 中 |
 | `scripts/create-admin.ts`、`scripts/publish-display-bundle.ts`、`scripts/backup-db.sh` | 作成 | 運用 | 中 |
 | `raspberry-pi/agent/*.py`、`raspberry-pi/tests/*.py` | 作成 | Agent | 高 |
 | `raspberry-pi/systemd/*`、`raspberry-pi/install.sh`、`raspberry-pi/update.sh`、`raspberry-pi/os/*` | 作成 | 導入・更新・OS 設定 | 高 |
