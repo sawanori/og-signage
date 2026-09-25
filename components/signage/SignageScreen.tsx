@@ -22,8 +22,13 @@ export const CANVAS_SIZE: Record<Orientation, { width: number; height: number }>
   landscape: { width: 1920, height: 1080 },
 };
 
-/** fillHeight のとき横型を縦に伸ばす上限（4:3 まで）。それより縦長のウィンドウでは上下に帯が残る */
+/** fillWindow のとき横型を縦に伸ばす上限（4:3 まで）。それより縦長のウィンドウでは上下に帯が残る */
 const LANDSCAPE_MAX_HEIGHT = 1440;
+/**
+ * fillWindow のとき横型を横に伸ばす上限（21:9 まで）。それより横長のウィンドウでは左右に帯が残る。
+ * 16:9 の画面でブラウザを最大化すると、タブやアドレスバーのぶん表示領域は 2:1 ほどの横長になる（2026-09-25 ユーザー指示）
+ */
+const LANDSCAPE_MAX_WIDTH = 2520;
 
 export type SignageScreenProps = {
   config: SignageConfig;
@@ -39,10 +44,11 @@ export type SignageScreenProps = {
   /** true（既定）で画面いっぱいに拡大縮小。false はキャンバス原寸（テスト・プレビュー用） */
   fit?: boolean;
   /**
-   * true なら、ウィンドウが 16:9 より縦長のとき横型を縦に伸ばし、上下の黒い帯を出さない。伸びた分は大きな枠に回す。
+   * true なら、横型をウィンドウの形に合わせて伸ばし、黒い帯を出さない。16:9 より縦長なら縦に伸ばして大きな枠に回し、
+   * 横長なら横に伸ばして大きな枠と下段の 3 つの欄に回す（右の列・右上の箱・フッターの右側は右端に付いたまま動く）。
    * Web 公開のサイネージ用。端末（Pi）と管理画面のプレビューは端末の画面どおり 16:9 のまま
    */
-  fillHeight?: boolean;
+  fillWindow?: boolean;
 };
 
 export function SignageScreen({
@@ -53,17 +59,18 @@ export function SignageScreen({
   timeSynced = true,
   fading = false,
   fit = true,
-  fillHeight = false,
+  fillWindow = false,
 }: SignageScreenProps) {
   const view = buildView(config, now, timeSynced);
   const size = CANVAS_SIZE[orientation];
-  // ScaledCanvas が縦に伸ばした分（--canvas-extra）だけ高くする。伸ばさないときは 0
+  // ScaledCanvas が伸ばした分（縦 --canvas-extra・横 --canvas-extra-x）だけ大きくする。伸ばさないときは 0
+  const canvasWidth = `calc(${size.width}px + var(--canvas-extra-x, 0px))`;
   const canvasHeight = `calc(${size.height}px + var(--canvas-extra, 0px))`;
 
   const content = view.visible ? (
     <div
       className={styles.canvas}
-      style={{ width: size.width, height: canvasHeight }}
+      style={{ width: canvasWidth, height: canvasHeight }}
       data-orientation={orientation}
       data-testid="signage-canvas"
     >
@@ -79,7 +86,7 @@ export function SignageScreen({
     // 表示時間外。HDMI 出力を切れない端末ではこの黒画面が見える
     <div
       className={styles.off}
-      style={{ width: size.width, height: canvasHeight }}
+      style={{ width: canvasWidth, height: canvasHeight }}
       data-orientation={orientation}
       data-testid="signage-off"
       aria-label={COPY.offHours}
@@ -90,7 +97,8 @@ export function SignageScreen({
     <ScaledCanvas
       width={size.width}
       height={size.height}
-      maxHeight={fillHeight && orientation === "landscape" ? LANDSCAPE_MAX_HEIGHT : size.height}
+      maxWidth={fillWindow && orientation === "landscape" ? LANDSCAPE_MAX_WIDTH : size.width}
+      maxHeight={fillWindow && orientation === "landscape" ? LANDSCAPE_MAX_HEIGHT : size.height}
     >
       {content}
     </ScaledCanvas>

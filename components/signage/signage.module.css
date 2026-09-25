@@ -935,6 +935,11 @@
 }
 
 /* ---------------------------------------------------------------- 横型 */
+/*
+ * Web 公開で横長のウィンドウに合わせて横に伸ばしたとき（--canvas-extra-x。components/signage/ScaledCanvas.tsx）は、
+ * 伸びた幅を大きな枠に回し、右の列（UPCOMING）・右上の箱・添え書きはその分だけ右へずらす。
+ * 下段の 3 つの欄は 3 等分して広げ、フッターは右側（キャッチコピーと QR・ロゴ）だけが広がる。伸ばさないときは 0
+ */
 
 .landscape {
   position: absolute;
@@ -955,7 +960,7 @@
   position: absolute;
   left: 0;
   top: 0;
-  width: 1920px;
+  width: calc(1920px + var(--canvas-extra-x, 0px));
   height: 138px;
   background: linear-gradient(to bottom, #e7e2dc, #efebe7);
 }
@@ -1008,7 +1013,7 @@
 
 .lScript {
   position: absolute;
-  left: 1134px;
+  left: calc(1134px + var(--canvas-extra-x, 0px));
   top: 76px;
   display: flex;
   flex-direction: column;
@@ -1025,14 +1030,14 @@
 /* 手書き風のタグラインの下線。2 行目（You Love）の終わりの下に置く（Better Days より短いので左下へ寄せた） */
 .lScriptLine {
   position: absolute;
-  left: 1256px;
+  left: calc(1256px + var(--canvas-extra-x, 0px));
   top: 113px;
 }
 
 /* 右上の箱。キャッチコピー（ヘッダー用）を上下の中央に置く */
 .lBox {
   position: absolute;
-  left: 1533px;
+  left: calc(1533px + var(--canvas-extra-x, 0px));
   top: 0;
   width: 387px;
   height: 157px;
@@ -1058,7 +1063,7 @@
   position: absolute;
   left: 0;
   top: 138px;
-  width: 1331px;
+  width: calc(1331px + var(--canvas-extra-x, 0px));
   height: calc(668px + var(--canvas-extra, 0px));
   border-top-right-radius: 16px;
   overflow: hidden;
@@ -1262,7 +1267,7 @@
 
 .lCatch {
   position: absolute;
-  left: 1022px;
+  left: calc(1022px + var(--canvas-extra-x, 0px));
   top: 92px;
   display: flex;
   flex-direction: column;
@@ -1299,7 +1304,7 @@
 /* 縦に伸ばしたときは、行の間隔を広げて大きな枠と下端をそろえる（5 行で間は 4 つ） */
 .lUpcoming {
   position: absolute;
-  left: 1368px;
+  left: calc(1368px + var(--canvas-extra-x, 0px));
   top: 220px;
   width: 516px;
   height: calc(586px + var(--canvas-extra, 0px));
@@ -1416,7 +1421,7 @@
   position: absolute;
   left: 0;
   top: var(--canvas-extra, 0px);
-  width: 1920px;
+  width: calc(1920px + var(--canvas-extra-x, 0px));
   height: 1080px;
 }
 
@@ -1424,7 +1429,7 @@
   position: absolute;
   left: 0;
   top: 806px;
-  width: 1920px;
+  width: calc(1920px + var(--canvas-extra-x, 0px));
   height: 190px;
   background: linear-gradient(to bottom, #efece8, #ebe7e2);
 }
@@ -1441,7 +1446,7 @@
   position: absolute;
   left: 45px;
   top: 874px;
-  width: 522px;
+  width: calc(522px + var(--canvas-extra-x, 0px) / 3);
   height: 108px;
   border-radius: 16px;
   background: #f3f2f0;
@@ -1494,9 +1499,9 @@
 
 .lWeek {
   position: absolute;
-  left: 616px;
+  left: calc(616px + var(--canvas-extra-x, 0px) / 3);
   top: 874px;
-  width: 650px;
+  width: calc(650px + var(--canvas-extra-x, 0px) / 3);
   height: 108px;
   border-radius: 16px;
   background: #f3f2f1;
@@ -1562,9 +1567,9 @@
 
 .lRules {
   position: absolute;
-  left: 1313px;
+  left: calc(1313px + var(--canvas-extra-x, 0px) * 2 / 3);
   top: 874px;
-  width: 571px;
+  width: calc(571px + var(--canvas-extra-x, 0px) / 3);
   height: 108px;
   display: flex;
   gap: 10px;
@@ -1617,7 +1622,7 @@
   position: absolute;
   left: 0;
   top: 996px;
-  width: 1920px;
+  width: calc(1920px + var(--canvas-extra-x, 0px));
   height: 84px;
   background: #1b2023;
   color: #f2f2f2;
@@ -1716,7 +1721,7 @@
 .lFooterCopy {
   position: absolute;
   left: 860px;
-  width: 660px;
+  width: calc(660px + var(--canvas-extra-x, 0px));
   top: 6px;
   height: 72px;
   display: flex;

@@ -3,7 +3,7 @@
  *   /dev/signage?orientation=portrait|landscape&state=<状態>
  * 状態: today（既定。モックと同じ）/ starting-soon / now-happening / next（今日のイベントなし。明日以降を流す）/ no-event / off / fade / unsynced /
  *       no-image / long
- * &fill=1 で Web 公開のサイネージと同じく、ウィンドウに合わせて横型を縦に伸ばす（fillHeight）
+ * &fill=1 で Web 公開のサイネージと同じく、ウィンドウに合わせて横型を縦・横に伸ばす（fillWindow）
  * &house=wework で本番に近いヘッダー（ロゴ未設定で WeWork のロゴ・ハウス名 OCEAN GATE MINATOMIRAI・本番のキャッチコピー）
  * &member=sample でメンバー情報に見出しつきの見本（見出しの見た目の確認用）
  * &footerqr=sample でフッターの QR に見本の URL（未指定なら QR の場所は枠だけ）
@@ -135,7 +135,7 @@ export default async function DevSignagePage({
       orientation={orientation}
       timeSynced={s.timeSynced}
       fading={s.fading}
-      fillHeight={params.fill === "1"}
+      fillWindow={params.fill === "1"}
     />
   );
 }

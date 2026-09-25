@@ -6,7 +6,7 @@
  * - 縦横は ?layout で固定しなければ、見ている画面（ウィンドウ）の向きに合わせる。
  * - 画像は公開用の中継（/api/signage/media/<mediaId>）で読む。
  * - 全画面のボタンは置かない（2026-09-25 ユーザー指示で削除）。Pi では Chromium を --kiosk で起動して全画面にする。
- * - ウィンドウが 16:9 より縦長なら横型を縦に伸ばし、上下の黒い帯を出さない（fillHeight）。
+ * - 横型はウィンドウの形に合わせて縦（4:3 まで）にも横（21:9 まで）にも伸ばし、黒い帯を出さない（fillWindow）。
  * - 管理画面の「定期動画の設定」どおりに動画を流す（video-player.tsx。Pi のブラウザで開いて使うため）。
  */
 import { useEffect, useState, useSyncExternalStore } from "react";
@@ -75,7 +75,7 @@ export function PublicSignage({
         resolveMediaUrl={resolveMediaUrl}
         orientation={layout ?? viewport ?? config.device.orientation}
         fading={fading}
-        fillHeight
+        fillWindow
       />
       <VideoPlayer deviceId={deviceId} config={config} resolveMediaUrl={resolveMediaUrl} onFadingChange={setFading} />
     </>

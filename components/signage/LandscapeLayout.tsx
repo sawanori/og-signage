@@ -25,6 +25,9 @@ import { WEWORK_LOGO_DARK_SRC, WEWORK_LOGO_SRC } from "./wework-logo";
 
 type Props = { config: SignageConfig; view: SignageView; resolveMediaUrl: ResolveMediaUrl };
 
+/** 1920px 基準の横位置に、横に伸ばした幅（--canvas-extra-x）の share 倍を足す（signage.module.css の横型の説明） */
+const stretchX = (px: number, share: number) => `calc(${px}px + var(--canvas-extra-x, 0px) * ${share})`;
+
 export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
   const { house } = config;
   const footer = splitFooterCopy(house.footerCopy);
@@ -62,7 +65,7 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
       <Hero hero={view.hero} config={config} resolveMediaUrl={resolveMediaUrl} />
 
       {/* Upcoming */}
-      <div className={styles.lSectionTitle} style={{ left: 1372, top: 179 }}>
+      <div className={styles.lSectionTitle} style={{ left: stretchX(1372, 1), top: 179 }}>
         <span className={styles.lSectionEn}>{COPY.upcoming.en}</span>
         <span className={styles.lSectionJa}>{COPY.upcoming.ja}</span>
       </div>
@@ -100,9 +103,9 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
             <div className={styles.pEmpty}>{COPY.noNotice}</div>
           )}
         </div>
-        <div className={styles.lDivider} style={{ left: 592 }} />
+        <div className={styles.lDivider} style={{ left: stretchX(592, 1 / 3) }} />
 
-        <div className={styles.lSectionTitle} style={{ left: 618, top: 833 }}>
+        <div className={styles.lSectionTitle} style={{ left: stretchX(618, 1 / 3), top: 833 }}>
           <span className={styles.lSectionEn}>{COPY.week.en}</span>
           <span className={styles.lSectionJa}>{COPY.week.ja}</span>
         </div>
@@ -129,9 +132,9 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
             );
           })}
         </div>
-        <div className={styles.lDivider} style={{ left: 1290 }} />
+        <div className={styles.lDivider} style={{ left: stretchX(1290, 2 / 3) }} />
 
-        <div className={styles.lSectionTitle} style={{ left: 1317, top: 833 }}>
+        <div className={styles.lSectionTitle} style={{ left: stretchX(1317, 2 / 3), top: 833 }}>
           <span className={styles.lSectionEn}>{COPY.rules.en}</span>
           <span className={styles.lSectionJa}>{COPY.rules.ja}</span>
         </div>
