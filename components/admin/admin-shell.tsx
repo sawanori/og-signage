@@ -34,12 +34,6 @@ export function AdminShell({
           </div>
         </div>
         <SidebarNav role={shell.user.role} currentPath={currentPath} />
-        <div className={styles.sideCard}>
-          {shell.sidebarImageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img className={styles.sideCardImage} src={shell.sidebarImageUrl} alt="" />
-          ) : null}
-        </div>
         <p className={styles.sideFooter}>{ADMIN_BRAND}</p>
       </aside>
 

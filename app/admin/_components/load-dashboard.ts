@@ -35,8 +35,6 @@ export async function loadShell(db: Db, user: AuthUser, now: number): Promise<Sh
             ? `端末「${d.name}」と通信できていません`
             : `端末「${d.name}」の表示に異常があります`,
       })),
-    // サイドバー下のカードの写真（管理画面の固定の飾り。GPT Image 2 で生成）
-    sidebarImageUrl: "/images/sidebar-plant.jpg",
   };
 }
 

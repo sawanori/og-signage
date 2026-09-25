@@ -95,7 +95,6 @@ export function fixtureShell(role: Role): ShellData {
   return {
     user: { name: "Saki", role, avatarUrl: photo("avatar") },
     alerts: [],
-    sidebarImageUrl: photo("sidebar-plant"),
   };
 }
 

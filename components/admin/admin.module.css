@@ -143,24 +143,9 @@
   stroke-width: 1.7;
 }
 
-.sideCard {
-  position: relative;
-  margin-top: auto;
-  height: 288px;
-  border-radius: 14px;
-  overflow: hidden;
-  background: linear-gradient(180deg, #eef3fa 0%, #eef3fa 55%, #e3e6ec 100%);
-}
-
-.sideCardImage {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
+/* サイドバーの下端（写真のカードは 2026-09-25 ユーザー指示で削除。下端へ寄せるのはこの行の margin-top） */
 .sideFooter {
+  margin-top: auto;
   height: 71px;
   padding-top: 23px;
   text-align: center;

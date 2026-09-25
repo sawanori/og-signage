@@ -26,8 +26,6 @@ export type ShellAlert = { id: string; message: string };
 export type ShellData = {
   user: ShellUser;
   alerts: ShellAlert[];
-  /** サイドバー下のカードの写真。無ければ写真なしで描く */
-  sidebarImageUrl: string | null;
 };
 
 /** 表示の業務規則（lib/display-rules.ts）をそのまま使えるよう SignageEvent に画像 URL を足した形 */
