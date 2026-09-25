@@ -225,7 +225,7 @@ describe("GET /api/device/config", () => {
     expect(config.device).toEqual({ orientation: "portrait", width: 1080, height: 1920, volume: 0 });
     expect(config.house.rules).toHaveLength(3);
     expect(config.weather).toBeNull();
-    expect(config.commands).toEqual({ testPlayRequestedAt: null });
+    expect(config.commands).toEqual({ testPlayRequestedAt: null, testPlayMediaId: null });
 
     const configB = await fetchConfig(tokenB);
     expect(configB.playlist.map((p) => p.mediaId)).toEqual(["vid_b"]);

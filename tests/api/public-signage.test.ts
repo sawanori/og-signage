@@ -18,6 +18,7 @@ const state = vi.hoisted(() => ({ db: null as unknown as Db }));
 vi.mock("../../lib/runtime", () => ({ getDb: () => state.db }));
 
 const { GET: getPublicConfig } = await import("../../app/api/signage/config/route");
+const { GET: getPublicCommands } = await import("../../app/api/signage/commands/route");
 
 class FakeBucket implements Pick<MediaBucket, "get" | "head"> {
   objects = new Map<string, Uint8Array>();
@@ -133,6 +134,21 @@ describe("GET /api/signage/config（ログイン不要）", () => {
     const config = (await (await fetchConfig()).json()) as SignageConfig;
     expect(config.events.find((e) => e.id === "ev_pub")?.qrUrl).toBe(`${BASE}/events/ev_pub`);
     expect(config.events.find((e) => e.id === "ev_link")?.qrUrl).toBe("https://example.org/x");
+  });
+
+  it("テスト表示の要求だけを返す軽い応答（/api/signage/commands）。管理画面で動画を選んで押すと、その動画が入る", async () => {
+    const res = await getPublicCommands(new Request(`${BASE}/api/signage/commands`));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ testPlayRequestedAt: null, testPlayMediaId: null });
+    expect(res.headers.get("cache-control")).toBe("no-store");
+
+    await db.update(devices).set({ testPlayRequestedAt: 1_800_000_000, testPlayMediaId: "vid_a" }).where(eq(devices.id, deviceA));
+    const after = await getPublicCommands(new Request(`${BASE}/api/signage/commands?device=${deviceA}`));
+    expect(await after.json()).toEqual({ testPlayRequestedAt: 1_800_000_000, testPlayMediaId: "vid_a" });
+    const config = (await (await fetchConfig()).json()) as SignageConfig;
+    expect(config.commands).toEqual({ testPlayRequestedAt: 1_800_000_000, testPlayMediaId: "vid_a" });
+
+    expect((await getPublicCommands(new Request(`${BASE}/api/signage/commands?device=nope`))).status).toBe(404);
   });
 
   it("表示バンドルが未公開なら 503", async () => {

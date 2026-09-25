@@ -7,6 +7,8 @@
  * - 次の 1 本は隠した <video preload="auto"> で先に読み込み、時刻になったら canplaythrough を待つ
  *   （20 秒で間に合わなければ今回は見送り、次の間隔で再試行）。
  * - 表示を 600ms で黒へ溶かしてから（SignageScreen の fading）動画を画面いっぱいに出し、終わったら表示に戻す。
+ * - テスト表示（管理画面のボタン）は、数秒ごとに /api/signage/commands を確かめてすぐ流す。動画を選んで押したときは
+ *   その動画を読み込んでから流す（順番の位置は進めない）。定期動画が OFF でも表示時間内なら流す（試せるように）。
  * - 音量は端末の設定（device.volume）。自動再生を断られたらミュートで流し直す（Pi の Chromium は
  *   --autoplay-policy=no-user-gesture-required で起動すれば音も出せる）。
  * - 流せなかった動画（error・長さ＋10 秒を過ぎても終わらない）はその日（日本時間）は外す。
@@ -19,12 +21,16 @@ import {
   consumeTestPlay,
   excludeForToday,
   isVideoDue,
+  newerCommands,
   parseVideoMemory,
+  pickTestVideo,
   selectNextVideo,
   type VideoMemory,
 } from "@/lib/web-video-schedule";
 
 const TICK_MS = 1000;
+/** テスト表示の要求を確かめる間隔（config 全体は 30 秒ごと） */
+const COMMANDS_POLL_MS = 3000;
 const FADE_MS = 600;
 const READY_TIMEOUT_MS = 20_000;
 /** 動画の長さをこれだけ過ぎても終わらなければ、止まったとみなす */
@@ -113,6 +119,8 @@ export function VideoPlayer({
   const configRef = useRef(config);
   const resolveRef = useRef(resolveMediaUrl);
   const fadingRef = useRef(onFadingChange);
+  // 数秒ごとに確かめているテスト表示の要求
+  const commandsRef = useRef<SignageConfig["commands"] | null>(null);
   const [src, setSrc] = useState<string | null>(null);
   const [shown, setShown] = useState(false);
 
@@ -179,6 +187,13 @@ export function VideoPlayer({
       }
     };
 
+    const upcomingOf = (pick: { item: PlaylistItem; memory: VideoMemory } | null) =>
+      pick
+        ? { item: pick.item, next: { sequenceIndex: pick.memory.sequenceIndex, lastPlayedMediaId: pick.memory.lastPlayedMediaId } }
+        : null;
+    // テスト表示で流す 1 本を <video> に付けた。次の周期で流す（src が付いてから）
+    let playTestNext = false;
+
     const tick = () => {
       if (busy) return;
       const cfg = configRef.current;
@@ -186,30 +201,44 @@ export function VideoPlayer({
       const visible = isWithinDisplaySchedule(cfg.schedule, now, true);
       if (visible && !wasVisible) windowStartedAt = now;
       wasVisible = visible;
-
       const playlist = cfg.playlist;
-      const active = cfg.video.enabled && playlist.length > 0 && visible;
-      if (active) {
-        // 次の 1 本を決めて先に読み込んでおく（プレイリストから外れたら選び直す）。
-        // 選び直した周期では流さない（<video> に新しい src が付いてから、次の周期で判断する）
-        const pending = upcoming;
-        if (!pending || !playlist.some((p) => p.mediaId === pending.item.mediaId)) {
-          const pick = selectNextVideo(playlist, cfg.video.mode, memory, now);
-          upcoming = pick
-            ? { item: pick.item, next: { sequenceIndex: pick.memory.sequenceIndex, lastPlayedMediaId: pick.memory.lastPlayedMediaId } }
-            : null;
-          setSrc(pick ? resolveRef.current(pick.item) : null);
-          if (pick) return;
+
+      if (playTestNext) {
+        playTestNext = false;
+        if (upcoming) {
+          void playOnce(upcoming.item, upcoming.next);
+          return;
         }
       }
 
-      // テスト表示の要求は、流さない状態（無効・動画なし・表示時間外）でも消費する（Pi と同じ）
-      const test = consumeTestPlay(cfg.commands.testPlayRequestedAt, memory.lastTestPlayProcessedAt);
+      // テスト表示: 要求は流さない状態（動画なし・表示時間外）でも消費する（Pi と同じ）。定期動画が OFF でも流す
+      const commands = newerCommands(cfg.commands, commandsRef.current);
+      const test = consumeTestPlay(commands.testPlayRequestedAt, memory.lastTestPlayProcessedAt);
       if (test.processedAt !== memory.lastTestPlayProcessedAt) remember({ ...memory, lastTestPlayProcessedAt: test.processedAt });
+      if (test.play && visible && playlist.length > 0) {
+        const pick = upcomingOf(pickTestVideo(playlist, commands.testPlayMediaId, cfg.video.mode, memory, now));
+        if (pick) {
+          upcoming = pick;
+          setSrc(resolveRef.current(pick.item));
+          playTestNext = true;
+          return;
+        }
+      }
 
-      if (!active || !upcoming) {
+      const active = cfg.video.enabled && playlist.length > 0 && visible;
+      if (!active) {
         upcoming = null;
         setSrc(null);
+        return;
+      }
+
+      // 次の 1 本を決めて先に読み込んでおく（プレイリストから外れたら選び直す）。
+      // 選び直した周期では流さない（<video> に新しい src が付いてから、次の周期で判断する）
+      const pending = upcoming;
+      if (!pending || !playlist.some((p) => p.mediaId === pending.item.mediaId)) {
+        const pick = selectNextVideo(playlist, cfg.video.mode, memory, now);
+        upcoming = upcomingOf(pick);
+        setSrc(pick ? resolveRef.current(pick.item) : null);
         return;
       }
 
@@ -218,12 +247,12 @@ export function VideoPlayer({
         playlistLength: playlist.length,
         visible,
         now,
-        testPlay: test.play,
+        testPlay: false,
         startedAt,
         lastVideoFinishedAt: lastFinishedAt,
         displayWindowStartedAt: windowStartedAt,
       });
-      if (due) void playOnce(upcoming.item, upcoming.next);
+      if (due) void playOnce(pending.item, pending.next);
     };
 
     const timer = setInterval(tick, TICK_MS);
@@ -231,6 +260,19 @@ export function VideoPlayer({
       clearInterval(timer);
       abort.abort();
     };
+  }, [deviceId]);
+
+  useEffect(() => {
+    const url = `/api/signage/commands?device=${encodeURIComponent(deviceId)}`;
+    const timer = setInterval(async () => {
+      try {
+        const res = await fetch(url, { cache: "no-store" });
+        if (res.ok) commandsRef.current = (await res.json()) as SignageConfig["commands"];
+      } catch {
+        // 通信できないときは次の周期でまた確かめる
+      }
+    }, COMMANDS_POLL_MS);
+    return () => clearInterval(timer);
   }, [deviceId]);
 
   if (!src) return null;

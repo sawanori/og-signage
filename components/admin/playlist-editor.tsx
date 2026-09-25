@@ -11,7 +11,7 @@ import { Check, CircleAlert, CircleHelp, GripVertical, Play, Plus, X } from "luc
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition, type KeyboardEvent } from "react";
-import { saveDevicePlaybackAction } from "@/app/admin/_actions/playback";
+import { requestTestPlayAction, saveDevicePlaybackAction } from "@/app/admin/_actions/playback";
 import { VIDEO_INTERVAL_MINUTES } from "@/lib/config-schema";
 import { MAX_VIDEOS } from "@/lib/file-sniff";
 import admin from "./admin.module.css";
@@ -109,6 +109,18 @@ function VideosForm({
     ]);
     setNotice(null);
   };
+
+  // 実際のサイネージでこの動画を画面いっぱいに流す（2026-09-25 ユーザー指示）。保存済みの再生リストにある動画だけ
+  const [testing, startTesting] = useTransition();
+  const testPlay = (entry: Entry) =>
+    startTesting(async () => {
+      const result = await requestTestPlayAction(data.deviceId, entry.mediaId);
+      setNotice(
+        result.ok
+          ? { tone: "info", text: `「${entry.name}」をサイネージで再生します（数秒で始まります）` }
+          : { tone: "error", text: result.error.message },
+      );
+    });
 
   const removeEntry = (key: string) => {
     setEntries((prev) => prev.filter((e) => e.key !== key));
@@ -254,6 +266,16 @@ function VideosForm({
                         {entry.itemId === null ? <span className={styles.unsaved}>未保存</span> : null}
                       </p>
                     </div>
+                    <button
+                      type="button"
+                      className={styles.removeButton}
+                      disabled={pending || testing || entry.itemId === null}
+                      title={entry.itemId === null ? "保存してから再生できます" : "実際のサイネージで、この動画を画面いっぱいに流します"}
+                      onClick={() => testPlay(entry)}
+                    >
+                      <Play size={12} fill="currentColor" strokeWidth={0} aria-hidden />
+                      サイネージで再生
+                    </button>
                     <button
                       type="button"
                       className={styles.removeButton}

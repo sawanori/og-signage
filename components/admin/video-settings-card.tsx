@@ -8,10 +8,10 @@ import { Check, CircleHelp, Play, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { updateDevicePlaybackSettingsAction } from "@/app/admin/_actions/playback";
+import { requestTestPlayAction, updateDevicePlaybackSettingsAction } from "@/app/admin/_actions/playback";
 import { VIDEO_INTERVAL_MINUTES } from "@/lib/config-schema";
 import styles from "./admin.module.css";
-import type { DashboardVideoSettings } from "./dashboard-types";
+import type { DashboardVideo, DashboardVideoSettings } from "./dashboard-types";
 import { formatDuration, formatHm } from "./format";
 
 const HELP =
@@ -45,6 +45,20 @@ function nextVideoText(video: DashboardVideoSettings): string {
 function VideoSettingsForm({ video }: { video: DashboardVideoSettings }) {
   const [settings, setSettings] = useState(video);
   const [error, setError] = useState<string | null>(null);
+  // サムネイルを押して「サイネージで再生」を頼んだ結果（数秒で消す）
+  const [testMessage, setTestMessage] = useState<{ text: string; error: boolean } | null>(null);
+  const [testing, startTesting] = useTransition();
+
+  const testPlay = (v: DashboardVideo) =>
+    startTesting(async () => {
+      const result = await requestTestPlayAction(settings.deviceId, v.mediaId);
+      setTestMessage(
+        result.ok
+          ? { text: `「${v.name}」をサイネージで再生します`, error: false }
+          : { text: result.error.message, error: true },
+      );
+      setTimeout(() => setTestMessage(null), 6000);
+    });
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -91,7 +105,13 @@ function VideoSettingsForm({ video }: { video: DashboardVideoSettings }) {
       </div>
       <p className={styles.cardSub}>
         <span>設定した間隔で、イベントの合間に動画を再生します。</span>
-        <span className={styles.nextVideo}>{nextVideoText(settings)}</span>
+        {testMessage ? (
+          <span className={styles.nextVideo} data-tone={testMessage.error ? "error" : "info"} role="status">
+            {testMessage.text}
+          </span>
+        ) : (
+          <span className={styles.nextVideo}>{nextVideoText(settings)}</span>
+        )}
       </p>
       <div className={styles.videoLabelRow}>
         <p className={styles.fieldLabel}>
@@ -117,7 +137,15 @@ function VideoSettingsForm({ video }: { video: DashboardVideoSettings }) {
         ) : (
           settings.videos.slice(0, 3).map((v) => (
             <div key={v.mediaId} className={styles.videoItem}>
-              <div className={styles.videoThumb}>
+              {/* 押すと、実際のサイネージでこの動画を画面いっぱいに流す（2026-09-25 ユーザー指示） */}
+              <button
+                type="button"
+                className={`${styles.videoThumb} ${styles.videoThumbButton}`}
+                title="サイネージで再生"
+                aria-label={`${v.name} をサイネージで再生`}
+                disabled={testing}
+                onClick={() => testPlay(v)}
+              >
                 {v.thumbnailUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={v.thumbnailUrl} alt="" />
@@ -125,7 +153,7 @@ function VideoSettingsForm({ video }: { video: DashboardVideoSettings }) {
                 <span className={styles.playMark} aria-hidden>
                   <Play size={11} fill="currentColor" strokeWidth={0} />
                 </span>
-              </div>
+              </button>
               <p className={styles.videoName} title={v.name}>
                 {v.name}
               </p>

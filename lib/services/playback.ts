@@ -7,7 +7,8 @@
  *   条件付き更新。音量は devices.volume にあるので、同じ更新で一緒に保存する。
  * - playable=false・state=deleting・type≠video の媒体はプレイリストに追加できない。
  * - テスト表示の要求は devices.test_play_requested_at に現在時刻を入れるだけ（1 回限りの消費は
- *   Pi 側・config-builder 側の責務）。
+ *   Pi 側・表示側の責務）。動画を選んで押したときは devices.test_play_media_id にその動画も入れる
+ *   （その端末の再生リストにある動画だけ。Web 版はその動画を流す。2026-09-25 ユーザー指示）。
  * - content_version のような版の加算は行わない。config の版は config JSON の SHA-256 で決まる。
  * - 画面の「保存する」は saveDevicePlayback でプレイリストと再生設定を 1 トランザクションで丸ごと保存する。
  * - 権限（Staff 以上）は呼び出し側（app/admin/_actions/playback.ts）で確認する。
@@ -355,14 +356,33 @@ export async function saveDevicePlayback(db: Db, deviceId: string, input: unknow
 
 // ---------------------------------------------------------------- テスト表示
 
-/** 対象端末が次の同期で次の動画を1本すぐ再生する（1回限り）。消費は Pi・config-builder 側の責務 */
-export async function requestTestPlay(db: Db, deviceId: string): Promise<{ testPlayRequestedAt: number }> {
+/**
+ * 対象端末がすぐ動画を 1 本再生する（1 回限り）。mediaId を渡せばその動画、無ければ再生リストの次の 1 本。
+ * mediaId はその端末の再生リストにある動画だけ（サイネージが読める動画は再生リストのものだけのため）。消費は表示側の責務
+ */
+export async function requestTestPlay(
+  db: Db,
+  deviceId: string,
+  mediaId: string | null = null,
+): Promise<{ testPlayRequestedAt: number; testPlayMediaId: string | null }> {
+  if (mediaId !== null) {
+    const { settings } = await loadDeviceAndSettings(db, deviceId);
+    const [inList] = settings.playlistId
+      ? await db
+          .select({ id: playlistItems.id })
+          .from(playlistItems)
+          .where(and(eq(playlistItems.playlistId, settings.playlistId), eq(playlistItems.mediaId, mediaId)))
+      : [];
+    if (!inList) {
+      throw new PlaybackServiceError("invalid_media", "この動画は再生リストにありません。再生リストに入れて保存してからお試しください");
+    }
+  }
   const now = nowSeconds();
   const [updated] = await db
     .update(devices)
-    .set({ testPlayRequestedAt: now, updatedAt: now })
+    .set({ testPlayRequestedAt: now, testPlayMediaId: mediaId, updatedAt: now })
     .where(eq(devices.id, deviceId))
-    .returning({ testPlayRequestedAt: devices.testPlayRequestedAt });
+    .returning({ testPlayRequestedAt: devices.testPlayRequestedAt, testPlayMediaId: devices.testPlayMediaId });
   if (!updated) throw deviceNotFound();
-  return { testPlayRequestedAt: updated.testPlayRequestedAt! };
+  return { testPlayRequestedAt: updated.testPlayRequestedAt!, testPlayMediaId: updated.testPlayMediaId };
 }

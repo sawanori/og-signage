@@ -136,6 +136,8 @@ export const devices = sqliteTable("devices", {
   /** 0〜100。初期値 0（ミュート） */
   volume: integer("volume").notNull().default(0),
   testPlayRequestedAt: integer("test_play_requested_at"),
+  /** テスト表示で流す動画（管理画面で動画を選んで押したとき）。null なら再生リストの次の 1 本 */
+  testPlayMediaId: text("test_play_media_id"),
   lastSeenAt: integer("last_seen_at"),
   // Heartbeat の最新値（lib/validators.ts の heartbeatSchema）
   agentVersion: text("agent_version"),

@@ -142,6 +142,8 @@ export const deviceSettingsSchema = z.object({
 export const commandsSchema = z.object({
   /** テスト表示の要求時刻。前回処理した値より新しければ次の動画を1本すぐ再生する */
   testPlayRequestedAt: unixSeconds.nullable(),
+  /** テスト表示で流す動画（管理画面で動画を選んで押したとき）。null・無しなら再生リストの次の 1 本。古い Worker の config には無い */
+  testPlayMediaId: z.string().nullable().optional(),
 });
 
 export const signageConfigSchema = z.object({

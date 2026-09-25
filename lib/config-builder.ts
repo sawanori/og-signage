@@ -224,7 +224,7 @@ async function readConfigBody(tx: Db, deviceId: string, now: number): Promise<Om
       height: device.resolutionHeight,
       volume: device.volume,
     },
-    commands: { testPlayRequestedAt: device.testPlayRequestedAt },
+    commands: { testPlayRequestedAt: device.testPlayRequestedAt, testPlayMediaId: device.testPlayMediaId },
   };
 }
 

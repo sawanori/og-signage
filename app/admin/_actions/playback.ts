@@ -83,6 +83,10 @@ export async function saveDevicePlaybackAction(deviceId: string, input: unknown)
 
 // ---------------------------------------------------------------- テスト表示
 
-export async function requestTestPlayAction(deviceId: string): Promise<ActionResult<{ testPlayRequestedAt: number }>> {
-  return run(() => requestTestPlay(getDb(), deviceId));
+/** テスト表示。mediaId を渡せばその動画を、無ければ再生リストの次の 1 本をサイネージで流す */
+export async function requestTestPlayAction(
+  deviceId: string,
+  mediaId: string | null = null,
+): Promise<ActionResult<{ testPlayRequestedAt: number; testPlayMediaId: string | null }>> {
+  return run(() => requestTestPlay(getDb(), deviceId, mediaId));
 }

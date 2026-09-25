@@ -1,0 +1,1 @@
+ALTER TABLE `devices` ADD `test_play_media_id` text;

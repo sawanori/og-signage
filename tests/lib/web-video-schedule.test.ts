@@ -10,7 +10,9 @@ import {
   consumeTestPlay,
   excludeForToday,
   isVideoDue,
+  newerCommands,
   parseVideoMemory,
+  pickTestVideo,
   selectNextVideo,
 } from "@/lib/web-video-schedule";
 
@@ -40,6 +42,36 @@ describe("consumeTestPlay", () => {
     expect(consumeTestPlay(NOW, NOW)).toEqual({ play: false, processedAt: NOW });
     expect(consumeTestPlay(NOW, null)).toEqual({ play: true, processedAt: NOW });
     expect(consumeTestPlay(null, NOW)).toEqual({ play: false, processedAt: NOW });
+  });
+});
+
+describe("newerCommands", () => {
+  it("30 秒ごとの config と数秒ごとに確かめた値のうち、要求が新しいほう", () => {
+    const fromConfig = { testPlayRequestedAt: NOW - 60, testPlayMediaId: null };
+    const polled = { testPlayRequestedAt: NOW, testPlayMediaId: "v2" };
+    expect(newerCommands(fromConfig, polled)).toBe(polled);
+    expect(newerCommands(fromConfig, null)).toBe(fromConfig);
+    expect(newerCommands({ testPlayRequestedAt: NOW, testPlayMediaId: null }, { testPlayRequestedAt: null })).toEqual({
+      testPlayRequestedAt: NOW,
+      testPlayMediaId: null,
+    });
+  });
+});
+
+describe("pickTestVideo", () => {
+  it("動画を選んで押したときはその動画。順番の位置は進めない", () => {
+    const memory = { ...EMPTY_VIDEO_MEMORY, sequenceIndex: 1 };
+    const pick = pickTestVideo(PLAYLIST, "v3", "sequence", memory, NOW)!;
+    expect(pick.item.mediaId).toBe("v3");
+    expect(pick.memory.sequenceIndex).toBe(1);
+  });
+
+  it("選んでいない・再生リストに無い動画なら次の 1 本（順番の位置も進める）", () => {
+    const memory = { ...EMPTY_VIDEO_MEMORY, sequenceIndex: 1 };
+    expect(pickTestVideo(PLAYLIST, null, "sequence", memory, NOW)!.item.mediaId).toBe("v2");
+    const other = pickTestVideo(PLAYLIST, "gone", "sequence", memory, NOW)!;
+    expect(other.item.mediaId).toBe("v2");
+    expect(other.memory.sequenceIndex).toBe(2);
   });
 });
 

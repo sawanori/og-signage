@@ -1114,7 +1114,39 @@
   object-fit: cover;
 }
 
+/* サムネイルを「サイネージで再生」のボタンにする */
+.videoThumbButton {
+  display: block;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+}
+
+.videoThumbButton:hover .playMark,
+.videoThumbButton:focus-visible .playMark {
+  background: var(--blue);
+  transform: scale(1.12);
+}
+
+.videoThumbButton:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.nextVideo[data-tone="info"] {
+  color: #1d73ee;
+  font-weight: 700;
+}
+
+.nextVideo[data-tone="error"] {
+  color: #d23b57;
+  font-weight: 700;
+}
+
 .playMark {
+  transition:
+    transform 0.15s,
+    background 0.15s;
   position: absolute;
   left: 50%;
   top: 50%;

@@ -468,6 +468,26 @@ describe("テスト表示", () => {
   it("存在しない端末は 404", async () => {
     await expectServiceError(requestTestPlay(db, "none"), "not_found", 404);
   });
+
+  it("動画を選んだときは、その端末の再生リストにある動画だけを指定できる", async () => {
+    await addPlaylist("pl1");
+    await addDevice("d1");
+    await addSettings("d1", { playlistId: "pl1" });
+    const inList = await addMedia({ name: "in.mp4" });
+    const notInList = await addMedia({ name: "out.mp4" });
+    await addPlaylistItem(db, "pl1", { revision: 0, mediaId: inList });
+
+    const result = await requestTestPlay(db, "d1", inList);
+    expect(result.testPlayMediaId).toBe(inList);
+    const [device] = await db.select().from(devices).where(eq(devices.id, "d1"));
+    expect(device.testPlayMediaId).toBe(inList);
+
+    const error = await expectServiceError(requestTestPlay(db, "d1", notInList), "invalid_media", 400);
+    expect(error.message).toContain("再生リストにありません");
+
+    // 動画を選ばない「テスト表示」は、前に選んだ動画を消して次の 1 本にする
+    expect((await requestTestPlay(db, "d1")).testPlayMediaId).toBeNull();
+  });
 });
 
 describe("Server Actions", () => {

@@ -4,7 +4,7 @@
  * 規則は Pi の raspberry-pi/agent/player.py（_tick_display・_select_next_item・_consume_test_play_if_new）と
  * computeNextVideoAt（lib/display-rules.ts）に合わせる。画面の部品は app/signage/video-player.tsx。
  */
-import type { PlaylistItem, VideoSettings } from "./config-schema";
+import type { PlaylistItem, SignageConfig, VideoSettings } from "./config-schema";
 import { tokyoDateKey } from "./dates";
 import { computeNextVideoAt } from "./display-rules";
 
@@ -83,6 +83,30 @@ export function selectNextVideo(
     return { item, memory: { ...memory, sequenceIndex: (index + 1) % n, lastPlayedMediaId: item.mediaId } };
   }
   return null;
+}
+
+type Commands = SignageConfig["commands"];
+
+/** テスト表示の要求のうち新しいほう（30 秒ごとの config の値と、数秒ごとに確かめている値） */
+export function newerCommands(fromConfig: Commands, polled: Commands | null): Commands {
+  if (!polled) return fromConfig;
+  return (polled.testPlayRequestedAt ?? -1) > (fromConfig.testPlayRequestedAt ?? -1) ? polled : fromConfig;
+}
+
+/**
+ * テスト表示で流す 1 本。管理画面で動画を選んで押したとき（mediaId がプレイリストにある）はその動画で、
+ * 順番の位置は進めない。そうでなければ次の 1 本（順番の位置も進める。Pi と同じ）
+ */
+export function pickTestVideo(
+  playlist: readonly PlaylistItem[],
+  mediaId: string | null | undefined,
+  mode: VideoSettings["mode"],
+  memory: VideoMemory,
+  now: number,
+): { item: PlaylistItem; memory: VideoMemory } | null {
+  const chosen = mediaId ? playlist.find((p) => p.mediaId === mediaId) : undefined;
+  if (chosen) return { item: chosen, memory: { ...memory, lastPlayedMediaId: chosen.mediaId } };
+  return selectNextVideo(playlist, mode, memory, now);
 }
 
 export type VideoDueInput = {

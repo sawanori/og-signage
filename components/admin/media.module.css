@@ -495,7 +495,8 @@
 
 .playlistItem {
   display: grid;
-  grid-template-columns: 30px 18px 104px minmax(0, 1fr) auto;
+  /* 最後の 2 列は「サイネージで再生」と「外す」 */
+  grid-template-columns: 30px 18px 104px minmax(0, 1fr) auto auto;
   align-items: center;
   column-gap: 10px;
   height: 63px;
