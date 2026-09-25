@@ -937,7 +937,7 @@
 /* ---------------------------------------------------------------- 横型 */
 /*
  * Web 公開で横長のウィンドウに合わせて横に伸ばしたとき（--canvas-extra-x。components/signage/ScaledCanvas.tsx）は、
- * 伸びた幅を大きな枠に回し、右の列（UPCOMING・お知らせ・メンバー情報）・右上の箱・添え書きはその分だけ右へずらす。
+ * 伸びた幅を大きな枠に回し、右の列（メンバー情報・UPCOMING・お知らせ）と添え書きはその分だけ右へずらす。
  * フッターは右側（キャッチコピーと QR・ロゴ）だけが広がる。伸ばさないときは 0
  */
 
@@ -1035,40 +1035,6 @@
 }
 
 /* 右上の箱。キャッチコピー（ヘッダー用）を上下の中央に置く */
-/* 右上の箱はメンバー情報（MEMBER INFO。2026-09-25 ユーザー指示で列の下から移した）。ヘッダーの帯（92px）より少し下まで */
-.lBox {
-  position: absolute;
-  left: calc(1480px + var(--canvas-extra-x, 0px));
-  top: 0;
-  width: 440px;
-  height: 118px;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding: 12px 24px 0 28px;
-  background: linear-gradient(160deg, #e0d8ce, #d8cdc1);
-}
-
-.lBoxHead {
-  display: flex;
-  align-items: baseline;
-  gap: 14px;
-}
-
-.lBoxEn {
-  font-weight: 700;
-  font-size: 15px;
-  line-height: 1;
-  letter-spacing: 0.06em;
-}
-
-.lBoxJa {
-  font-size: 11.5px;
-  line-height: 1;
-  letter-spacing: 0.14em;
-  color: var(--ink-soft);
-}
-
 /* 主イベント（横） */
 /* 縦に伸ばしたとき（ScaledCanvas の --canvas-extra）は、伸びた分をこの大きな枠に回す */
 /* 大きな枠。ヘッダーの下（92px）からフッターの 14px 上（982px。右の列のお知らせの下端と同じ）まで（2026-09-25 ユーザー指示） */
@@ -1314,14 +1280,18 @@
   color: var(--ink-soft);
 }
 
-/* Upcoming（横）。最大 6 行（2026-09-25 ユーザー指示で 4 → 5 → 6。行は 106px で、下のお知らせ（844px）の上まで） */
+/*
+ * Upcoming（横）。最大 6 行（2026-09-25 ユーザー指示で 4 → 5 → 6）。
+ * 右の列は上から メンバー情報（見出し 14px・カード 50〜118px）、Upcoming（見出し 146px・行 182〜814px）、
+ * お知らせ（842〜982px）。欄と欄の間はどちらも 28px、見出しと中身の間は 12px（2026-09-25 ユーザー指示で釣り合いをとった）
+ */
 /* 縦に伸ばしたときは、行の間隔を広げて下のお知らせとの間をそろえる（6 行で間は 5 つ） */
 .lUpcoming {
   position: absolute;
   left: calc(1368px + var(--canvas-extra-x, 0px));
-  top: 174px;
+  top: 182px;
   width: 516px;
-  height: calc(656px + var(--canvas-extra, 0px));
+  height: calc(632px + var(--canvas-extra, 0px));
   display: flex;
   flex-direction: column;
   gap: calc(4px + var(--canvas-extra, 0px) / 5);
@@ -1329,7 +1299,7 @@
 
 .lRow {
   position: relative;
-  height: 106px;
+  height: 102px;
   flex: none;
   border-radius: 14px;
   background: #f5f5f5;
@@ -1348,14 +1318,14 @@
 }
 
 .lRowDay {
-  margin-top: 23px;
+  margin-top: 21px;
   font-weight: 700;
   font-size: 28px;
   line-height: 1;
 }
 
 .lRowWeek {
-  margin-top: 11px;
+  margin-top: 10px;
   font-size: 15px;
   line-height: 1;
   letter-spacing: 0.04em;
@@ -1364,8 +1334,8 @@
 .lRowDivider {
   position: absolute;
   left: 120px;
-  top: 16px;
-  bottom: 16px;
+  top: 15px;
+  bottom: 15px;
   width: 2px;
   background: #e6e6e6;
 }
@@ -1373,7 +1343,7 @@
 .lRowText {
   position: absolute;
   left: 140px;
-  top: 10px;
+  top: 8px;
   width: 236px;
   display: flex;
   flex-direction: column;
@@ -1392,7 +1362,7 @@
 }
 
 .lRowTitle {
-  margin-top: 5px;
+  margin-top: 4px;
   max-width: 100%;
   font-weight: 700;
   font-size: 22px;
@@ -1421,7 +1391,7 @@
 .lRowImage {
   position: absolute;
   left: 384px;
-  top: 15px;
+  top: 13px;
   width: 118px;
   height: 76px;
   border-radius: 10px;
@@ -1438,17 +1408,17 @@
   height: 1080px;
 }
 
-/* お知らせ（横）。右の列の一番下（844〜982px）。目立つように大きめの黄色のカード（2026-09-25 ユーザー指示） */
+/* お知らせ（横）。右の列の一番下（842〜982px）。白いカードで、縁は線ではなくドロップシャドウ（2026-09-25 ユーザー指示） */
 .lNews {
   position: absolute;
   left: calc(1368px + var(--canvas-extra-x, 0px));
-  top: 844px;
+  top: 842px;
   width: 516px;
-  height: 138px;
+  height: 140px;
   padding: 12px 18px 0 20px;
   border-radius: 16px;
-  background: #f9d164;
-  box-shadow: 0 8px 18px -10px rgba(80, 55, 0, 0.45);
+  background: #fff;
+  box-shadow: 0 6px 20px -4px rgba(20, 30, 45, 0.22), 0 1px 3px rgba(20, 30, 45, 0.1);
   color: #16202b;
 }
 
@@ -1473,7 +1443,7 @@
   font-size: 11.5px;
   line-height: 1;
   letter-spacing: 0.14em;
-  color: #5a4a1c;
+  color: var(--ink-soft);
 }
 
 .lNewsBody {
@@ -1512,7 +1482,7 @@
   font-size: 14.5px;
   line-height: 20px;
   letter-spacing: 0.04em;
-  color: #3d3316;
+  color: var(--ink-mute);
   white-space: pre-line;
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -1524,35 +1494,40 @@
   margin-top: 16px;
   font-size: 14px;
   line-height: 19px;
-  color: #5a4a1c;
+  color: var(--ink-mute);
 }
 
-/* メンバー情報のカード（右上の箱の中に 3 枚） */
+/* メンバー情報（横）。右の列の一番上で、UPCOMING と同じ左端・幅（見出しは 14px、カードは 50〜118px。2026-09-25 ユーザー指示） */
 .lRules {
+  position: absolute;
+  left: calc(1368px + var(--canvas-extra-x, 0px));
+  top: 50px;
+  width: 516px;
+  height: 68px;
   display: flex;
   gap: 10px;
-  height: 66px;
 }
 
 .lRule {
   flex: 1 1 0;
   min-width: 0;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.72);
+  border-radius: 14px;
+  background: #f5f5f5;
+  box-shadow: 0 1px 2px rgba(40, 30, 20, 0.06);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  padding: 0 6px;
+  padding: 0 8px;
 }
 
 /* メンバー情報の見出し（アイコンの代わりに出す 1 行。管理画面のデザイン設定で入れる） */
 .lRuleTitle {
   max-width: 100%;
   font-weight: 700;
-  font-size: 11.5px;
-  line-height: 15px;
+  font-size: 12.5px;
+  line-height: 16px;
   letter-spacing: 0.04em;
   white-space: nowrap;
   overflow: hidden;
@@ -1560,9 +1535,9 @@
 }
 
 .lRuleText {
-  font-size: 12.5px;
-  line-height: 17px;
-  letter-spacing: 0.03em;
+  font-size: 13.5px;
+  line-height: 18px;
+  letter-spacing: 0.04em;
   text-align: center;
   display: -webkit-box;
   -webkit-box-orient: vertical;
