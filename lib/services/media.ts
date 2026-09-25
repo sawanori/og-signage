@@ -117,7 +117,7 @@ export function isPlayable(mimeType: string, info: VideoCodecInfo | null | undef
 
 function sizeLimitMessage(kind: MediaKind): string {
   return kind === "video"
-    ? "動画は 60MB 以下にしてください（15 秒・1920×1080 の動画が入る大きさです）"
+    ? "動画は 12MB 以下にしてください（20 秒の 1920×1080 なら、書き出しのビットレートを 4Mbps 程度に）"
     : "画像は 20MB 以下にしてください";
 }
 
@@ -255,7 +255,7 @@ export async function completeUpload(
   if (upload.state === "completed" && upload.mediaId) return getMediaOrThrow(db, upload.mediaId);
 
   if (upload.kind === "video" && upload.state === "uploading") {
-    // 動画の尺は 15 秒まで（長さはブラウザが MP4 から読んで送る）。断るときは R2 の途中のアップロードも捨てる
+    // 動画の尺は 20 秒まで（長さはブラウザが MP4 から読んで送る）。断るときは R2 の途中のアップロードも捨てる
     if (meta.durationSeconds === null || meta.durationSeconds === undefined || isVideoTooLong(meta.durationSeconds)) {
       await abortUpload({ db, bucket }, user, uploadId);
       throw new MediaError(

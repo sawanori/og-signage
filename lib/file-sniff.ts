@@ -9,21 +9,21 @@ export type MediaKind = "image" | "video";
 
 /**
  * 1 ファイルの上限（計画 6 節 7）。ブラウザとサーバーで共通。
- * 動画は 15 秒・1920×1080 が入る大きさ（2026-09-25 ユーザー指示で 500MB から変更）。
- * 一般的な書き出し（約 10〜20Mbps）で 20〜40MB、スマホで撮ったまま（約 26Mbps）でも約 50MB なので 60MB
+ * 動画は 12MB（2026-09-25 ユーザー指示。500MB → 60MB → 12MB）。20 秒の 1920×1080 なら平均 約 4.8Mbps までなので、
+ * スマホで撮ったまま（約 26Mbps）や一般的な書き出し（8〜10Mbps）は超える。書き出しでビットレートを 4Mbps 程度に下げてもらう
  */
 export const MEDIA_MAX_BYTES: Record<MediaKind, number> = {
   image: 20 * 1024 * 1024,
-  video: 60 * 1024 * 1024,
+  video: 12 * 1024 * 1024,
 };
 
 /** 置いておける動画の本数（アップロード済みの動画と再生リストの両方。2026-09-25 ユーザー指示） */
 export const MAX_VIDEOS = 3;
 
-/** 動画の長さの上限（秒。2026-09-25 ユーザー指示「動画の尺は 15 秒」） */
-export const MAX_VIDEO_SECONDS = 15;
+/** 動画の長さの上限（秒。2026-09-25 ユーザー指示で 15 → 20 秒） */
+export const MAX_VIDEO_SECONDS = 20;
 
-/** 15 秒を超える動画か。書き出しの端数（15.02 秒など）は許すため 0.5 秒の余裕を見る。長さが分からなければ false */
+/** 20 秒を超える動画か。書き出しの端数（20.02 秒など）は許すため 0.5 秒の余裕を見る。長さが分からなければ false */
 export function isVideoTooLong(seconds: number | null | undefined): boolean {
   return seconds !== null && seconds !== undefined && seconds > MAX_VIDEO_SECONDS + 0.5;
 }

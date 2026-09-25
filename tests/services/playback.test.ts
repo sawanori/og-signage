@@ -107,13 +107,13 @@ describe("プレイリスト: 追加", () => {
     expect(second.items[0].media.id).toBe(v1);
   });
 
-  it("15 秒を超える動画は再生リストに入れられない", async () => {
+  it("20 秒を超える動画は再生リストに入れられない", async () => {
     await addPlaylist("pl1");
-    const long = await addMedia({ durationSeconds: 30 });
+    const long = await addMedia({ durationSeconds: 21 });
     const error = await expectServiceError(addPlaylistItem(db, "pl1", { revision: 0, mediaId: long }), "invalid_media", 400);
-    expect(error.message).toBe("この動画は 15 秒を超えているため再生リストに入れられません");
-    const fifteen = await addMedia({ durationSeconds: 15 });
-    await expect(addPlaylistItem(db, "pl1", { revision: 0, mediaId: fifteen })).resolves.toBeTruthy();
+    expect(error.message).toBe("この動画は 20 秒を超えているため再生リストに入れられません");
+    const twenty = await addMedia({ durationSeconds: 20 });
+    await expect(addPlaylistItem(db, "pl1", { revision: 0, mediaId: twenty })).resolves.toBeTruthy();
   });
 
   it("playable=false・state=deleting・type≠video は追加できない（利用者向けの理由）", async () => {

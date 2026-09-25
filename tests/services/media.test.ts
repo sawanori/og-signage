@@ -194,7 +194,7 @@ const meta = (parts: R2Part[], extra: Partial<CompleteUploadInput> = {}): Comple
   ...extra,
 });
 
-async function uploadVideo(size = 25 * MB) {
+async function uploadVideo(size = 12 * MB) {
   const data = file(MP4_HEAD, size);
   const { uploadId } = await startUpload(deps, staff, { kind: "video", size });
   const parts = await sendParts(uploadId, data);
@@ -214,15 +214,15 @@ async function expectMediaError(p: Promise<unknown>, status: number, code?: stri
 // ---------------------------------------------------------------- アップロード
 
 describe("アップロード", () => {
-  it("動画 25MB を 3 パートで送り、完了すると media ができる（キーはサーバーが決める）", async () => {
+  it("動画 12MB を 2 パートで送り、完了すると media ができる（キーはサーバーが決める）", async () => {
     const { uploadId, parts, data } = await uploadVideo();
-    expect(parts.map((p) => p.partNumber)).toEqual([1, 2, 3]);
+    expect(parts.map((p) => p.partNumber)).toEqual([1, 2]);
 
     const row = await completeUpload(deps, staff, uploadId, meta(parts), new Uint8Array([...WEBP_HEAD, 1, 2, 3]));
     expect(row).toMatchObject({
       type: "video",
       mimeType: "video/mp4",
-      fileSize: 25 * MB,
+      fileSize: 12 * MB,
       width: 1920,
       height: 1080,
       durationSeconds: 12.5,
@@ -238,15 +238,15 @@ describe("アップロード", () => {
     expect((await listMedia(db)).map((m) => m.id)).toEqual([row.id]);
   });
 
-  it("上限超過は開始時に 413（画像 20MB・動画 60MB）", async () => {
+  it("上限超過は開始時に 413（画像 20MB・動画 12MB）", async () => {
     await expectMediaError(startUpload(deps, staff, { kind: "image", size: 20 * MB + 1 }), 413, "too_large");
-    await expectMediaError(startUpload(deps, staff, { kind: "video", size: 60 * MB + 1 }), 413, "too_large");
+    await expectMediaError(startUpload(deps, staff, { kind: "video", size: 12 * MB + 1 }), 413, "too_large");
     await expect(startUpload(deps, staff, { kind: "image", size: 20 * MB })).resolves.toBeTruthy();
-    await expect(startUpload(deps, staff, { kind: "video", size: 60 * MB })).resolves.toBeTruthy();
+    await expect(startUpload(deps, staff, { kind: "video", size: 12 * MB })).resolves.toBeTruthy();
     expect(bucket.pending.size).toBe(2);
   });
 
-  it("動画の尺は 15 秒まで（書き出しの端数 0.5 秒は許す）。超える・長さが分からない動画は完了時に 400 で、R2 の途中のアップロードも捨てる", async () => {
+  it("動画の尺は 20 秒まで（書き出しの端数 0.5 秒は許す）。超える・長さが分からない動画は完了時に 400 で、R2 の途中のアップロードも捨てる", async () => {
     const long = await uploadVideo(12 * MB);
     await expectMediaError(completeUpload(deps, staff, long.uploadId, meta(long.parts, { durationSeconds: 30 })), 400, "video_too_long");
     const [aborted] = await db.select().from(uploads).where(eq(uploads.id, long.uploadId));
@@ -257,8 +257,8 @@ describe("アップロード", () => {
     await expectMediaError(completeUpload(deps, staff, unknown.uploadId, meta(unknown.parts, { durationSeconds: null })), 400, "video_too_long");
 
     const ok = await uploadVideo(12 * MB);
-    const row = await completeUpload(deps, staff, ok.uploadId, meta(ok.parts, { durationSeconds: 15.3 }));
-    expect(row.durationSeconds).toBe(15.3);
+    const row = await completeUpload(deps, staff, ok.uploadId, meta(ok.parts, { durationSeconds: 20.4 }));
+    expect(row.durationSeconds).toBe(20.4);
     expect(await db.select().from(media)).toHaveLength(1);
   });
 
@@ -317,7 +317,7 @@ describe("アップロード", () => {
   });
 
   it("パートの大きさ・番号が宣言と合わなければ 400（宣言サイズを超えて送れない）", async () => {
-    const { uploadId } = await startUpload(deps, staff, { kind: "video", size: 15 * MB });
+    const { uploadId } = await startUpload(deps, staff, { kind: "video", size: 12 * MB });
     const body = () => new Response(new Uint8Array(10)).body;
     await expectMediaError(uploadPart(deps, staff, uploadId, 1, body(), 10), 400, "invalid_part");
     await expectMediaError(uploadPart(deps, staff, uploadId, 2, body(), 10), 400, "invalid_part");
@@ -366,8 +366,8 @@ describe("アップロード", () => {
   });
 
   it("パートが足りない complete は 400、R2 が本体を持たなければ 409", async () => {
-    const { uploadId, parts } = await uploadVideo(25 * MB);
-    await expectMediaError(completeUpload(deps, staff, uploadId, meta(parts.slice(0, 2))), 400, "invalid_parts");
+    const { uploadId, parts } = await uploadVideo(12 * MB);
+    await expectMediaError(completeUpload(deps, staff, uploadId, meta(parts.slice(0, 1))), 400, "invalid_parts");
     const wrongEtag = parts.map((p) => ({ ...p, etag: "x" }));
     await expectMediaError(completeUpload(deps, staff, uploadId, meta(wrongEtag)), 409, "upload_incomplete");
     expect(await db.select().from(media)).toHaveLength(0);
