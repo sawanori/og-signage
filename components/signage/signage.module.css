@@ -1035,37 +1035,51 @@
 }
 
 /* 右上の箱。キャッチコピー（ヘッダー用）を上下の中央に置く */
-/* 右上の箱はキャッチコピー（ヘッダー用）。ヘッダーの帯（92px）より少し下まで */
+/* 右上の箱はメンバー情報（MEMBER INFO。2026-09-25 ユーザー指示で列の下から移した）。ヘッダーの帯（92px）より少し下まで */
 .lBox {
   position: absolute;
   left: calc(1480px + var(--canvas-extra-x, 0px));
   top: 0;
   width: 440px;
-  height: 110px;
+  height: 118px;
   display: flex;
-  align-items: center;
-  padding: 0 30px 0 36px;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px 24px 0 28px;
   background: linear-gradient(160deg, #e0d8ce, #d8cdc1);
 }
 
-.lBoxCopy {
+.lBoxHead {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.lBoxEn {
   font-weight: 700;
-  font-size: 18.5px;
-  line-height: 28px;
-  letter-spacing: 0.13em;
-  white-space: pre-line;
-  word-break: auto-phrase;
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+}
+
+.lBoxJa {
+  font-size: 11.5px;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  color: var(--ink-soft);
 }
 
 /* 主イベント（横） */
 /* 縦に伸ばしたとき（ScaledCanvas の --canvas-extra）は、伸びた分をこの大きな枠に回す */
+/* 大きな枠。ヘッダーの下（92px）からフッターの 14px 上（982px。右の列のお知らせの下端と同じ）まで（2026-09-25 ユーザー指示） */
 .lHero {
   position: absolute;
   left: 0;
   top: 92px;
   width: calc(1331px + var(--canvas-extra-x, 0px));
-  height: calc(904px + var(--canvas-extra, 0px));
+  height: calc(890px + var(--canvas-extra, 0px));
   border-top-right-radius: 16px;
+  border-bottom-right-radius: 16px;
   overflow: hidden;
   color: #fff;
 }
@@ -1300,14 +1314,14 @@
   color: var(--ink-soft);
 }
 
-/* Upcoming（横）。最大 6 行（2026-09-25 ユーザー指示で 4 → 5 → 6。行は 94px で、下のお知らせ（772px）の上まで） */
-/* 縦に伸ばしたときは、行の間隔を広げて下のお知らせ・メンバー情報との間をそろえる（6 行で間は 5 つ） */
+/* Upcoming（横）。最大 6 行（2026-09-25 ユーザー指示で 4 → 5 → 6。行は 106px で、下のお知らせ（844px）の上まで） */
+/* 縦に伸ばしたときは、行の間隔を広げて下のお知らせとの間をそろえる（6 行で間は 5 つ） */
 .lUpcoming {
   position: absolute;
   left: calc(1368px + var(--canvas-extra-x, 0px));
   top: 174px;
   width: 516px;
-  height: calc(584px + var(--canvas-extra, 0px));
+  height: calc(656px + var(--canvas-extra, 0px));
   display: flex;
   flex-direction: column;
   gap: calc(4px + var(--canvas-extra, 0px) / 5);
@@ -1315,7 +1329,7 @@
 
 .lRow {
   position: relative;
-  height: 94px;
+  height: 106px;
   flex: none;
   border-radius: 14px;
   background: #f5f5f5;
@@ -1334,15 +1348,15 @@
 }
 
 .lRowDay {
-  margin-top: 20px;
+  margin-top: 23px;
   font-weight: 700;
-  font-size: 26px;
+  font-size: 28px;
   line-height: 1;
 }
 
 .lRowWeek {
-  margin-top: 8px;
-  font-size: 14px;
+  margin-top: 11px;
+  font-size: 15px;
   line-height: 1;
   letter-spacing: 0.04em;
 }
@@ -1350,8 +1364,8 @@
 .lRowDivider {
   position: absolute;
   left: 120px;
-  top: 14px;
-  bottom: 14px;
+  top: 16px;
+  bottom: 16px;
   width: 2px;
   background: #e6e6e6;
 }
@@ -1359,7 +1373,7 @@
 .lRowText {
   position: absolute;
   left: 140px;
-  top: 9px;
+  top: 10px;
   width: 236px;
   display: flex;
   flex-direction: column;
@@ -1367,22 +1381,22 @@
 }
 
 .lChip {
-  height: 24px;
-  padding: 0 10px;
+  height: 26px;
+  padding: 0 11px;
   border-radius: 7px;
   color: #fff;
-  font-size: 12.5px;
-  line-height: 24px;
+  font-size: 13.5px;
+  line-height: 26px;
   letter-spacing: 0.18em;
   white-space: nowrap;
 }
 
 .lRowTitle {
-  margin-top: 4px;
+  margin-top: 5px;
   max-width: 100%;
   font-weight: 700;
-  font-size: 21px;
-  line-height: 30px;
+  font-size: 22px;
+  line-height: 31px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1390,8 +1404,8 @@
 
 .lRowMeta {
   margin-top: 2px;
-  font-size: 15px;
-  line-height: 22px;
+  font-size: 15.5px;
+  line-height: 23px;
   letter-spacing: 0.01em;
   color: #2c343d;
   max-width: 100%;
@@ -1407,15 +1421,15 @@
 .lRowImage {
   position: absolute;
   left: 384px;
-  top: 12px;
+  top: 15px;
   width: 118px;
-  height: 70px;
+  height: 76px;
   border-radius: 10px;
   overflow: hidden;
 }
 
 
-/* フッターとメンバー情報のまとまり（お知らせは右上へ、今週の予定は 2026-09-25 に外した）。中の位置は 1920×1080 の座標のまま、縦に伸ばした分だけ下へずらす */
+/* お知らせとフッターのまとまり（今週の予定は 2026-09-25 に外した）。中の位置は 1920×1080 の座標のまま、縦に伸ばした分だけ下へずらす */
 .lLower {
   position: absolute;
   left: 0;
@@ -1424,14 +1438,14 @@
   height: 1080px;
 }
 
-/* お知らせ（横）。右の列の UPCOMING の下（772〜868px）。目立つように黄色のカード（2026-09-25 ユーザー指示） */
+/* お知らせ（横）。右の列の一番下（844〜982px）。目立つように大きめの黄色のカード（2026-09-25 ユーザー指示） */
 .lNews {
   position: absolute;
   left: calc(1368px + var(--canvas-extra-x, 0px));
-  top: 772px;
+  top: 844px;
   width: 516px;
-  height: 96px;
-  padding: 10px 18px 0 20px;
+  height: 138px;
+  padding: 12px 18px 0 20px;
   border-radius: 16px;
   background: #f9d164;
   box-shadow: 0 8px 18px -10px rgba(80, 55, 0, 0.45);
@@ -1440,13 +1454,17 @@
 
 .lNewsLabel {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
 }
 
 .lNewsEn {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #16202b;
+  color: #f9d164;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1;
   letter-spacing: 0.1em;
 }
@@ -1459,7 +1477,7 @@
 }
 
 .lNewsBody {
-  margin-top: 7px;
+  margin-top: 9px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1469,8 +1487,8 @@
 .lNewsImage {
   position: relative; /* 中の画像（.cover は absolute）をこの枠に収める */
   flex: none;
-  width: 58px;
-  height: 58px;
+  width: 74px;
+  height: 74px;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -1481,8 +1499,8 @@
 
 .lNewsTitle {
   font-weight: 700;
-  font-size: 20px;
-  line-height: 26px;
+  font-size: 22px;
+  line-height: 28px;
   letter-spacing: 0.04em;
   white-space: nowrap;
   overflow: hidden;
@@ -1490,9 +1508,9 @@
 }
 
 .lNewsDesc {
-  margin-top: 2px;
-  font-size: 14px;
-  line-height: 19px;
+  margin-top: 3px;
+  font-size: 14.5px;
+  line-height: 20px;
   letter-spacing: 0.04em;
   color: #3d3316;
   white-space: pre-line;
@@ -1503,43 +1521,38 @@
 }
 
 .lNewsEmpty {
-  margin-top: 12px;
+  margin-top: 16px;
   font-size: 14px;
   line-height: 19px;
   color: #5a4a1c;
 }
 
-/* メンバー情報（横）。お知らせの下、UPCOMING と同じ左端にそろえる（2026-09-25 ユーザー指示で戻し、右へ寄せた） */
+/* メンバー情報のカード（右上の箱の中に 3 枚） */
 .lRules {
-  position: absolute;
-  left: calc(1368px + var(--canvas-extra-x, 0px));
-  top: 906px;
-  width: 516px;
-  height: 76px;
   display: flex;
   gap: 10px;
+  height: 66px;
 }
 
 .lRule {
   flex: 1 1 0;
-  height: 100%;
-  border-radius: 16px;
-  background: #f3f2f0;
-  box-shadow: 0 1px 2px rgba(40, 30, 20, 0.05);
+  min-width: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* 見出しと文言を上下の中央に置く（アイコンは 2026-09-25 に外した） */
   justify-content: center;
-  gap: 4px;
-  padding: 0 10px;
+  gap: 2px;
+  padding: 0 6px;
 }
 
+/* メンバー情報の見出し（アイコンの代わりに出す 1 行。管理画面のデザイン設定で入れる） */
 .lRuleTitle {
   max-width: 100%;
-  font-size: 15.5px;
   font-weight: 700;
-  line-height: 22px;
+  font-size: 11.5px;
+  line-height: 15px;
   letter-spacing: 0.04em;
   white-space: nowrap;
   overflow: hidden;
@@ -1547,10 +1560,9 @@
 }
 
 .lRuleText {
-  padding: 0 8px;
-  font-size: 14.5px;
-  line-height: 20px;
-  letter-spacing: 0.06em;
+  font-size: 12.5px;
+  line-height: 17px;
+  letter-spacing: 0.03em;
   text-align: center;
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -1662,16 +1674,15 @@
   background: rgba(255, 255, 255, 0.35);
 }
 
-/* フッターのキャッチコピー（例: 会議室予約はここから）と QR を横に並べて中央に置く（2026-09-25 ユーザー指示） */
+/* フッターのキャッチコピー（例: フロアマップはこちら）と QR を横に並べ、右の WeWork のロゴの手前に右寄せ（2026-09-25 ユーザー指示で中央から右へ） */
 .lFooterCopy {
   position: absolute;
-  left: 860px;
-  width: calc(660px + var(--canvas-extra-x, 0px));
+  right: 230px;
   top: 6px;
   height: 72px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 16px;
 }
 

@@ -1,7 +1,8 @@
 /**
  * 横型（1920×1080）の配置。モック image/UI-H.png の画面部分に合わせる。
  * 2026-09-25 ユーザー指示: ヘッダーを 2/3 の高さ（92px）に。下段の欄のうち今週の予定は外し、大きな枠をフッターまで広げる。
- * 右の列は上から UPCOMING（6 件）・お知らせ（HOUSE NEWS。目立つ黄色のカード）・メンバー情報。
+ * 右の列は上から メンバー情報（右上の箱）・UPCOMING（6 件）・お知らせ（HOUSE NEWS。一番下の目立つ黄色のカード）。
+ * キャッチコピー（ヘッダー用）は横型では出さない。
  */
 import { Fragment } from "react";
 import { ArrowRight, Clock } from "lucide-react";
@@ -57,9 +58,20 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
       <svg className={styles.lScriptLine} width="110" height="16" viewBox="0 0 110 16" aria-hidden>
         <path d="M2 13 C 34 8, 70 5, 108 4" fill="none" stroke="#1B2530" strokeWidth="2" strokeLinecap="round" />
       </svg>
-      {/* 右上の箱はキャッチコピー（ヘッダー用）だけ（2026-09-25 ユーザー指示で英語の添え書きを外した） */}
+      {/* 右上の箱はメンバー情報（2026-09-25 ユーザー指示で列の下から移した。キャッチコピー（ヘッダー用）は横型では出さない） */}
       <div className={styles.lBox}>
-        {house.headerCopy ? <div className={styles.lBoxCopy}>{house.headerCopy}</div> : null}
+        <div className={styles.lBoxHead}>
+          <span className={styles.lBoxEn}>{COPY.rules.en}</span>
+          <span className={styles.lBoxJa}>{COPY.rules.ja}</span>
+        </div>
+        <div className={styles.lRules} data-testid="rules">
+          {house.rules.map((rule, i) => (
+            <div key={i} className={styles.lRule}>
+              {rule.title ? <span className={styles.lRuleTitle}>{rule.title}</span> : null}
+              <span className={styles.lRuleText}>{rule.text}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* 今日のイベント */}
@@ -77,9 +89,9 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
         ))}
       </div>
 
-      {/* お知らせ・メンバー情報・フッター。縦に伸ばしたときは、伸びた分だけ下へずらす（中の位置は 1920×1080 のまま） */}
+      {/* お知らせとフッター。縦に伸ばしたときは、伸びた分だけ下へずらす（中の位置は 1920×1080 のまま） */}
       <div className={styles.lLower}>
-        {/* お知らせ。右の列の UPCOMING の下（2026-09-25 ユーザー指示。目立つように黄色のカード） */}
+        {/* お知らせ。右の列の一番下（2026-09-25 ユーザー指示。目立つように大きめの黄色のカード） */}
         <div className={styles.lNews} data-testid="notice">
           <div className={styles.lNewsLabel}>
             <span className={styles.lNewsEn}>{COPY.news.en}</span>
@@ -98,19 +110,6 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
           ) : (
             <div className={styles.lNewsEmpty}>{COPY.noNotice}</div>
           )}
-        </div>
-        {/* メンバー情報。右の列（UPCOMING）と同じ左端で右寄せ（2026-09-25 ユーザー指示） */}
-        <div className={styles.lSectionTitle} style={{ left: stretchX(1372, 1), top: 880 }}>
-          <span className={styles.lSectionEn}>{COPY.rules.en}</span>
-          <span className={styles.lSectionJa}>{COPY.rules.ja}</span>
-        </div>
-        <div className={styles.lRules} data-testid="rules">
-          {house.rules.map((rule, i) => (
-            <div key={i} className={styles.lRule}>
-              {rule.title ? <span className={styles.lRuleTitle}>{rule.title}</span> : null}
-              <span className={styles.lRuleText}>{rule.text}</span>
-            </div>
-          ))}
         </div>
         {/* フッター */}
         <div className={styles.lFooter}>

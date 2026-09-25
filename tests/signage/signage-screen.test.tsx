@@ -230,14 +230,14 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     expect(screen.getByLabelText("フッターの QR コード")).toBeTruthy();
   });
 
-  it("お知らせは横型では右の列（UPCOMING の下）、縦型では下段に出す。無いときは案内を出す", () => {
+  it("お知らせは横型では右の列の一番下、縦型では下段に出す。無いときは案内を出す", () => {
     renderScreen({}, orientation);
     const notice = screen.getByTestId("notice");
     expect(notice.textContent).toContain("共用部の清掃にご協力ください");
     if (orientation === "landscape") {
       expect(notice.textContent).toContain("HOUSE NEWS");
-      // 右上の箱はキャッチコピー（ヘッダー用）
-      expect(screen.getByText("Welcome Home!")).toBeTruthy();
+      // 右上の箱はメンバー情報。キャッチコピー（ヘッダー用）は横型では出さない
+      expect(screen.queryByText("Welcome Home!")).toBeNull();
     }
     cleanup();
     const config = makeConfig();
