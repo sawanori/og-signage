@@ -157,7 +157,7 @@ export function UploadDropzone() {
         <button type="button" className={`${admin.outlineButton} ${styles.pickButton}`} onClick={() => inputRef.current?.click()}>
           ファイルを選ぶ
         </button>
-        <p className={styles.dropHint}>画像は JPEG・PNG・WebP（20MB まで）、動画は MP4（20 秒・12MB・3 本まで）</p>
+        <p className={styles.dropHint}>画像は JPEG・PNG・WebP（20MB まで）、動画は MP4（20 秒・12MB まで。定期動画に入れられるのは 3 本まで）</p>
         <input
           ref={inputRef}
           type="file"

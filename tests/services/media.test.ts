@@ -262,33 +262,12 @@ describe("アップロード", () => {
     expect(await db.select().from(media)).toHaveLength(1);
   });
 
-  it("動画は 3 本まで。4 本目は開始時に 409（画像は数えない・削除中の動画も数えない）", async () => {
-    for (let i = 0; i < 3; i++) {
+  it("アップロードする動画の本数は制限しない（3 本までは再生リストの側。再生リストから外した動画が残っていても入れられる）", async () => {
+    for (let i = 0; i < 4; i++) {
       const { uploadId, parts } = await uploadVideo(12 * MB);
       await completeUpload(deps, staff, uploadId, meta(parts));
     }
-    await expectMediaError(startUpload(deps, staff, { kind: "video", size: 12 * MB }), 409, "video_limit");
-    await expect(startUpload(deps, staff, { kind: "image", size: 1 * MB })).resolves.toBeTruthy();
-
-    const [first] = await db.select().from(media).where(eq(media.type, "video"));
-    await db.update(media).set({ state: "deleting" }).where(eq(media.id, first.id));
-    await expect(startUpload(deps, staff, { kind: "video", size: 12 * MB })).resolves.toBeTruthy();
-  });
-
-  it("開始のあとに別の動画が入って 3 本になったら、完了時に 409 で断り、R2 の途中のアップロードも捨てる", async () => {
-    for (let i = 0; i < 2; i++) {
-      const { uploadId, parts } = await uploadVideo(12 * MB);
-      await completeUpload(deps, staff, uploadId, meta(parts));
-    }
-    const late = await uploadVideo(12 * MB);
-    const third = await uploadVideo(12 * MB);
-    await completeUpload(deps, staff, third.uploadId, meta(third.parts));
-
-    await expectMediaError(completeUpload(deps, staff, late.uploadId, meta(late.parts)), 409, "video_limit");
-    const [up] = await db.select().from(uploads).where(eq(uploads.id, late.uploadId));
-    expect(up.state).toBe("aborted");
-    expect(bucket.pending.has(up.r2UploadId)).toBe(false);
-    expect(await db.select().from(media).where(eq(media.type, "video"))).toHaveLength(3);
+    expect(await db.select().from(media).where(eq(media.type, "video"))).toHaveLength(4);
   });
 
   it("種類・大きさが不正な開始は入力エラー", async () => {

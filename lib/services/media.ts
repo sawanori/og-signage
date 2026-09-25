@@ -17,7 +17,6 @@ import { devices, events, houseSettings, media, mediaFailures, notices, playlist
 import type { AuthUser } from "../auth";
 import {
   MAX_VIDEO_SECONDS,
-  MAX_VIDEOS,
   MEDIA_MAX_BYTES,
   SNIFF_BYTES,
   UPLOAD_PART_SIZE,
@@ -121,17 +120,6 @@ function sizeLimitMessage(kind: MediaKind): string {
     : "画像は 20MB 以下にしてください";
 }
 
-const VIDEO_LIMIT_MESSAGE = `動画は ${MAX_VIDEOS} 本までです。新しい動画を入れるには、「動画・メディア」で今ある動画を削除してください`;
-
-/** 置いてある動画（削除中を除く）の本数 */
-async function countActiveVideos(db: Db): Promise<number> {
-  const rows = await db
-    .select({ id: media.id })
-    .from(media)
-    .where(and(eq(media.type, "video"), eq(media.state, "active")));
-  return rows.length;
-}
-
 const partCountOf = (size: number) => Math.ceil(size / UPLOAD_PART_SIZE);
 
 function expectedPartLength(declaredSize: number, partNumber: number): number {
@@ -160,10 +148,8 @@ export async function startUpload(
   input: StartUploadInput,
 ): Promise<{ uploadId: string; partSize: number }> {
   const { kind, size } = startUploadSchema.parse(input);
+  // アップロードする動画の本数は制限しない。3 本までにするのは再生リスト（定期動画）だけ（2026-09-25 ユーザー指示で見直し）
   if (size > MEDIA_MAX_BYTES[kind]) throw new MediaError(413, "too_large", sizeLimitMessage(kind));
-  if (kind === "video" && (await countActiveVideos(db)) >= MAX_VIDEOS) {
-    throw new MediaError(409, "video_limit", VIDEO_LIMIT_MESSAGE);
-  }
 
   const uploadId = crypto.randomUUID();
   const key = mediaKeys(uploadId).original;
@@ -265,11 +251,6 @@ export async function completeUpload(
           ? "動画の長さを読み取れませんでした。MP4 の動画をお使いください"
           : `動画は ${MAX_VIDEO_SECONDS} 秒以内にしてください（この動画は ${Math.round(meta.durationSeconds)} 秒です）`,
       );
-    }
-    // 開始のあとに別の動画が入って上限に達していたら、R2 の途中のアップロードを捨てて断る
-    if ((await countActiveVideos(db)) >= MAX_VIDEOS) {
-      await abortUpload({ db, bucket }, user, uploadId);
-      throw new MediaError(409, "video_limit", VIDEO_LIMIT_MESSAGE);
     }
   }
 
