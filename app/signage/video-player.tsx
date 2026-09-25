@@ -5,13 +5,16 @@
  *
  * - いつ・どれを流すか（次の時刻・次の 1 本・テスト表示）は lib/web-video-schedule.ts。規則は Pi の player.py と同じ。
  * - 次の 1 本は隠した <video preload="auto"> で先に読み込み、時刻になったら canplaythrough を待つ
- *   （20 秒で間に合わなければ今回は見送り、次の間隔で再試行）。
+ *   （20 秒で間に合わなければ今回は見送り、次の間隔で再試行。テスト表示は待たずに再生を試みる）。
  * - 表示を 600ms で黒へ溶かしてから（SignageScreen の fading）動画を画面いっぱいに出し、終わったら表示に戻す。
  * - テスト表示（管理画面のボタン）は、数秒ごとに /api/signage/commands を確かめてすぐ流す。動画を選んで押したときは
  *   その動画を読み込んでから流す（順番の位置は進めない）。定期動画が OFF でも表示時間内なら流す（試せるように）。
  * - 音量は端末の設定（device.volume）。自動再生を断られたらミュートで流し直す（Pi の Chromium は
  *   --autoplay-policy=no-user-gesture-required で起動すれば音も出せる）。
- * - 流せなかった動画（error・映像を読めない・長さ＋10 秒を過ぎても終わらない）はその日（日本時間）は外す。
+ * - 流せなかった動画（error・映像を読めない・10 秒待っても再生が始まらない・長さ＋10 秒を過ぎても終わらない）は
+ *   その日（日本時間）は外す。ブラウザが自動再生を止めたときは動画のせいではないので外さない。
+ *   どの待ちにも上限があり、失敗しても必ず表示に戻る（ページが止まったままにならない）。
+ * - テスト表示が流せなかったときは、画面の下に理由を数秒出す（押した人がその場で分かるように。定期動画は黙って飛ばす）。
  * - 再生の位置・処理済みのテスト表示・その日外す動画は localStorage に端末 id ごとに覚える。
  */
 import { useEffect, useRef, useState } from "react";
@@ -33,8 +36,24 @@ const TICK_MS = 1000;
 const COMMANDS_POLL_MS = 3000;
 const FADE_MS = 600;
 const READY_TIMEOUT_MS = 20_000;
+/** play() を呼んでからこれだけ待っても再生が始まらなければ、あきらめて表示に戻す */
+const PLAY_TIMEOUT_MS = 10_000;
 /** 動画の長さをこれだけ過ぎても終わらなければ、止まったとみなす */
 const OVERRUN_SECONDS = 10;
+/** テスト表示が流せなかった理由を出しておく時間 */
+const NOTICE_MS = 12_000;
+
+/** 流せなかった理由。テスト表示のときは画面に出す */
+type Failure = "load-error" | "no-video" | "blocked" | "not-started" | "play-error" | "stalled";
+
+export const FAILURE_TEXT: Record<Failure, string> = {
+  "load-error": "動画を読み込めませんでした。「動画・メディア」で形式を確認してください",
+  "no-video": "このブラウザでは、この動画の映像を再生できません（H.264 の動画にしてください）",
+  blocked: "ブラウザが動画の自動再生を止めています。このサイトの自動再生を「許可」にしてください",
+  "not-started": "動画の再生が始まりませんでした。ページを再読み込みして、もう一度お試しください",
+  "play-error": "動画を再生できませんでした",
+  stalled: "動画の再生が途中で止まりました",
+};
 
 const nowSeconds = () => Math.floor(Date.now() / 1000);
 const storageKey = (deviceId: string) => `og-signage-video:${deviceId}`;
@@ -75,31 +94,38 @@ function waitFor(el: HTMLVideoElement, event: string, ms: number, signal: AbortS
   });
 }
 
+/** ms 待つ（止められたらすぐ戻る） */
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
-    const timer = setTimeout(resolve, ms);
-    signal.addEventListener("abort", () => {
+    const done = () => {
       clearTimeout(timer);
+      signal.removeEventListener("abort", done);
       resolve();
-    });
+    };
+    const timer = setTimeout(done, ms);
+    signal.addEventListener("abort", done);
   });
 }
 
-/** 再生を始める。自動再生の制限で断られたらミュートで流し直す */
-async function startPlaying(el: HTMLVideoElement): Promise<boolean> {
-  try {
-    await el.play();
-    return true;
-  } catch (e) {
-    if (!(e instanceof DOMException && e.name === "NotAllowedError") || el.muted) return false;
-    el.muted = true;
-    try {
-      await el.play();
-      return true;
-    } catch {
-      return false;
-    }
-  }
+type StartResult = "ok" | "blocked" | "error" | "timeout";
+
+/**
+ * 再生を始める。自動再生の制限で断られたら（blocked）ミュートで流し直す。
+ * play() が PLAY_TIMEOUT_MS たっても返らない（ブラウザが動画を始められない）ときは timeout
+ */
+async function startPlaying(el: HTMLVideoElement, signal: AbortSignal): Promise<StartResult> {
+  const attempt = (): Promise<StartResult> =>
+    Promise.race([
+      el.play().then(
+        (): StartResult => "ok",
+        (e: unknown): StartResult => (e instanceof DOMException && e.name === "NotAllowedError" ? "blocked" : "error"),
+      ),
+      sleep(PLAY_TIMEOUT_MS, signal).then((): StartResult => "timeout"),
+    ]);
+  const first = await attempt();
+  if (first !== "blocked" || el.muted) return first;
+  el.muted = true;
+  return attempt();
 }
 
 export function VideoPlayer({
@@ -123,6 +149,8 @@ export function VideoPlayer({
   const commandsRef = useRef<SignageConfig["commands"] | null>(null);
   const [src, setSrc] = useState<string | null>(null);
   const [shown, setShown] = useState(false);
+  // テスト表示が流せなかった理由（数秒で消す）
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     configRef.current = config;
@@ -139,14 +167,30 @@ export function VideoPlayer({
     let windowStartedAt: number | null = null;
     let wasVisible = true; // 開いた時点は「開いた時刻」を起点にする（Pi の起動と同じ）
     let busy = false;
-    let upcoming: { item: PlaylistItem; next: Pick<VideoMemory, "sequenceIndex" | "lastPlayedMediaId"> } | null = null;
+    let noticeTimer: ReturnType<typeof setTimeout> | null = null;
+    type Upcoming = { item: PlaylistItem; next: Pick<VideoMemory, "sequenceIndex" | "lastPlayedMediaId">; test: boolean };
+    let upcoming: Upcoming | null = null;
 
     const remember = (next: VideoMemory) => {
       memory = next;
       saveMemory(deviceId, next);
     };
 
-    const playOnce = async (item: PlaylistItem, next: Pick<VideoMemory, "sequenceIndex" | "lastPlayedMediaId">) => {
+    const showNotice = (text: string) => {
+      if (noticeTimer) clearTimeout(noticeTimer);
+      setNotice(text);
+      noticeTimer = setTimeout(() => setNotice(null), NOTICE_MS);
+    };
+
+    /** 流せなかった。exclude ならその日は外す。テスト表示なら理由を画面に出す */
+    const fail = (item: PlaylistItem, test: boolean, reason: Failure, exclude = true) => {
+      console.warn(`[signage-video] 動画 ${item.mediaId} を流せませんでした: ${reason}`);
+      if (exclude) remember(excludeForToday(memory, item.mediaId, nowSeconds()));
+      lastFinishedAt = nowSeconds();
+      if (test) showNotice(FAILURE_TEXT[reason]);
+    };
+
+    const playOnce = async ({ item, next, test }: Upcoming) => {
       const el = videoRef.current;
       if (!el) return;
       busy = true;
@@ -154,9 +198,13 @@ export function VideoPlayer({
         if (el.readyState < HTMLMediaElement.HAVE_ENOUGH_DATA) {
           const ready = await waitFor(el, "canplaythrough", READY_TIMEOUT_MS, signal);
           if (signal.aborted) return;
-          if (ready !== "ok") {
-            // 読み込めなければその日は外す。間に合わないだけなら今回は見送り、次の間隔で再試行
-            if (ready === "error") remember(excludeForToday(memory, item.mediaId, nowSeconds()));
+          if (ready === "error") {
+            fail(item, test, "load-error");
+            return;
+          }
+          // 間に合わないだけなら、定期動画は今回は見送り（次の間隔で再試行）。テスト表示はそのまま再生を試みる
+          // （ブラウザが読み込みを休めていて canplaythrough が来ないことがある。play() で読み込みが再開する）
+          if (ready === "timeout" && !test) {
             lastFinishedAt = nowSeconds();
             return;
           }
@@ -164,8 +212,7 @@ export function VideoPlayer({
         // 映像を読めない動画（このブラウザが H.265 に対応していない等）もその日は外す。音声付きだと error は来ず、
         // 映像なし（videoWidth 0）のまま音だけ最後まで流れて、画面が黒くなる（2026-09-25 Chromium で確認）
         if (el.videoWidth === 0) {
-          remember(excludeForToday(memory, item.mediaId, nowSeconds()));
-          lastFinishedAt = nowSeconds();
+          fail(item, test, "no-video");
           return;
         }
         remember({ ...memory, ...next });
@@ -179,14 +226,27 @@ export function VideoPlayer({
         el.muted = volume === 0;
         setShown(true);
 
-        const ended = (await startPlaying(el))
-          ? await waitFor(el, "ended", (item.durationSeconds + OVERRUN_SECONDS) * 1000, signal)
-          : "error";
+        const started = await startPlaying(el, signal);
+        if (signal.aborted) return;
+        if (started !== "ok") {
+          el.pause();
+          setShown(false);
+          fadingRef.current(false);
+          // 自動再生を止められたのは動画のせいではないので、その日外さない（許可されれば次は流れる）
+          if (started === "blocked") fail(item, test, "blocked", false);
+          else fail(item, test, started === "timeout" ? "not-started" : "play-error");
+          return;
+        }
+
+        const ended = await waitFor(el, "ended", (item.durationSeconds + OVERRUN_SECONDS) * 1000, signal);
         if (signal.aborted) return;
         el.pause();
         setShown(false);
         fadingRef.current(false);
-        if (ended !== "ok") remember(excludeForToday(memory, item.mediaId, nowSeconds()));
+        if (ended !== "ok") {
+          fail(item, test, ended === "error" ? "play-error" : "stalled");
+          return;
+        }
         lastFinishedAt = nowSeconds();
       } finally {
         busy = false;
@@ -194,9 +254,9 @@ export function VideoPlayer({
       }
     };
 
-    const upcomingOf = (pick: { item: PlaylistItem; memory: VideoMemory } | null) =>
+    const upcomingOf = (pick: { item: PlaylistItem; memory: VideoMemory } | null, test: boolean): Upcoming | null =>
       pick
-        ? { item: pick.item, next: { sequenceIndex: pick.memory.sequenceIndex, lastPlayedMediaId: pick.memory.lastPlayedMediaId } }
+        ? { item: pick.item, next: { sequenceIndex: pick.memory.sequenceIndex, lastPlayedMediaId: pick.memory.lastPlayedMediaId }, test }
         : null;
     // テスト表示で流す 1 本を <video> に付けた。次の周期で流す（src が付いてから）
     let playTestNext = false;
@@ -213,17 +273,17 @@ export function VideoPlayer({
       if (playTestNext) {
         playTestNext = false;
         if (upcoming) {
-          void playOnce(upcoming.item, upcoming.next);
+          void playOnce(upcoming);
           return;
         }
       }
 
       // テスト表示: 要求は流さない状態（動画なし・表示時間外）でも消費する（Pi と同じ）。定期動画が OFF でも流す
       const commands = newerCommands(cfg.commands, commandsRef.current);
-      const test = consumeTestPlay(commands.testPlayRequestedAt, memory.lastTestPlayProcessedAt);
+      const test = consumeTestPlay(commands.testPlayRequestedAt, memory.lastTestPlayProcessedAt, now);
       if (test.processedAt !== memory.lastTestPlayProcessedAt) remember({ ...memory, lastTestPlayProcessedAt: test.processedAt });
       if (test.play && visible && playlist.length > 0) {
-        const pick = upcomingOf(pickTestVideo(playlist, commands.testPlayMediaId, cfg.video.mode, memory, now));
+        const pick = upcomingOf(pickTestVideo(playlist, commands.testPlayMediaId, cfg.video.mode, memory, now), true);
         if (pick) {
           upcoming = pick;
           setSrc(resolveRef.current(pick.item));
@@ -244,7 +304,7 @@ export function VideoPlayer({
       const pending = upcoming;
       if (!pending || !playlist.some((p) => p.mediaId === pending.item.mediaId)) {
         const pick = selectNextVideo(playlist, cfg.video.mode, memory, now);
-        upcoming = upcomingOf(pick);
+        upcoming = upcomingOf(pick, false);
         setSrc(pick ? resolveRef.current(pick.item) : null);
         return;
       }
@@ -259,12 +319,13 @@ export function VideoPlayer({
         lastVideoFinishedAt: lastFinishedAt,
         displayWindowStartedAt: windowStartedAt,
       });
-      if (due) void playOnce(pending.item, pending.next);
+      if (due) void playOnce(pending);
     };
 
     const timer = setInterval(tick, TICK_MS);
     return () => {
       clearInterval(timer);
+      if (noticeTimer) clearTimeout(noticeTimer);
       abort.abort();
     };
   }, [deviceId]);
@@ -282,18 +343,30 @@ export function VideoPlayer({
     return () => clearInterval(timer);
   }, [deviceId]);
 
-  if (!src) return null;
   return (
-    <video
-      ref={videoRef}
-      src={src}
-      preload="auto"
-      playsInline
-      aria-hidden
-      data-testid="signage-video"
-      data-shown={shown ? "true" : "false"}
-      className="pointer-events-none fixed inset-0 z-40 h-full w-full bg-black object-contain"
-      style={{ opacity: shown ? 1 : 0 }}
-    />
+    <>
+      {src ? (
+        <video
+          ref={videoRef}
+          src={src}
+          preload="auto"
+          playsInline
+          aria-hidden
+          data-testid="signage-video"
+          data-shown={shown ? "true" : "false"}
+          className="pointer-events-none fixed inset-0 z-40 h-full w-full bg-black object-contain"
+          style={{ opacity: shown ? 1 : 0 }}
+        />
+      ) : null}
+      {notice ? (
+        <div
+          role="status"
+          data-testid="video-notice"
+          className="pointer-events-none fixed bottom-8 left-1/2 z-50 max-w-[90vw] -translate-x-1/2 rounded-full bg-black/85 px-6 py-3 text-base text-white shadow-lg"
+        >
+          {notice}
+        </div>
+      ) : null}
+    </>
   );
 }

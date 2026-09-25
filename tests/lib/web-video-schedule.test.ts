@@ -37,6 +37,12 @@ describe("consumeTestPlay", () => {
     expect(consumeTestPlay(null, undefined)).toEqual({ play: false, processedAt: null });
   });
 
+  it("初めて開いたときでも、1 分以内の要求なら流す（押した直後にページを開いた場合）", () => {
+    expect(consumeTestPlay(NOW - 30, undefined, NOW)).toEqual({ play: true, processedAt: NOW - 30 });
+    expect(consumeTestPlay(NOW - 61, undefined, NOW)).toEqual({ play: false, processedAt: NOW - 61 });
+    expect(consumeTestPlay(null, undefined, NOW)).toEqual({ play: false, processedAt: null });
+  });
+
   it("前回より新しい要求なら 1 回だけ流す", () => {
     expect(consumeTestPlay(NOW, NOW - 60)).toEqual({ play: true, processedAt: NOW });
     expect(consumeTestPlay(NOW, NOW)).toEqual({ play: false, processedAt: NOW });

@@ -30,11 +30,21 @@ export const EMPTY_VIDEO_MEMORY: VideoMemory = {
  * テスト表示の要求を今処理するか。前回処理した値より新しい要求なら 1 回だけ再生する。
  * まだ何も記録していない（初めて開いた）ときは、今の値を処理済みとして記録するだけで再生しない（開くたびに流れないように）。
  */
+/**
+ * 初めて開いたとき（処理済みの記録が無い）、これより新しい要求は流す（管理画面で押した直後にサイネージのページを
+ * 開いた・別のブラウザで開き直した場合。2026-09-25 ユーザー報告）。それより古い要求は処理済みにするだけ
+ */
+export const FRESH_REQUEST_SECONDS = 60;
+
 export function consumeTestPlay(
   requestedAt: number | null,
   lastProcessedAt: number | null | undefined,
+  now?: number,
 ): { play: boolean; processedAt: number | null } {
-  if (lastProcessedAt === undefined) return { play: false, processedAt: requestedAt };
+  if (lastProcessedAt === undefined) {
+    const fresh = requestedAt !== null && now !== undefined && now - requestedAt <= FRESH_REQUEST_SECONDS;
+    return { play: fresh, processedAt: requestedAt };
+  }
   if (requestedAt === null || (lastProcessedAt !== null && requestedAt <= lastProcessedAt)) {
     return { play: false, processedAt: lastProcessedAt };
   }
