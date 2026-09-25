@@ -10,11 +10,13 @@ import { events, media, users } from "../../db/schema";
 import { seed } from "../../db/seed";
 import { tokyoDateTime } from "../../lib/dates";
 import {
+  countActiveEvents,
   createEvent,
   deleteEvent,
   EventServiceError,
   getEvent,
   listEvents,
+  MAX_ACTIVE_EVENTS,
   updateEvent,
 } from "../../lib/services/events";
 import { openTempDb } from "../helpers/temp-db";
@@ -352,6 +354,57 @@ describe("API: /api/events", () => {
   });
 });
 
+describe("サービス: 終わっていないイベントは 5 件まで（2026-09-25 ユーザー指示）", () => {
+  const now = BASE;
+  const DAY = 86400;
+  /** 明日から 1 日ずつ先の、終わっていないイベントを count 件 */
+  async function fill(count: number, overrides: Record<string, unknown> = {}) {
+    const rows = [];
+    for (let i = 1; i <= count; i++) rows.push(await createEvent(db, input({ title: `イベント${i}`, startAt: BASE + i * DAY, ...overrides }), now));
+    return rows;
+  }
+
+  it("5 件あると 6 件目は登録できず（409 limit）、削除すれば登録できる", async () => {
+    expect(MAX_ACTIVE_EVENTS).toBe(5);
+    const rows = await fill(5);
+    const error = await expectServiceError(createEvent(db, input({ startAt: BASE + 10 * DAY }), now), "limit", 409);
+    expect(error.message).toContain("削除してください");
+    expect(await countActiveEvents(db, now)).toBe(5);
+
+    await deleteEvent(db, rows[0].id);
+    expect((await createEvent(db, input({ title: "新しいイベント", startAt: BASE + 10 * DAY }), now)).title).toBe("新しいイベント");
+  });
+
+  it("下書きも数える。終わったイベントは数えず、終わったイベントの登録（記録）は止めない", async () => {
+    await fill(4);
+    await createEvent(db, input({ title: "下書き", status: "draft", startAt: BASE + 20 * DAY }), now);
+    await expectServiceError(createEvent(db, input({ startAt: BASE + 30 * DAY }), now), "limit", 409);
+    // 昨日終わったイベントは数に入らず、上限でも登録できる
+    const past = await createEvent(db, input({ title: "昨日の会", startAt: BASE - DAY, endAt: BASE - DAY + 3600 }), now);
+    expect(past.title).toBe("昨日の会");
+    expect(await countActiveEvents(db, now)).toBe(5);
+  });
+
+  it("終了なしのイベントは開始日の終わりまで数える", async () => {
+    await createEvent(db, input({ title: "今朝の会", startAt: BASE - 10 * 3600 }), now);
+    expect(await countActiveEvents(db, now)).toBe(1);
+    expect(await countActiveEvents(db, tokyoDateTime(2025, 9, 25, 0, 0))).toBe(0);
+  });
+
+  it("上限でも、今あるイベントの手直しはできる。終わったイベントを先の日時に直すのは止める", async () => {
+    const past = await createEvent(db, input({ title: "昨日の会", startAt: BASE - DAY, endAt: BASE - DAY + 3600 }), now);
+    const [first] = await fill(5);
+    const edited = await updateEvent(db, first.id, input({ title: "イベント1（変更）", startAt: first.startAt, revision: 0 }), now);
+    expect(edited.title).toBe("イベント1（変更）");
+    await expectServiceError(
+      updateEvent(db, past.id, input({ title: "昨日の会", startAt: BASE + 40 * DAY, revision: 0 }), now),
+      "limit",
+      409,
+    );
+    expect((await getEvent(db, past.id)).startAt).toBe(BASE - DAY);
+  });
+});
+
 describe("Server Actions", () => {
   it("未ログインは unauthorized を返し、何も作らない", async () => {
     expect(await actions.createEventAction(input())).toEqual({
@@ -359,6 +412,15 @@ describe("Server Actions", () => {
       error: { code: "unauthorized", message: "ログインしてください" },
     });
     expect(await db.select().from(events)).toHaveLength(0);
+  });
+
+  it("終わっていないイベントが 5 件あると、作成は limit のメッセージを返す", async () => {
+    await login();
+    const soon = Math.floor(Date.now() / 1000) + 86400;
+    for (let i = 0; i < 5; i++) expect((await actions.createEventAction(input({ startAt: soon + i * 86400 }))).ok).toBe(true);
+    const result = await actions.createEventAction(input({ startAt: soon + 10 * 86400 }));
+    expect(result).toEqual({ ok: false, error: { code: "limit", message: expect.stringContaining("5 件まで") } });
+    expect(await db.select().from(events)).toHaveLength(5);
   });
 
   it("サービスと同じ規則（作成・一覧・取得・409・deleting 画像・削除・404）", async () => {

@@ -22,7 +22,8 @@ import {
 } from "./dates";
 
 export const STARTING_SOON_SECONDS = 30 * 60;
-export const UPCOMING_LIMIT = 4;
+/** Upcoming の最大件数（横型。2026-09-25 ユーザー指示で 4 → 5。縦型は 3 行） */
+export const UPCOMING_LIMIT = 5;
 export const WEATHER_MAX_AGE_SECONDS = 3 * 60 * 60;
 
 type EventTiming = Pick<SignageEvent, "startAt" | "endAt">;
@@ -121,7 +122,7 @@ export function selectMainEvent<E extends SignageEvent>(events: readonly E[], no
 
 /**
  * Upcoming。主イベントを除く、終わっていない公開イベントのうち主イベントより後の順番のものを
- * 開始順に最大 4 件。今日のうち主イベントより後のもの（同時刻で作成が遅いものを含む）も入る。
+ * 開始順に最大 UPCOMING_LIMIT 件。今日のうち主イベントより後のもの（同時刻で作成が遅いものを含む）も入る。
  */
 export function selectUpcomingEvents<E extends SignageEvent>(
   events: readonly E[],

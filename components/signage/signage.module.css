@@ -1295,22 +1295,22 @@
   color: var(--ink-soft);
 }
 
-/* Upcoming（横） */
-/* 縦に伸ばしたときは、行の間隔を広げて大きな枠と下端をそろえる（4 行で間は 3 つ） */
+/* Upcoming（横）。最大 5 行（2026-09-25 ユーザー指示で 4 → 5。行の高さを 124px → 114px にして大きな枠の下端 806px にそろえる） */
+/* 縦に伸ばしたときは、行の間隔を広げて大きな枠と下端をそろえる（5 行で間は 4 つ） */
 .lUpcoming {
   position: absolute;
   left: 1368px;
   top: 220px;
   width: 516px;
-  height: calc(512px + var(--canvas-extra, 0px));
+  height: calc(586px + var(--canvas-extra, 0px));
   display: flex;
   flex-direction: column;
-  gap: calc(2px + var(--canvas-extra, 0px) / 3);
+  gap: calc(4px + var(--canvas-extra, 0px) / 4);
 }
 
 .lRow {
   position: relative;
-  height: 124px;
+  height: 114px;
   flex: none;
   border-radius: 14px;
   background: #f5f5f5;
@@ -1329,7 +1329,7 @@
 }
 
 .lRowDay {
-  margin-top: 31px;
+  margin-top: 27px;
   font-weight: 700;
   font-size: 29px;
   line-height: 1;
@@ -1345,8 +1345,8 @@
 .lRowDivider {
   position: absolute;
   left: 120px;
-  top: 20px;
-  bottom: 22px;
+  top: 18px;
+  bottom: 18px;
   width: 2px;
   background: #e6e6e6;
 }
@@ -1354,7 +1354,7 @@
 .lRowText {
   position: absolute;
   left: 140px;
-  top: 14px;
+  top: 10px;
   width: 236px;
   display: flex;
   flex-direction: column;
@@ -1373,7 +1373,7 @@
 }
 
 .lRowTitle {
-  margin-top: 8px;
+  margin-top: 6px;
   max-width: 100%;
   font-weight: 700;
   font-size: 22px;
@@ -1384,7 +1384,7 @@
 }
 
 .lRowMeta {
-  margin-top: 5px;
+  margin-top: 3px;
   font-size: 16px;
   line-height: 24px;
   letter-spacing: 0.01em;
@@ -1402,7 +1402,7 @@
 .lRowImage {
   position: absolute;
   left: 384px;
-  top: 24px;
+  top: 19px;
   width: 118px;
   height: 76px;
   border-radius: 10px;

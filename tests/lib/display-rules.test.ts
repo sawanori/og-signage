@@ -123,12 +123,18 @@ describe("今日の主イベントと Upcoming", () => {
     ]);
   });
 
-  it("Upcoming は最大 4 件", () => {
-    const extra = makeEvent({ id: "extra", startAt: tokyoDateTime(2025, 10, 10, 19, 0) });
-    const events = [...mockEvents, extra];
+  it("Upcoming は最大 5 件（2026-09-25 ユーザー指示で 4 → 5）", () => {
+    const fifth = makeEvent({ id: "fifth", startAt: tokyoDateTime(2025, 10, 10, 19, 0) });
+    const sixth = makeEvent({ id: "sixth", startAt: tokyoDateTime(2025, 10, 11, 19, 0) });
+    const events = [...mockEvents, sixth, fifth];
     const main = selectMainEvent(events, NOW);
-    expect(selectUpcomingEvents(events, NOW, main)).toHaveLength(4);
-    expect(selectUpcomingEvents(events, NOW, main).map((e) => e.id)).not.toContain("extra");
+    expect(selectUpcomingEvents(events, NOW, main).map((e) => e.id)).toEqual([
+      movieNight.id,
+      bbqParty.id,
+      englishMeetup.id,
+      coffeeWorkshop.id,
+      "fifth",
+    ]);
   });
 
   it("下書きは主イベントにも Upcoming にも今週にも出ない", () => {

@@ -7,6 +7,8 @@
  * - 保存中・保存失敗を表示する。失敗しても入力はそのまま残す。
  * - 他の人が先に更新していたら（revision 不一致）入力を保ったまま知らせ、最新の版で保存し直せるようにする。
  * - 保存・削除のあとは一覧へ戻り、一覧で結果を知らせる。
+ * - 終わっていないイベントが上限（lib/services/events.ts の MAX_ACTIVE_EVENTS）に達していたら、追加の画面で先に知らせ、
+ *   保存できないようにする（2026-09-25 ユーザー指示「消さないと登録できないように」）。
  */
 import { ChevronLeft, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -38,8 +40,11 @@ const DELETE_FAILED = "削除できませんでした。通信の状態を確認
 
 type Banner = { kind: "error" | "conflict"; message: string };
 
+/** 終わっていないイベントの数と上限（上限に達しているときだけ渡す） */
+export type EventLimit = { count: number; max: number };
+
 export type EventFormProps =
-  | { mode: "create"; now: number; categories: EventCategoryOption[] }
+  | { mode: "create"; now: number; categories: EventCategoryOption[]; limit?: EventLimit | null }
   | {
       mode: "edit";
       eventId: string;
@@ -146,6 +151,7 @@ export function EventForm(props: EventFormProps) {
     errors[name] ? { "aria-invalid": true, "aria-describedby": `${name}-error` } : {};
 
   const busy = isSubmitting || uploading || deleting;
+  const limit = props.mode === "create" ? (props.limit ?? null) : null;
 
   return (
     <div className={styles.page}>
@@ -156,6 +162,17 @@ export function EventForm(props: EventFormProps) {
         </Link>
         <h2 className={styles.pageTitle}>{editing ? "イベントを編集" : "新しいイベント"}</h2>
       </div>
+
+      {limit ? (
+        <div className={styles.bannerWarn} role="alert" data-testid="event-limit">
+          <p>
+            {`終わっていないイベントが ${limit.count} 件あります。登録できるのは ${limit.max} 件まで（下書きを含む。終わったイベントは数えません）です。新しく登録するには、イベント一覧でどれかを削除してください。`}
+          </p>
+          <Link href="/admin/events" className={styles.textButton}>
+            イベント一覧へ
+          </Link>
+        </div>
+      ) : null}
 
       <form className={styles.formGrid} onSubmit={handleSubmit(onSubmit)} noValidate aria-label="イベントの内容">
         <div className={styles.formMain}>
@@ -422,7 +439,7 @@ export function EventForm(props: EventFormProps) {
               </p>
             ) : null}
 
-            <button type="submit" className={styles.primaryButton} disabled={busy}>
+            <button type="submit" className={styles.primaryButton} disabled={busy || limit !== null}>
               {isSubmitting ? "保存しています…" : uploading ? "画像をアップロード中…" : "保存する"}
             </button>
             {editing ? (

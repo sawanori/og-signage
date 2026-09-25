@@ -102,6 +102,21 @@ describe("EventForm（追加）", () => {
     await waitFor(() => expect(push).toHaveBeenCalledWith("/admin/events?saved=created"));
   });
 
+  it("終わっていないイベントが上限に達していたら、先に知らせて保存できないようにする（2026-09-25 ユーザー指示）", () => {
+    render(<EventForm mode="create" now={NOW} categories={categories} limit={{ count: 6, max: 5 }} />);
+    const notice = screen.getByTestId("event-limit");
+    expect(notice.textContent).toContain("終わっていないイベントが 6 件あります");
+    expect(notice.textContent).toContain("5 件まで");
+    expect(screen.getByRole("link", { name: "イベント一覧へ" }).getAttribute("href")).toBe("/admin/events");
+    expect((screen.getByRole("button", { name: "保存する" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("上限に達していなければ、知らせは出さない", () => {
+    render(<EventForm mode="create" now={NOW} categories={categories} limit={null} />);
+    expect(screen.queryByTestId("event-limit")).toBeNull();
+    expect((screen.getByRole("button", { name: "保存する" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it("終了なしの説明を出す", () => {
     render(<EventForm mode="create" now={NOW} categories={categories} />);
     expect(screen.getByText(/未入力の場合はその日の終わりまで表示されます/)).toBeTruthy();

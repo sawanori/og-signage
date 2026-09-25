@@ -289,14 +289,18 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     expect(screen.getByTestId("main-title").textContent).toContain("Movie Night");
   });
 
-  it("Upcoming は主イベントを除いて、横型は最大 4 件・縦型は最大 3 件", () => {
-    renderScreen({}, orientation);
+  it("Upcoming は主イベントを除いて、横型は最大 5 件・縦型は最大 3 件", () => {
+    const config = makeConfig();
+    const extra = (id: string, day: number) => ({ ...movieNight, id, title: `追加イベント${day}`, startAt: tokyoDateTime(2025, 10, day, 19, 0) });
+    renderScreen({ config: { ...config, events: [...config.events, extra("ev_fifth", 10), extra("ev_sixth", 11)] } }, orientation);
     const upcoming = screen.getByTestId("upcoming");
     expect(upcoming.textContent).not.toContain("Pizza Night");
     expect(upcoming.textContent).toContain("Movie Night");
-    // 4 件目（コーヒーの淹れ方講座）は横型だけ。縦型は大きな枠を広げるため 3 行
-    if (orientation === "landscape") expect(upcoming.textContent).toContain("コーヒーの淹れ方講座");
+    // 4・5 件目（コーヒーの淹れ方講座・追加イベント10）は横型だけ。縦型は大きな枠を広げるため 3 行。6 件目はどちらにも出ない
+    expect(upcoming.children).toHaveLength(orientation === "landscape" ? 5 : 3);
+    if (orientation === "landscape") expect(upcoming.textContent).toContain("追加イベント10");
     else expect(upcoming.textContent).not.toContain("コーヒーの淹れ方講座");
+    expect(upcoming.textContent).not.toContain("追加イベント11");
   });
 });
 

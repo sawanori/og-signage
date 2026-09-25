@@ -6,6 +6,8 @@
  * - 画像は media が active かつ type=image のものだけ参照できる（deleting は不可）。
  *   参照の確認と書き込みは同じトランザクションで行い、確認後に削除予約へ変わる隙を作らない。
  * - カテゴリは event_categories にあるものだけ。
+ * - 終わっていないイベント（下書きを含む）は MAX_ACTIVE_EVENTS 件まで。超える登録は削除してからにする
+ *   （2026-09-25 ユーザー指示。サイネージの Upcoming に全部出せる数）。
  * - エラーの message は利用者向けの日本語。
  */
 import { and, asc, eq, gte, isNull, lte, or, sql, type SQL } from "drizzle-orm";
@@ -24,7 +26,7 @@ export type EventPhase = "before" | "ongoing" | "ended";
 
 export type EventListItem = EventRow & { phase: EventPhase };
 
-export type EventErrorCode = "invalid_input" | "invalid_image" | "invalid_category" | "not_found" | "conflict";
+export type EventErrorCode = "invalid_input" | "invalid_image" | "invalid_category" | "not_found" | "conflict" | "limit";
 
 const STATUS_BY_CODE: Record<EventErrorCode, 400 | 404 | 409> = {
   invalid_input: 400,
@@ -32,7 +34,11 @@ const STATUS_BY_CODE: Record<EventErrorCode, 400 | 404 | 409> = {
   invalid_category: 400,
   not_found: 404,
   conflict: 409,
+  limit: 409,
 };
+
+/** 終わっていないイベント（下書きを含む）の上限。サイネージの Upcoming（横型は最大 5 件）に全部出せる数 */
+export const MAX_ACTIVE_EVENTS = 5;
 
 export class EventServiceError extends Error {
   readonly status: 400 | 404 | 409;
@@ -47,6 +53,11 @@ export class EventServiceError extends Error {
 }
 
 const notFound = () => new EventServiceError("not_found", "イベントが見つかりません。削除された可能性があります");
+const limitReached = (action: string) =>
+  new EventServiceError(
+    "limit",
+    `終わっていないイベントは ${MAX_ACTIVE_EVENTS} 件まで（下書きを含む）です。${action}には、イベント一覧でどれかを削除してください`,
+  );
 
 /** Zod の失敗を最初の項目のメッセージで 400 にする */
 function invalidInput(error: z.ZodError): EventServiceError {
@@ -136,6 +147,16 @@ export async function getEvent(db: Db, id: string): Promise<EventRow> {
 
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
+/** 終わっていないイベント（下書きを含む）の数。終了なしは開始日の終わりまで。exceptId は数えない */
+export async function countActiveEvents(db: Db | Tx, now = nowSeconds(), exceptId?: string): Promise<number> {
+  // ここでは粗く絞り、正確な判定は effectiveEndAt で行う（listEvents と同じ）
+  const rows = await db
+    .select({ id: events.id, startAt: events.startAt, endAt: events.endAt })
+    .from(events)
+    .where(or(gte(events.endAt, now), and(isNull(events.endAt), gte(events.startAt, now - SECONDS_PER_DAY)))!);
+  return rows.filter((row) => row.id !== exceptId && effectiveEndAt(row) >= now).length;
+}
+
 async function assertReferences(tx: Tx, input: EventInput): Promise<void> {
   if (input.imageMediaId !== null) {
     const [image] = await tx
@@ -162,25 +183,36 @@ function toColumns(input: EventInput) {
   return { ...input, capacity: input.participation === "limited" ? input.capacity : null };
 }
 
-export async function createEvent(db: Db, input: unknown): Promise<EventRow> {
+export async function createEvent(db: Db, input: unknown, now = nowSeconds()): Promise<EventRow> {
   const data = parse(eventInputSchema, input);
   return db.transaction(async (tx) => {
     await assertReferences(tx, data);
+    if (effectiveEndAt(data) >= now && (await countActiveEvents(tx, now)) >= MAX_ACTIVE_EVENTS) {
+      throw limitReached("新しく登録する");
+    }
     const [row] = await tx.insert(events).values(toColumns(data)).returning();
     return row;
   });
 }
 
 /** revision が一致したときだけ更新し、revision を 1 増やす。不一致は 409、無ければ 404 */
-export async function updateEvent(db: Db, id: string, input: unknown): Promise<EventRow> {
+export async function updateEvent(db: Db, id: string, input: unknown, now = nowSeconds()): Promise<EventRow> {
   const { revision, ...data } = parse(eventUpdateSchema, input);
   return db.transaction(async (tx) => {
-    const [current] = await tx.select({ revision: events.revision }).from(events).where(eq(events.id, id));
+    const [current] = await tx
+      .select({ revision: events.revision, startAt: events.startAt, endAt: events.endAt })
+      .from(events)
+      .where(eq(events.id, id));
     if (!current) throw notFound();
     if (current.revision !== revision) {
       throw new EventServiceError("conflict", "他の人が先に更新しました");
     }
     await assertReferences(tx, data);
+    // 終わったイベントを先の日時に直して数に戻すときだけ上限を見る（今あるイベントの手直しは止めない）
+    const revives = effectiveEndAt(current) < now && effectiveEndAt(data) >= now;
+    if (revives && (await countActiveEvents(tx, now, id)) >= MAX_ACTIVE_EVENTS) {
+      throw limitReached("このイベントを先の日時にする");
+    }
     const [row] = await tx
       .update(events)
       .set({ ...toColumns(data), revision: revision + 1, updatedAt: nowSeconds() })
