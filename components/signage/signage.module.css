@@ -1361,22 +1361,22 @@
   color: var(--ink-soft);
 }
 
-/* Upcoming（横）。最大 6 行（2026-09-25 ユーザー指示で 4 → 5 → 6。行は 124px で、下端はフッターの 12px 上（984px）） */
-/* 縦に伸ばしたときは、行の間隔を広げて大きな枠と下端をそろえる（6 行で間は 5 つ） */
+/* Upcoming（横）。最大 6 行（2026-09-25 ユーザー指示で 4 → 5 → 6。行は 108px で、下のメンバー情報（見出し 860px）の上まで） */
+/* 縦に伸ばしたときは、行の間隔を広げてメンバー情報との間をそろえる（6 行で間は 5 つ） */
 .lUpcoming {
   position: absolute;
   left: calc(1368px + var(--canvas-extra-x, 0px));
   top: 174px;
   width: 516px;
-  height: calc(809px + var(--canvas-extra, 0px));
+  height: calc(671px + var(--canvas-extra, 0px));
   display: flex;
   flex-direction: column;
-  gap: calc(13px + var(--canvas-extra, 0px) / 5);
+  gap: calc(4.6px + var(--canvas-extra, 0px) / 5);
 }
 
 .lRow {
   position: relative;
-  height: 124px;
+  height: 108px;
   flex: none;
   border-radius: 14px;
   background: #f5f5f5;
@@ -1395,7 +1395,7 @@
 }
 
 .lRowDay {
-  margin-top: 31px;
+  margin-top: 24px;
   font-weight: 700;
   font-size: 29px;
   line-height: 1;
@@ -1411,8 +1411,8 @@
 .lRowDivider {
   position: absolute;
   left: 120px;
-  top: 20px;
-  bottom: 22px;
+  top: 16px;
+  bottom: 16px;
   width: 2px;
   background: #e6e6e6;
 }
@@ -1420,7 +1420,7 @@
 .lRowText {
   position: absolute;
   left: 140px;
-  top: 14px;
+  top: 10px;
   width: 236px;
   display: flex;
   flex-direction: column;
@@ -1439,7 +1439,7 @@
 }
 
 .lRowTitle {
-  margin-top: 8px;
+  margin-top: 5px;
   max-width: 100%;
   font-weight: 700;
   font-size: 22px;
@@ -1450,7 +1450,7 @@
 }
 
 .lRowMeta {
-  margin-top: 5px;
+  margin-top: 2px;
   font-size: 16px;
   line-height: 24px;
   letter-spacing: 0.01em;
@@ -1468,7 +1468,7 @@
 .lRowImage {
   position: absolute;
   left: 384px;
-  top: 24px;
+  top: 16px;
   width: 118px;
   height: 76px;
   border-radius: 10px;
@@ -1476,7 +1476,7 @@
 }
 
 
-/* フッターのまとまり（下段の 3 つの欄は 2026-09-25 に外した）。中の位置は 1920×1080 の座標のまま、縦に伸ばした分だけ下へずらす */
+/* フッターとメンバー情報のまとまり（お知らせは右上へ、今週の予定は 2026-09-25 に外した）。中の位置は 1920×1080 の座標のまま、縦に伸ばした分だけ下へずらす */
 .lLower {
   position: absolute;
   left: 0;
@@ -1484,6 +1484,59 @@
   width: calc(1920px + var(--canvas-extra-x, 0px));
   height: 1080px;
 }
+
+/* メンバー情報（横）。右の列の下、UPCOMING と同じ左端にそろえる（2026-09-25 ユーザー指示で戻し、右へ寄せた） */
+.lRules {
+  position: absolute;
+  left: calc(1368px + var(--canvas-extra-x, 0px));
+  top: 894px;
+  width: 516px;
+  height: 88px;
+  display: flex;
+  gap: 10px;
+}
+
+.lRule {
+  flex: 1 1 0;
+  height: 100%;
+  border-radius: 16px;
+  background: #f3f2f0;
+  box-shadow: 0 1px 2px rgba(40, 30, 20, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* 見出しと文言を上下の中央に置く（アイコンは 2026-09-25 に外した） */
+  justify-content: center;
+  gap: 4px;
+  padding: 0 10px;
+}
+
+.lRuleTitle {
+  max-width: 100%;
+  font-size: 15.5px;
+  font-weight: 700;
+  line-height: 22px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lRuleText {
+  padding: 0 8px;
+  font-size: 14.5px;
+  line-height: 20px;
+  letter-spacing: 0.06em;
+  text-align: center;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  white-space: pre-line;
+  line-break: strict;
+  word-break: auto-phrase;
+}
+
 
 /* フッター（横） */
 .lFooter {

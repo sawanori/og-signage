@@ -245,19 +245,14 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     expect(screen.getByText("現在お知らせはありません")).toBeTruthy();
   });
 
-  it("メンバー情報は縦型だけに出す（アイコンなし・見出し（任意）と文言）。横型は下段ごと外した", () => {
+  it("メンバー情報はアイコンを出さず、見出し（任意）と文言を出す。今週の予定は横型からも外した", () => {
     const config = makeConfig();
     const rules = [
       { icon: "info", title: "受付", text: "お困りのことはスタッフまで" },
       { icon: "info", title: null, text: "文言だけの項目" },
     ];
     renderScreen({ config: { ...config, house: { ...config.house, rules } } }, orientation);
-    if (orientation === "landscape") {
-      expect(screen.queryByTestId("rules")).toBeNull();
-      expect(screen.queryByText("MEMBER INFO")).toBeNull();
-      expect(screen.queryByText("THIS WEEK")).toBeNull();
-      return;
-    }
+    expect(screen.queryByText("THIS WEEK")).toBeNull();
     expect(screen.getByText("MEMBER INFO")).toBeTruthy();
     const section = screen.getByTestId("rules");
     expect(section.children).toHaveLength(2);

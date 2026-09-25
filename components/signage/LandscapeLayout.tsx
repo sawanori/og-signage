@@ -1,7 +1,7 @@
 /**
  * 横型（1920×1080）の配置。モック image/UI-H.png の画面部分に合わせる。
  * 2026-09-25 ユーザー指示: ヘッダーを 2/3 の高さ（92px）に。お知らせ（HOUSE NEWS）は右上の箱へ。
- * 下段の 3 つの欄（お知らせ・今週の予定・メンバー情報）は外し、大きな枠をフッターまで広げ、Upcoming は 6 件。
+ * 下段の欄のうち今週の予定は外し、大きな枠をフッターまで広げ、Upcoming は 6 件。メンバー情報は右の列の下に右寄せで残す。
  */
 import { Fragment } from "react";
 import { ArrowRight, Clock } from "lucide-react";
@@ -93,8 +93,21 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
         ))}
       </div>
 
-      {/* フッター。縦に伸ばしたときは、伸びた分だけ下へずらす（中の位置は 1920×1080 のまま） */}
+      {/* メンバー情報とフッター。縦に伸ばしたときは、伸びた分だけ下へずらす（中の位置は 1920×1080 のまま） */}
       <div className={styles.lLower}>
+        {/* メンバー情報。右の列（UPCOMING）と同じ左端で右寄せ（2026-09-25 ユーザー指示） */}
+        <div className={styles.lSectionTitle} style={{ left: stretchX(1372, 1), top: 860 }}>
+          <span className={styles.lSectionEn}>{COPY.rules.en}</span>
+          <span className={styles.lSectionJa}>{COPY.rules.ja}</span>
+        </div>
+        <div className={styles.lRules} data-testid="rules">
+          {house.rules.map((rule, i) => (
+            <div key={i} className={styles.lRule}>
+              {rule.title ? <span className={styles.lRuleTitle}>{rule.title}</span> : null}
+              <span className={styles.lRuleText}>{rule.text}</span>
+            </div>
+          ))}
+        </div>
         {/* フッター */}
         <div className={styles.lFooter}>
           <div className={styles.lFooterTime}>{view.clock.time}</div>
