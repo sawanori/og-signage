@@ -786,6 +786,23 @@
   left: 28px;
 }
 
+/* お知らせの QR（任意）。カードの右端に縦の中央で。あるときは本文をその分だけ狭くする */
+.pNews[data-has-qr="true"] .pNewsText {
+  right: 124px;
+}
+
+.pNewsQr {
+  position: absolute;
+  right: 16px;
+  top: 12px;
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: #fff;
+}
+
 .pNewsTitle {
   font-weight: 700;
   font-size: 20px;
@@ -1416,11 +1433,29 @@
   top: 854px;
   width: 516px;
   height: 128px;
-  padding: 12px 18px 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 14px 0 20px;
   border-radius: 16px;
   background: #fff;
   box-shadow: 0 6px 20px -4px rgba(20, 30, 45, 0.22), 0 1px 3px rgba(20, 30, 45, 0.1);
   color: #16202b;
+}
+
+/* 見出しとサムネイル・タイトル・詳細（右に QR があれば、その分だけ狭くなる） */
+.lNewsMain {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* お知らせの QR（任意）。カードの右端に縦の中央で */
+.lNewsQr {
+  flex: none;
+  width: 100px;
+  height: 100px;
+  display: grid;
+  place-items: center;
 }
 
 .lNewsLabel {

@@ -183,6 +183,7 @@ async function readConfigBody(tx: Db, deviceId: string, now: number): Promise<Om
       title: notice.title,
       body: notice.body,
       image: toMediaRef(image),
+      qrUrl: notice.qrUrl,
       enabled: notice.enabled,
       displayMode: notice.displayMode,
       displayStartTime: notice.displayStartTime,

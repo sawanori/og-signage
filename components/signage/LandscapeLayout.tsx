@@ -33,6 +33,8 @@ const stretchX = (px: number, share: number) => `calc(${px}px + var(--canvas-ext
 export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
   const { house } = config;
   const footer = splitFooterCopy(house.footerCopy);
+  // お知らせの QR（任意）。http/https の URL のときだけ出す
+  const noticeQr = view.notice?.qrUrl ?? null;
   return (
     <div className={styles.landscape}>
       {/* ヘッダー。ロゴ｜細い縦線｜ハウス名と添え書き。ロゴ未設定なら WeWork のロゴ */}
@@ -89,25 +91,33 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
 
       {/* お知らせとフッター。縦に伸ばしたときは、伸びた分だけ下へずらす（中の位置は 1920×1080 のまま） */}
       <div className={styles.lLower}>
-        {/* お知らせ。右の列の一番下（2026-09-25 ユーザー指示。大きめの白いカードで、縁はドロップシャドウ） */}
+        {/* お知らせ。右の列の一番下（2026-09-25 ユーザー指示。大きめの白いカードで、縁はドロップシャドウ）。
+            左からサムネイル・タイトルと詳細・QR（任意。管理画面のお知らせで URL を入れたときだけ） */}
         <div className={styles.lNews} data-testid="notice">
-          <div className={styles.lNewsLabel}>
-            <span className={styles.lNewsEn}>{COPY.news.en}</span>
-            <span className={styles.lNewsJa}>{COPY.news.ja}</span>
-          </div>
-          {view.notice ? (
-            <div className={styles.lNewsBody}>
-              {view.notice.image ? (
-                <MediaImage media={view.notice.image} category={null} resolveMediaUrl={resolveMediaUrl} className={styles.lNewsImage} />
-              ) : null}
-              <div className={styles.lNewsText}>
-                <div className={styles.lNewsTitle}>{view.notice.title}</div>
-                {view.notice.body ? <div className={styles.lNewsDesc}>{view.notice.body}</div> : null}
-              </div>
+          <div className={styles.lNewsMain}>
+            <div className={styles.lNewsLabel}>
+              <span className={styles.lNewsEn}>{COPY.news.en}</span>
+              <span className={styles.lNewsJa}>{COPY.news.ja}</span>
             </div>
-          ) : (
-            <div className={styles.lNewsEmpty}>{COPY.noNotice}</div>
-          )}
+            {view.notice ? (
+              <div className={styles.lNewsBody}>
+                {view.notice.image ? (
+                  <MediaImage media={view.notice.image} category={null} resolveMediaUrl={resolveMediaUrl} className={styles.lNewsImage} />
+                ) : null}
+                <div className={styles.lNewsText}>
+                  <div className={styles.lNewsTitle}>{view.notice.title}</div>
+                  {view.notice.body ? <div className={styles.lNewsDesc}>{view.notice.body}</div> : null}
+                </div>
+              </div>
+            ) : (
+              <div className={styles.lNewsEmpty}>{COPY.noNotice}</div>
+            )}
+          </div>
+          {isQrUrl(noticeQr) ? (
+            <div className={styles.lNewsQr}>
+              <QrCode url={noticeQr} size={92} label={COPY.noticeQrLabel} />
+            </div>
+          ) : null}
         </div>
         {/* フッター */}
         <div className={styles.lFooter}>

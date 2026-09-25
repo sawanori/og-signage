@@ -1,0 +1,1 @@
+ALTER TABLE `notices` ADD `qr_url` text;

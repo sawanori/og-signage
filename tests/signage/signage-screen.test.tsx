@@ -230,6 +230,23 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     expect(screen.getByLabelText("フッターの QR コード")).toBeTruthy();
   });
 
+  it("お知らせの QR（任意）は、http/https の URL のときだけカードの右に出す（2026-09-25 ユーザー指示）", () => {
+    const config = makeConfig();
+    const withQr = (qrUrl: string | null) => ({ ...config, notices: config.notices.map((n) => ({ ...n, qrUrl })) });
+    renderScreen({ config: withQr("https://example.com/power") }, orientation);
+    const notice = screen.getByTestId("notice");
+    expect(within(notice).getByRole("img", { name: "お知らせの QR コード" })).toBeTruthy();
+    // サムネイル・タイトル・詳細はそのまま
+    expect(notice.querySelector("img")).toBeTruthy();
+    expect(notice.textContent).toContain("共用部の清掃にご協力ください");
+    cleanup();
+    for (const qrUrl of [null, "javascript:alert(1)"]) {
+      renderScreen({ config: withQr(qrUrl) }, orientation);
+      expect(within(screen.getByTestId("notice")).queryByRole("img", { name: "お知らせの QR コード" })).toBeNull();
+      cleanup();
+    }
+  });
+
   it("お知らせは横型では右の列の一番下、縦型では下段に出す。無いときは案内を出す", () => {
     renderScreen({}, orientation);
     const notice = screen.getByTestId("notice");

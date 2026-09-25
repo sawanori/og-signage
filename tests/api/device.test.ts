@@ -17,6 +17,7 @@ import {
   playlists,
   videoPlaybackSettings,
   weatherCache,
+  notices,
 } from "../../db/schema";
 import { SEED_PLAYLIST_ID, seed } from "../../db/seed";
 import { buildDeviceConfig, canonicalJson } from "../../lib/config-builder";
@@ -247,6 +248,16 @@ describe("GET /api/device/config", () => {
       expect(config.weather?.temperatureC).toBe(21.5);
       expect(config.weather).not.toHaveProperty("forecast");
     }
+  });
+
+  it("お知らせの QR の飛び先（任意）は notices[].qrUrl に入る。未設定は null（2026-09-25 ユーザー指示）", async () => {
+    await db.insert(notices).values([
+      { title: "停電のお知らせ", body: "年一の停電です", qrUrl: "https://example.com/power" },
+      { title: "QR なし", body: null },
+    ]);
+    const config = await fetchConfig();
+    const byTitle = Object.fromEntries(config.notices.map((n) => [n.title, n.qrUrl]));
+    expect(byTitle).toEqual({ 停電のお知らせ: "https://example.com/power", "QR なし": null });
   });
 
   it("version は version を除いた本文をキー順固定にした JSON の SHA-256", async () => {

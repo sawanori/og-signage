@@ -261,6 +261,8 @@ export const notices = sqliteTable("notices", {
   title: text("title").notNull(),
   body: text("body"),
   imageMediaId: text("image_media_id").references(() => media.id, { onDelete: "restrict" }),
+  /** お知らせのカードの右に出す QR の飛び先（任意。2026-09-25 ユーザー指示） */
+  qrUrl: text("qr_url"),
   enabled: bool("enabled").notNull().default(true),
   displayMode: text("display_mode", { enum: ["always", "timeRange"] }).notNull().default("always"),
   /** 日本時間 HH:MM（日またぎ可） */

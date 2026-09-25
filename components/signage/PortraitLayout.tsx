@@ -43,6 +43,8 @@ const isLongHouseName = (name: string) => [...name].length > 16;
 export function PortraitLayout({ config, view, resolveMediaUrl }: Props) {
   const { house } = config;
   const footer = splitFooterCopy(house.footerCopy);
+  // お知らせの QR（任意）。http/https の URL のときだけ出す
+  const noticeQr = view.notice?.qrUrl ?? null;
   return (
     <div className={styles.portrait}>
       {/* ヘッダー。ロゴ｜細い縦線｜ハウス名と添え書き。ロゴ未設定なら WeWork のロゴ */}
@@ -118,7 +120,12 @@ export function PortraitLayout({ config, view, resolveMediaUrl }: Props) {
         <span className={styles.pSectionEn}>{COPY.news.en}</span>
         <span className={styles.pSectionJa}>{COPY.news.ja}</span>
       </div>
-      <div className={styles.pNews} data-testid="notice">
+      {/* お知らせ。左からサムネイル・タイトルと詳細・QR（任意。管理画面のお知らせで URL を入れたときだけ） */}
+      <div
+        className={styles.pNews}
+        data-testid="notice"
+        data-has-qr={isQrUrl(noticeQr) ? "true" : "false"}
+      >
         {view.notice ? (
           <>
             {view.notice.image ? (
@@ -133,6 +140,11 @@ export function PortraitLayout({ config, view, resolveMediaUrl }: Props) {
               <div className={styles.pNewsTitle}>{view.notice.title}</div>
               {view.notice.body ? <div className={styles.pNewsBody}>{view.notice.body}</div> : null}
             </div>
+            {isQrUrl(noticeQr) ? (
+              <div className={styles.pNewsQr}>
+                <QrCode url={noticeQr} size={88} label={COPY.noticeQrLabel} />
+              </div>
+            ) : null}
           </>
         ) : (
           <div className={styles.pEmpty}>{COPY.noNotice}</div>

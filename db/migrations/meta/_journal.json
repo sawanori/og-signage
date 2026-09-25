@@ -43,6 +43,13 @@
       "when": 1790312628761,
       "tag": "0005_weather_forecast",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1790327551418,
+      "tag": "0006_notice_qr_url",
+      "breakpoints": true
     }
   ]
 }

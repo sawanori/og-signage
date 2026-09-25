@@ -21,6 +21,8 @@ type FormState = {
   body: string;
   imageMediaId: string | null;
   imagePreviewUrl: string | null;
+  /** カードの右に出す QR の飛び先（任意） */
+  qrUrl: string;
   enabled: boolean;
   displayMode: "always" | "timeRange";
   displayStartTime: string;
@@ -35,6 +37,7 @@ function emptyForm(): FormState {
     body: "",
     imageMediaId: null,
     imagePreviewUrl: null,
+    qrUrl: "",
     enabled: true,
     displayMode: "always",
     displayStartTime: "",
@@ -50,6 +53,7 @@ function toForm(n: NoticeRow): FormState {
     body: n.body ?? "",
     imageMediaId: n.imageMediaId,
     imagePreviewUrl: n.imageMediaId ? mediaThumbnailUrl(n.imageMediaId) : null,
+    qrUrl: n.qrUrl ?? "",
     enabled: n.enabled,
     displayMode: n.displayMode,
     displayStartTime: n.displayStartTime ?? "",
@@ -99,6 +103,7 @@ export function NoticesView({ notices }: { notices: NoticeRow[] }) {
       title: form.title,
       body: form.body.trim() === "" ? null : form.body,
       imageMediaId: form.imageMediaId,
+      qrUrl: form.qrUrl.trim() === "" ? null : form.qrUrl.trim(),
       enabled: form.enabled,
       displayMode: form.displayMode,
       displayStartTime: timeRange && form.displayStartTime ? form.displayStartTime : null,
@@ -281,6 +286,23 @@ function NoticeForm({
             onBusyChange={setUploading}
             onChange={(mediaId, previewUrl) => setForm({ ...form, imageMediaId: mediaId, imagePreviewUrl: previewUrl })}
           />
+        </div>
+
+        <div className={`${styles.field} ${styles.fieldFull}`}>
+          <label className={styles.label} htmlFor="notice-qr-url">
+            QR コード（任意・飛び先の URL）
+          </label>
+          <input
+            id="notice-qr-url"
+            className={styles.input}
+            type="url"
+            value={form.qrUrl}
+            maxLength={2000}
+            placeholder="例：https://…（詳しい案内のページ）"
+            disabled={pending}
+            onChange={(e) => setForm({ ...form, qrUrl: e.target.value })}
+          />
+          <p className={styles.hint}>入れると、サイネージのお知らせの右に QR コードを出します。空欄なら出しません。</p>
         </div>
 
         <div className={styles.field}>

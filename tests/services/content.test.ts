@@ -23,6 +23,7 @@ type NoticeFormInput = {
   title: string;
   body: string | null;
   imageMediaId: string | null;
+  qrUrl?: string | null;
   enabled: boolean;
   displayMode: "always" | "timeRange";
   displayStartTime: string | null;
@@ -83,6 +84,17 @@ describe("notices（Staff 以上）", () => {
     const row = await noticesService.createNotice(db, staff, noticeInput({ title: "新しいお知らせ", body: "本文です" }));
     expect(row.title).toBe("新しいお知らせ");
     expect(row.revision).toBe(0);
+  });
+
+  it("QR の飛び先（任意）を保存・更新できる。空欄は null、http/https 以外は入力不正（2026-09-25 ユーザー指示）", async () => {
+    const created = await noticesService.createNotice(db, staff, noticeInput({ qrUrl: " https://example.com/power " }));
+    expect(created.qrUrl).toBe("https://example.com/power");
+    const cleared = await noticesService.updateNotice(db, staff, created.id, { ...noticeInput({ qrUrl: "" }), revision: created.revision });
+    expect(cleared.qrUrl).toBeNull();
+    expect((await noticesService.createNotice(db, staff, noticeInput())).qrUrl).toBeNull();
+    for (const bad of ["javascript:alert(1)", "not a url", "ftp://example.com/x"]) {
+      await expectServiceError(noticesService.createNotice(db, staff, noticeInput({ qrUrl: bad })), 400, "invalid_input");
+    }
   });
 
   it("見出しが空なら入力不正", async () => {

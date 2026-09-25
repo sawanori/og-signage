@@ -64,6 +64,8 @@ export const signageNoticeSchema = z.object({
   title: z.string().min(1),
   body: z.string().nullable(),
   image: mediaRefSchema.nullable(),
+  /** カードの右に出す QR の飛び先（任意）。古い Worker の config には無い */
+  qrUrl: z.string().nullable().optional(),
   enabled: z.boolean(),
   displayMode: noticeDisplayModeSchema,
   /** displayMode = timeRange のときの時間帯（日本時間、HH:MM、日またぎ可） */

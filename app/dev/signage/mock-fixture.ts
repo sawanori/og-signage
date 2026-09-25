@@ -86,6 +86,8 @@ export function mockConfig(orientation: Orientation): SignageConfig {
       {
         ...cleaningNotice,
         body: "快適に過ごせる環境づくりのため、\nみなさんのご協力をお願いします。",
+        // お知らせの QR（任意。2026-09-25 ユーザー指示）
+        qrUrl: "https://example.com/notice",
       },
     ],
     house: {

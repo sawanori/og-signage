@@ -95,6 +95,8 @@ const noticeFields = z.object({
   title: requiredText("見出し", 50),
   body: optionalText("本文", NOTICE_BODY_MAX),
   imageMediaId: optionalId,
+  /** カードの右に出す QR の飛び先（任意。http/https） */
+  qrUrl: optionalHttpUrl,
   enabled: z.boolean(),
   displayMode: z.enum(["always", "timeRange"]),
   displayStartTime: hhmm.nullable().default(null),

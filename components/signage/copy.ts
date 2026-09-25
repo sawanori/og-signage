@@ -18,6 +18,8 @@ export const COPY = {
   rules: { en: "MEMBER INFO", ja: "メンバー情報" },
   week: { en: "THIS WEEK", ja: "今週の予定" },
   qrLabel: "イベント詳細",
+  /** お知らせのカードの QR（読み上げ用の名前） */
+  noticeQrLabel: "お知らせの QR コード",
   hostPrefix: "主催：",
   noUpcoming: "予定されているイベントはありません",
   noNotice: "現在お知らせはありません",
