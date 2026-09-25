@@ -2,11 +2,13 @@
 
 /**
  * イベント画像の選択とアップロード（lib/client/upload.ts）。進捗を出し、終わったら画像の ID を返す。
+ * アップロード済みの画像から選ぶこともできる（media-picker.tsx。2026-09-25 ユーザー指示）。
  */
 import { ImagePlus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { UploadError, uploadMedia, type UploadProgress } from "@/lib/client/upload";
 import { mediaThumbnailUrl } from "./event-types";
+import { MediaPickerButton } from "./media-picker";
 import styles from "./events.module.css";
 
 const ACCEPT = "image/jpeg,image/png,image/webp";
@@ -105,8 +107,16 @@ export function EventImageField({
       />
       <div className={styles.imageActions}>
         <button type="button" className={styles.secondaryButton} disabled={busy} onClick={() => inputRef.current?.click()}>
-          {previewUrl ? "画像を変える" : "画像を選ぶ"}
+          新しくアップロード
         </button>
+        <MediaPickerButton
+          className={styles.secondaryButton}
+          disabled={busy}
+          onPick={(mediaId, url) => {
+            setError(null);
+            onUploaded(mediaId, url);
+          }}
+        />
         {previewUrl ? (
           <button type="button" className={styles.textButton} disabled={busy} onClick={onRemove}>
             画像を外す

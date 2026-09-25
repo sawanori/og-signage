@@ -111,6 +111,7 @@ function HouseInfoSection({ settings }: { settings: HouseSettingsRow }) {
             label="ロゴ"
             hint="JPEG・PNG・WebP（20MBまで）"
             previewUrl={logoPreview}
+            selectedId={logoMediaId}
             disabled={pending}
             onBusyChange={setUploading}
             onChange={(mediaId, preview) => {
@@ -168,6 +169,7 @@ function HouseInfoSection({ settings }: { settings: HouseSettingsRow }) {
             label="フッター背景画像"
             hint="JPEG・PNG・WebP（20MBまで）"
             previewUrl={footerImagePreview}
+            selectedId={footerImageMediaId}
             disabled={pending}
             onBusyChange={setUploading}
             onChange={(mediaId, preview) => {

@@ -276,6 +276,7 @@ function NoticeForm({
             label="画像（任意）"
             hint="JPEG・PNG・WebP（20MBまで）"
             previewUrl={form.imagePreviewUrl}
+            selectedId={form.imageMediaId}
             disabled={pending}
             onBusyChange={setUploading}
             onChange={(mediaId, previewUrl) => setForm({ ...form, imageMediaId: mediaId, imagePreviewUrl: previewUrl })}

@@ -3,10 +3,12 @@
 /**
  * 画像1枚の選択・アップロード（lib/client/upload.ts）。お知らせ画像・ロゴ・フッター画像で共用する。
  * アップロードが終わると mediaId とプレビュー URL（/api/media/[id]/thumbnail）を親に返す。
+ * アップロード済みの画像から選ぶこともできる（media-picker.tsx。2026-09-25 ユーザー指示）。
  */
 import { ImagePlus } from "lucide-react";
 import { useRef, useState } from "react";
 import { UploadError, uploadMedia, type UploadProgress } from "@/lib/client/upload";
+import { MediaPickerButton } from "./media-picker";
 import styles from "./settings.module.css";
 
 const ACCEPT = "image/jpeg,image/png,image/webp";
@@ -25,6 +27,7 @@ export function MediaUploadField({
   label,
   hint,
   previewUrl,
+  selectedId,
   disabled,
   onBusyChange,
   onChange,
@@ -33,6 +36,8 @@ export function MediaUploadField({
   hint?: string;
   /** 今の画像。無ければ null */
   previewUrl: string | null;
+  /** 今の画像の mediaId（メディア一覧で印を付ける） */
+  selectedId?: string | null;
   disabled?: boolean;
   onBusyChange?: (busy: boolean) => void;
   onChange: (mediaId: string | null, previewUrl: string | null) => void;
@@ -82,8 +87,17 @@ export function MediaUploadField({
               disabled={disabled || busy}
               onClick={() => inputRef.current?.click()}
             >
-              {previewUrl ? "画像を変える" : "画像を選ぶ"}
+              新しくアップロード
             </button>
+            <MediaPickerButton
+              className={styles.secondaryButton}
+              disabled={disabled || busy}
+              selectedId={selectedId}
+              onPick={(mediaId, url) => {
+                setError(null);
+                onChange(mediaId, url);
+              }}
+            />
             {previewUrl ? (
               <button type="button" className={styles.textButton} disabled={disabled || busy} onClick={() => onChange(null, null)}>
                 画像を外す
