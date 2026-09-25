@@ -75,6 +75,7 @@ beforeEach(async () => {
   await insertMedia("img_unused", "image", 2);
   await insertMedia("img_draft", "image", 3);
   await insertMedia("vid_a", "video", 4);
+  await insertMedia("vid_unlisted", "video", 5);
   await db.insert(playlistItems).values({ playlistId: SEED_PLAYLIST_ID, mediaId: "vid_a", position: 0 });
   await db.insert(displayBundles).values({ id: "b1", sha256: sha(100), size: 10, r2Key: "bundles/b1.zip", schemaVersion: 1, isCurrent: true });
 
@@ -103,13 +104,13 @@ function relay(path: string): Promise<Response | null> {
 }
 
 describe("GET /api/signage/config（ログイン不要）", () => {
-  it("最初に登録した端末の表示データを返し、動画の一覧とテスト表示の要求は外す", async () => {
+  it("最初に登録した端末の表示データを返す。Web 版も定期動画を流すので、プレイリストとテスト表示の要求も含む", async () => {
     const res = await fetchConfig();
     expect(res.status).toBe(200);
     const config = signageConfigSchema.parse(await res.json()) as SignageConfig;
     expect(config.device.orientation).toBe("portrait");
     expect(config.events.map((e) => e.id)).toEqual(["ev_pub"]);
-    expect(config.playlist).toEqual([]);
+    expect(config.playlist.map((p) => p.mediaId)).toEqual(["vid_a"]);
     expect(config.commands.testPlayRequestedAt).toBeNull();
     expect(res.headers.get("cache-control")).toBe("no-store");
   });
@@ -147,10 +148,21 @@ describe("GET /api/signage/media/[mediaId]（公開中の画像だけ）", () =>
     expect(new Uint8Array(await res!.arrayBuffer())).toEqual(IMAGE_BYTES);
   });
 
-  it("アップロードしただけの画像・下書きイベントの画像・動画は 404", async () => {
-    for (const id of ["img_unused", "img_draft", "vid_a", "nope"]) {
+  it("アップロードしただけの画像・下書きイベントの画像・プレイリストに無い動画は 404", async () => {
+    for (const id of ["img_unused", "img_draft", "vid_unlisted", "nope"]) {
       expect((await relay(`/api/signage/media/${id}`))?.status, id).toBe(404);
     }
+  });
+
+  it("表示している端末のプレイリストの動画は返す", async () => {
+    const res = await relay(`/api/signage/media/vid_a?device=${deviceA}`);
+    expect(res?.status).toBe(200);
+    expect(new Uint8Array(await res!.arrayBuffer())).toEqual(IMAGE_BYTES);
+  });
+
+  it("プレイリストから外した動画は返さなくなる", async () => {
+    await db.delete(playlistItems).where(eq(playlistItems.mediaId, "vid_a"));
+    expect((await relay(`/api/signage/media/vid_a?device=${deviceA}`))?.status).toBe(404);
   });
 
   it("イベントを下書きに戻すと、その画像は返さなくなる", async () => {

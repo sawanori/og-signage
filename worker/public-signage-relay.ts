@@ -1,14 +1,15 @@
 /**
- * Web 公開のサイネージ（/signage）の画像の中継（GET/HEAD /api/signage/media/[mediaId]?device=<id>。ログイン不要）。
+ * Web 公開のサイネージ（/signage）の画像・動画の中継（GET/HEAD /api/signage/media/[mediaId]?device=<id>。ログイン不要）。
  *
  * worker/index.ts が vinext より前に呼ぶ。公開中のイベントの画像（イベント詳細ページの写真）と、
- * 公開中の config（lib/public-signage.ts）が参照している画像だけを返し、それ以外（アップロードしただけの画像・動画）は 404。
+ * 公開中の config（lib/public-signage.ts）が参照している画像・動画（定期動画のプレイリスト）だけを返し、
+ * それ以外（アップロードしただけの画像・プレイリストに無い動画）は 404。動画は Range 付きの取得にも応える（serveObject）。
  */
 import { eq } from "drizzle-orm";
 import type { Db } from "../db/index";
 import { media, nowSeconds } from "../db/schema";
 import { ConfigUnavailableError } from "../lib/config-builder";
-import { buildPublicSignageConfig, isPublishedEventImage, publicImageIds, resolvePublicDeviceId } from "../lib/public-signage";
+import { buildPublicSignageConfig, isPublishedEventImage, publicMediaIds, resolvePublicDeviceId } from "../lib/public-signage";
 import { serveObject, type MediaBucket } from "../lib/r2";
 
 const PUBLIC_MEDIA_PATH = /^\/api\/signage\/media\/([^/]+)$/;
@@ -37,11 +38,11 @@ export async function handlePublicSignageMedia(
   const { db, bucket } = deps;
   try {
     if (!(await isPublishedEventImage(db, id))) {
-      // お知らせ・ロゴ・フッターの画像は、公開中の config が参照しているものだけ
+      // お知らせ・ロゴ・フッターの画像とプレイリストの動画は、公開中の config が参照しているものだけ
       const deviceId = await resolvePublicDeviceId(db, new URL(request.url).searchParams.get("device"));
       if (!deviceId) return notFound();
       const config = await buildPublicSignageConfig(db, deviceId, deps.now ?? nowSeconds());
-      if (!publicImageIds(config).has(id)) return notFound();
+      if (!publicMediaIds(config).has(id)) return notFound();
     }
     const [row] = await db.select().from(media).where(eq(media.id, id));
     if (!row || !row.mimeType || row.fileSize === null) return notFound();

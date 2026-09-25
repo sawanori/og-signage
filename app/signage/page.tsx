@@ -3,7 +3,7 @@
  *
  * - ?device=<id> で端末を選ぶ（省略時は最初に登録した端末。lib/public-signage.ts）。
  * - ?layout=portrait|landscape で縦横を固定する（省略時は見ている画面の向きに合わせる）。
- * - 動画の定期再生は Pi だけの機能で、ここでは行わない。
+ * - 管理画面の「定期動画の設定」どおりに動画を流す（video-player.tsx。2026-09-25 から。Pi のブラウザでこのページを開いて使うため）。
  */
 import { nowSeconds } from "@/db/schema";
 import { ConfigUnavailableError } from "@/lib/config-builder";

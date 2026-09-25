@@ -7,10 +7,12 @@
  * - 画像は公開用の中継（/api/signage/media/<mediaId>）で読む。
  * - 全画面表示はブラウザの制約でボタン操作が要る。ボタンはマウスを動かしたときだけ 3 秒出す。
  * - ウィンドウが 16:9 より縦長なら横型を縦に伸ばし、上下の黒い帯を出さない（fillHeight）。
+ * - 管理画面の「定期動画の設定」どおりに動画を流す（video-player.tsx。Pi のブラウザで開いて使うため）。
  */
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { SignageScreen } from "@/components/signage/SignageScreen";
 import type { MediaRef, SignageConfig } from "@/lib/config-schema";
+import { VideoPlayer } from "./video-player";
 
 type Orientation = SignageConfig["device"]["orientation"];
 
@@ -38,6 +40,8 @@ export function PublicSignage({
   const [config, setConfig] = useState(initialConfig);
   const [now, setNow] = useState(initialNow);
   const [controlsVisible, setControlsVisible] = useState(false);
+  // 動画へ切り替える前後に表示を黒へ溶かす（VideoPlayer が切り替える）
+  const [fading, setFading] = useState(false);
   // サーバーでは画面の向きが分からないので、端末の向きで描いてから合わせる
   const viewport = useSyncExternalStore(subscribeViewport, viewportOrientation, () => null);
 
@@ -85,8 +89,10 @@ export function PublicSignage({
         now={now}
         resolveMediaUrl={resolveMediaUrl}
         orientation={layout ?? viewport ?? config.device.orientation}
+        fading={fading}
         fillHeight
       />
+      <VideoPlayer deviceId={deviceId} config={config} resolveMediaUrl={resolveMediaUrl} onFadingChange={setFading} />
       {controlsVisible ? (
         <button
           type="button"

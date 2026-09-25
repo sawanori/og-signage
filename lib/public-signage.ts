@@ -2,10 +2,11 @@
  * Web で公開するサイネージ（/signage。ログイン不要）のデータ。
  *
  * - 表示する端末は ?device=<id>。省略時は最初に登録した端末。
- * - 公開するのは表示に使う項目だけ。動画の一覧（playlist）とテスト表示の要求（commands）は外す。
- *   動画の定期再生は Pi だけの機能で、Web 版では行わない。
- * - 画像は、公開中の config が参照している画像と、公開中のイベントの画像（イベント詳細ページの写真）だけを
- *   /api/signage/media/<mediaId> で返す（worker/public-signage-relay.ts）。アップロードしただけの画像は外から見えない。
+ * - 端末の config をそのまま返す。Web 版も定期動画を流すため（2026-09-25 から。Pi のブラウザで /signage を開いて使う）、
+ *   動画の一覧（playlist）・再生の設定（video）・テスト表示の要求（commands）も含める（app/signage/video-player.tsx）。
+ * - 画像・動画は、公開中の config が参照しているもの（プレイリストの動画を含む）と、公開中のイベントの画像
+ *   （イベント詳細ページの写真）だけを /api/signage/media/<mediaId> で返す（worker/public-signage-relay.ts）。
+ *   アップロードしただけの画像・動画は外から見えない。
  */
 import { and, asc, eq } from "drizzle-orm";
 import type { Db } from "../db/index";
@@ -27,24 +28,19 @@ export async function resolvePublicDeviceId(db: Db, requested: string | null): P
   return first?.id ?? null;
 }
 
-/** 公開用の config。表示に使わない項目（動画の一覧・テスト表示の要求）を外す */
+/** 公開用の config（端末の config と同じ。定期動画のプレイリスト・テスト表示の要求も含む） */
 export async function buildPublicSignageConfig(
   db: Db,
   deviceId: string,
   now: number,
   siteUrl: string | null = null,
 ): Promise<SignageConfig> {
-  const config = await buildDeviceConfig(db, deviceId, now, siteUrl);
-  return { ...config, playlist: [], commands: { testPlayRequestedAt: null } };
+  return buildDeviceConfig(db, deviceId, now, siteUrl);
 }
 
-/** 公開中の config が参照している画像の mediaId */
-export function publicImageIds(config: SignageConfig): Set<string> {
-  return new Set(
-    collectMediaRefs(config)
-      .filter((ref) => ref.kind === "image")
-      .map((ref) => ref.mediaId),
-  );
+/** 公開中の config が参照している画像・動画（プレイリストの動画）の mediaId */
+export function publicMediaIds(config: SignageConfig): Set<string> {
+  return new Set(collectMediaRefs(config).map((ref) => ref.mediaId));
 }
 
 /** イベント詳細ページ（/events/[id]）に出す、公開中のイベント。下書き・存在しないものは null */
