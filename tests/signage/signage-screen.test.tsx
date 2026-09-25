@@ -230,13 +230,34 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     expect(screen.getByLabelText("フッターの QR コード")).toBeTruthy();
   });
 
-  it("メンバー情報はアイコンを出さず、見出し（任意）と文言を出す", () => {
+  it("お知らせは横型では右上の箱（HOUSE NEWS）、縦型では下段に出す。無いときは案内を出す", () => {
+    renderScreen({}, orientation);
+    const notice = screen.getByTestId("notice");
+    expect(notice.textContent).toContain("共用部の清掃にご協力ください");
+    if (orientation === "landscape") {
+      expect(notice.textContent).toContain("HOUSE NEWS");
+      // キャッチコピー（ヘッダー用）は横型では出さない（2026-09-25 ユーザー指示で右上の箱をお知らせにした）
+      expect(screen.queryByText("Welcome Home!")).toBeNull();
+    }
+    cleanup();
+    const config = makeConfig();
+    renderScreen({ config: { ...config, notices: [] } }, orientation);
+    expect(screen.getByText("現在お知らせはありません")).toBeTruthy();
+  });
+
+  it("メンバー情報は縦型だけに出す（アイコンなし・見出し（任意）と文言）。横型は下段ごと外した", () => {
     const config = makeConfig();
     const rules = [
       { icon: "info", title: "受付", text: "お困りのことはスタッフまで" },
       { icon: "info", title: null, text: "文言だけの項目" },
     ];
     renderScreen({ config: { ...config, house: { ...config.house, rules } } }, orientation);
+    if (orientation === "landscape") {
+      expect(screen.queryByTestId("rules")).toBeNull();
+      expect(screen.queryByText("MEMBER INFO")).toBeNull();
+      expect(screen.queryByText("THIS WEEK")).toBeNull();
+      return;
+    }
     expect(screen.getByText("MEMBER INFO")).toBeTruthy();
     const section = screen.getByTestId("rules");
     expect(section.children).toHaveLength(2);
@@ -289,34 +310,22 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     expect(screen.getByTestId("main-title").textContent).toContain("Movie Night");
   });
 
-  it("Upcoming は主イベントを除いて、横型は最大 5 件・縦型は最大 3 件", () => {
+  it("Upcoming は主イベントを除いて、横型は最大 6 件・縦型は最大 3 件", () => {
     const config = makeConfig();
     const extra = (id: string, day: number) => ({ ...movieNight, id, title: `追加イベント${day}`, startAt: tokyoDateTime(2025, 10, day, 19, 0) });
-    renderScreen({ config: { ...config, events: [...config.events, extra("ev_fifth", 10), extra("ev_sixth", 11)] } }, orientation);
+    const events = [...config.events, extra("ev_fifth", 10), extra("ev_sixth", 11), extra("ev_seventh", 12)];
+    renderScreen({ config: { ...config, events } }, orientation);
     const upcoming = screen.getByTestId("upcoming");
     expect(upcoming.textContent).not.toContain("Pizza Night");
     expect(upcoming.textContent).toContain("Movie Night");
-    // 4・5 件目（コーヒーの淹れ方講座・追加イベント10）は横型だけ。縦型は大きな枠を広げるため 3 行。6 件目はどちらにも出ない
-    expect(upcoming.children).toHaveLength(orientation === "landscape" ? 5 : 3);
-    if (orientation === "landscape") expect(upcoming.textContent).toContain("追加イベント10");
+    // 4〜6 件目（コーヒーの淹れ方講座・追加イベント10・11）は横型だけ。縦型は大きな枠を広げるため 3 行。7 件目はどちらにも出ない
+    expect(upcoming.children).toHaveLength(orientation === "landscape" ? 6 : 3);
+    if (orientation === "landscape") expect(upcoming.textContent).toContain("追加イベント11");
     else expect(upcoming.textContent).not.toContain("コーヒーの淹れ方講座");
-    expect(upcoming.textContent).not.toContain("追加イベント11");
+    expect(upcoming.textContent).not.toContain("追加イベント12");
   });
 });
 
-describe("今週の予定（横型のみ）", () => {
-  it("月曜始まりの 7 日間で今日を強調する", () => {
-    renderScreen({}, "landscape");
-    const week = screen.getByTestId("week");
-    expect(week.textContent).toMatch(/^MON22TUE23WED24/);
-    expect(week.querySelector('[data-today="true"]')?.textContent).toContain("24");
-  });
-
-  it("縦型には出さない", () => {
-    renderScreen({}, "portrait");
-    expect(screen.queryByTestId("week")).toBeNull();
-  });
-});
 
 describe("upcomingForecast", () => {
   const days = [

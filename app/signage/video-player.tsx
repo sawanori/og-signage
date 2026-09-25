@@ -195,6 +195,8 @@ export function VideoPlayer({
       if (!el) return;
       busy = true;
       try {
+        // 前の読み込みに失敗したまま（error）の <video> は、同じ src でも読み直す（そのままでは canplaythrough が来ない）
+        if (el.error) el.load();
         if (el.readyState < HTMLMediaElement.HAVE_ENOUGH_DATA) {
           const ready = await waitFor(el, "canplaythrough", READY_TIMEOUT_MS, signal);
           if (signal.aborted) return;

@@ -123,10 +123,11 @@ describe("今日の主イベントと Upcoming", () => {
     ]);
   });
 
-  it("Upcoming は最大 5 件（2026-09-25 ユーザー指示で 4 → 5）", () => {
+  it("Upcoming は最大 6 件（2026-09-25 ユーザー指示で 4 → 5 → 6）", () => {
     const fifth = makeEvent({ id: "fifth", startAt: tokyoDateTime(2025, 10, 10, 19, 0) });
     const sixth = makeEvent({ id: "sixth", startAt: tokyoDateTime(2025, 10, 11, 19, 0) });
-    const events = [...mockEvents, sixth, fifth];
+    const seventh = makeEvent({ id: "seventh", startAt: tokyoDateTime(2025, 10, 12, 19, 0) });
+    const events = [...mockEvents, seventh, sixth, fifth];
     const main = selectMainEvent(events, NOW);
     expect(selectUpcomingEvents(events, NOW, main).map((e) => e.id)).toEqual([
       movieNight.id,
@@ -134,6 +135,7 @@ describe("今日の主イベントと Upcoming", () => {
       englishMeetup.id,
       coffeeWorkshop.id,
       "fifth",
+      "sixth",
     ]);
   });
 

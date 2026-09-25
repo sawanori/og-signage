@@ -37,8 +37,8 @@ const STATUS_BY_CODE: Record<EventErrorCode, 400 | 404 | 409> = {
   limit: 409,
 };
 
-/** 終わっていないイベント（下書きを含む）の上限。サイネージの Upcoming（横型は最大 5 件）に全部出せる数 */
-export const MAX_ACTIVE_EVENTS = 5;
+/** 終わっていないイベント（下書きを含む）の上限。サイネージの Upcoming（横型は最大 6 件）に全部出せる数 */
+export const MAX_ACTIVE_EVENTS = 6;
 
 export class EventServiceError extends Error {
   readonly status: 400 | 404 | 409;

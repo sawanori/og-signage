@@ -225,7 +225,7 @@
   white-space: nowrap;
 }
 
-/* 折り返しは文節の切れ目で（.lBoxCopy と同じ） */
+/* 折り返しは文節の切れ目で */
 .pHeaderCopy {
   position: absolute;
   left: 78px;
@@ -937,8 +937,8 @@
 /* ---------------------------------------------------------------- 横型 */
 /*
  * Web 公開で横長のウィンドウに合わせて横に伸ばしたとき（--canvas-extra-x。components/signage/ScaledCanvas.tsx）は、
- * 伸びた幅を大きな枠に回し、右の列（UPCOMING）・右上の箱・添え書きはその分だけ右へずらす。
- * 下段の 3 つの欄は 3 等分して広げ、フッターは右側（キャッチコピーと QR・ロゴ）だけが広がる。伸ばさないときは 0
+ * 伸びた幅を大きな枠に回し、右の列（UPCOMING）・右上の箱（お知らせ）・添え書きはその分だけ右へずらす。
+ * フッターは右側（キャッチコピーと QR・ロゴ）だけが広がる。伸ばさないときは 0
  */
 
 .landscape {
@@ -961,7 +961,7 @@
   left: 0;
   top: 0;
   width: calc(1920px + var(--canvas-extra-x, 0px));
-  height: 138px;
+  height: 92px;
   background: linear-gradient(to bottom, #e7e2dc, #efebe7);
 }
 
@@ -969,42 +969,42 @@
 .lBrand {
   position: absolute;
   left: 62px;
-  top: 40px;
-  height: 62px;
+  top: 24px;
+  height: 44px;
   display: flex;
   align-items: center;
 }
 
 /* デザイン設定で登録したロゴ。正方形に近いものは今までどおり高さ 62px に収める */
 .lLogo {
-  height: 62px;
+  height: 44px;
   width: auto;
-  max-width: 260px;
+  max-width: 200px;
   object-fit: contain;
 }
 
 /* ロゴ未設定のときの WeWork のロゴ */
 .lWordmark {
-  height: 40px;
+  height: 28px;
 }
 
 .lBrandRule {
   width: 1px;
-  height: 52px;
-  margin: 0 24px;
+  height: 38px;
+  margin: 0 18px;
   background: rgba(27, 37, 48, 0.28);
 }
 
 .lHouseName {
-  font-size: 29.5px;
+  font-size: 21px;
   line-height: 1;
   letter-spacing: 0.17em;
   white-space: nowrap;
 }
 
 .lHouseKind {
-  margin-top: 8.5px;
-  font-size: 15px;
+  margin-top: 6px;
+  font-size: 11px;
   line-height: 1;
   letter-spacing: 0.17em;
   white-space: nowrap;
@@ -1014,13 +1014,13 @@
 .lScript {
   position: absolute;
   left: calc(1134px + var(--canvas-extra-x, 0px));
-  top: 76px;
+  top: 46px;
   display: flex;
   flex-direction: column;
   font-family: var(--font-script);
   font-weight: 300;
-  font-size: 41px;
-  line-height: 46px;
+  font-size: 28px;
+  line-height: 31px;
   white-space: nowrap;
   transform: rotate(-16deg);
   transform-origin: left top;
@@ -1030,31 +1030,92 @@
 /* 手書き風のタグラインの下線。2 行目（You Love）の終わりの下に置く（Better Days より短いので左下へ寄せた） */
 .lScriptLine {
   position: absolute;
-  left: calc(1256px + var(--canvas-extra-x, 0px));
-  top: 113px;
+  left: calc(1206px + var(--canvas-extra-x, 0px));
+  top: 74px;
 }
 
 /* 右上の箱。キャッチコピー（ヘッダー用）を上下の中央に置く */
+/* 右上の箱はお知らせ（HOUSE NEWS）。ヘッダーの帯（92px）より少し下まで（2026-09-25 ユーザー指示で下段から移した） */
 .lBox {
   position: absolute;
-  left: calc(1533px + var(--canvas-extra-x, 0px));
+  left: calc(1480px + var(--canvas-extra-x, 0px));
   top: 0;
-  width: 387px;
-  height: 157px;
+  width: 440px;
+  height: 110px;
   display: flex;
-  align-items: center;
-  padding: 0 36px 0 64px;
+  flex-direction: column;
+  gap: 7px;
+  padding: 14px 26px 0 30px;
   background: linear-gradient(160deg, #e0d8ce, #d8cdc1);
 }
 
-/* 管理画面の入力欄は 1 行なので、折り返しは文節の切れ目で（auto-phrase。html の lang="ja" が前提） */
-.lBoxCopy {
+.lBoxHead {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.lBoxEn {
   font-weight: 700;
-  font-size: 18.5px;
-  line-height: 28px;
-  letter-spacing: 0.13em;
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+}
+
+.lBoxJa {
+  font-size: 11.5px;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  color: var(--ink-soft);
+}
+
+.lBoxNotice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.lBoxImage {
+  position: relative; /* 中の画像（.cover は absolute）をこの枠に収める */
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.lBoxText {
+  min-width: 0;
+}
+
+.lBoxTitle {
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 24px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lBoxBody {
+  margin-top: 3px;
+  font-size: 13px;
+  line-height: 18px;
+  letter-spacing: 0.04em;
+  color: var(--ink-mute);
   white-space: pre-line;
-  word-break: auto-phrase;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.lBoxEmpty {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-mute);
 }
 
 /* 主イベント（横） */
@@ -1062,9 +1123,9 @@
 .lHero {
   position: absolute;
   left: 0;
-  top: 138px;
+  top: 92px;
   width: calc(1331px + var(--canvas-extra-x, 0px));
-  height: calc(668px + var(--canvas-extra, 0px));
+  height: calc(904px + var(--canvas-extra, 0px));
   border-top-right-radius: 16px;
   overflow: hidden;
   color: #fff;
@@ -1092,7 +1153,7 @@
 .lCircle {
   position: absolute;
   left: 39px;
-  top: 138px;
+  top: 92px;
   width: 192px;
   height: 192px;
   border-radius: 50%;
@@ -1142,9 +1203,9 @@
 .lHeroBody {
   position: absolute;
   left: 252px;
-  top: 189px;
+  top: 143px;
   width: 560px;
-  height: 594px;
+  height: calc(823px + var(--canvas-extra, 0px));
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -1300,22 +1361,22 @@
   color: var(--ink-soft);
 }
 
-/* Upcoming（横）。最大 5 行（2026-09-25 ユーザー指示で 4 → 5。行の高さを 124px → 114px にして大きな枠の下端 806px にそろえる） */
-/* 縦に伸ばしたときは、行の間隔を広げて大きな枠と下端をそろえる（5 行で間は 4 つ） */
+/* Upcoming（横）。最大 6 行（2026-09-25 ユーザー指示で 4 → 5 → 6。行は 124px で、下端はフッターの 12px 上（984px）） */
+/* 縦に伸ばしたときは、行の間隔を広げて大きな枠と下端をそろえる（6 行で間は 5 つ） */
 .lUpcoming {
   position: absolute;
   left: calc(1368px + var(--canvas-extra-x, 0px));
-  top: 220px;
+  top: 174px;
   width: 516px;
-  height: calc(586px + var(--canvas-extra, 0px));
+  height: calc(809px + var(--canvas-extra, 0px));
   display: flex;
   flex-direction: column;
-  gap: calc(4px + var(--canvas-extra, 0px) / 4);
+  gap: calc(13px + var(--canvas-extra, 0px) / 5);
 }
 
 .lRow {
   position: relative;
-  height: 114px;
+  height: 124px;
   flex: none;
   border-radius: 14px;
   background: #f5f5f5;
@@ -1334,7 +1395,7 @@
 }
 
 .lRowDay {
-  margin-top: 27px;
+  margin-top: 31px;
   font-weight: 700;
   font-size: 29px;
   line-height: 1;
@@ -1350,8 +1411,8 @@
 .lRowDivider {
   position: absolute;
   left: 120px;
-  top: 18px;
-  bottom: 18px;
+  top: 20px;
+  bottom: 22px;
   width: 2px;
   background: #e6e6e6;
 }
@@ -1359,7 +1420,7 @@
 .lRowText {
   position: absolute;
   left: 140px;
-  top: 10px;
+  top: 14px;
   width: 236px;
   display: flex;
   flex-direction: column;
@@ -1378,7 +1439,7 @@
 }
 
 .lRowTitle {
-  margin-top: 6px;
+  margin-top: 8px;
   max-width: 100%;
   font-weight: 700;
   font-size: 22px;
@@ -1389,7 +1450,7 @@
 }
 
 .lRowMeta {
-  margin-top: 3px;
+  margin-top: 5px;
   font-size: 16px;
   line-height: 24px;
   letter-spacing: 0.01em;
@@ -1407,7 +1468,7 @@
 .lRowImage {
   position: absolute;
   left: 384px;
-  top: 19px;
+  top: 24px;
   width: 118px;
   height: 76px;
   border-radius: 10px;
@@ -1415,206 +1476,13 @@
 }
 
 
-/* 下段（横） */
-/* 下段とフッターのまとまり。中の位置は 1920×1080 の座標のまま、縦に伸ばした分だけ下へずらす */
+/* フッターのまとまり（下段の 3 つの欄は 2026-09-25 に外した）。中の位置は 1920×1080 の座標のまま、縦に伸ばした分だけ下へずらす */
 .lLower {
   position: absolute;
   left: 0;
   top: var(--canvas-extra, 0px);
   width: calc(1920px + var(--canvas-extra-x, 0px));
   height: 1080px;
-}
-
-.lBottomBand {
-  position: absolute;
-  left: 0;
-  top: 806px;
-  width: calc(1920px + var(--canvas-extra-x, 0px));
-  height: 190px;
-  background: linear-gradient(to bottom, #efece8, #ebe7e2);
-}
-
-.lDivider {
-  position: absolute;
-  top: 834px;
-  width: 2px;
-  height: 148px;
-  background: #e0dcd6;
-}
-
-.lNews {
-  position: absolute;
-  left: 45px;
-  top: 874px;
-  width: calc(522px + var(--canvas-extra-x, 0px) / 3);
-  height: 108px;
-  border-radius: 16px;
-  background: #f3f2f0;
-  box-shadow: 0 1px 2px rgba(40, 30, 20, 0.05);
-}
-
-.lNewsImage {
-  position: absolute;
-  left: 18px;
-  top: 14px;
-  width: 84px;
-  height: 80px;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.lNewsText {
-  position: absolute;
-  left: 120px;
-  right: 16px;
-  top: 14px;
-}
-
-.lNewsText[data-has-image="false"] {
-  left: 28px;
-}
-
-.lNewsTitle {
-  font-weight: 700;
-  font-size: 20px;
-  line-height: 26px;
-  letter-spacing: 0.06em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.lNewsBody {
-  margin-top: 5px;
-  font-size: 15.5px;
-  line-height: 23px;
-  letter-spacing: 0.08em;
-  color: var(--ink-mute);
-  white-space: pre-line;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-}
-
-.lWeek {
-  position: absolute;
-  left: calc(616px + var(--canvas-extra-x, 0px) / 3);
-  top: 874px;
-  width: calc(650px + var(--canvas-extra-x, 0px) / 3);
-  height: 108px;
-  border-radius: 16px;
-  background: #f3f2f1;
-  box-shadow: 0 1px 2px rgba(40, 30, 20, 0.05);
-  display: flex;
-}
-
-.lWeekDay {
-  position: relative;
-  flex: 1 1 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.lWeekDay + .lWeekDay::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 14px;
-  bottom: 14px;
-  width: 2px;
-  background: #e6e4e1;
-}
-
-.lWeekName {
-  margin-top: 14px;
-  font-size: 14px;
-  line-height: 1;
-  letter-spacing: 0.06em;
-}
-
-.lWeekNum {
-  margin-top: 8px;
-  font-size: 23px;
-  line-height: 1;
-}
-
-.lWeekDay[data-today="true"] .lWeekNum {
-  font-weight: 700;
-}
-
-.lWeekMark {
-  margin-top: 4px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 30px;
-}
-
-.lWeekDash {
-  width: 22px;
-  height: 2px;
-  background: #1b2530;
-}
-
-.lWeekDot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-}
-
-.lRules {
-  position: absolute;
-  left: calc(1313px + var(--canvas-extra-x, 0px) * 2 / 3);
-  top: 874px;
-  width: calc(571px + var(--canvas-extra-x, 0px) / 3);
-  height: 108px;
-  display: flex;
-  gap: 10px;
-}
-
-.lRule {
-  flex: 1 1 0;
-  height: 100%;
-  border-radius: 16px;
-  background: #f3f2f0;
-  box-shadow: 0 1px 2px rgba(40, 30, 20, 0.05);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  /* 見出しと文言を上下の中央に置く（アイコンは 2026-09-25 に外した） */
-  justify-content: center;
-  gap: 4px;
-  padding: 0 10px;
-}
-
-/* メンバー情報の見出し（アイコンの代わりに出す 1 行。管理画面のデザイン設定で入れる） */
-.lRuleTitle {
-  max-width: 100%;
-  font-size: 15.5px;
-  font-weight: 700;
-  line-height: 22px;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.lRuleText {
-  padding: 0 8px;
-  font-size: 14.5px;
-  line-height: 20px;
-  letter-spacing: 0.06em;
-  text-align: center;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  overflow: hidden;
-  white-space: pre-line;
-  line-break: strict;
-  word-break: auto-phrase;
 }
 
 /* フッター（横） */

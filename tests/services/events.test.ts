@@ -354,7 +354,7 @@ describe("API: /api/events", () => {
   });
 });
 
-describe("サービス: 終わっていないイベントは 5 件まで（2026-09-25 ユーザー指示）", () => {
+describe("サービス: 終わっていないイベントは 6 件まで（2026-09-25 ユーザー指示。Upcoming に全部出せる数）", () => {
   const now = BASE;
   const DAY = 86400;
   /** 明日から 1 日ずつ先の、終わっていないイベントを count 件 */
@@ -364,25 +364,25 @@ describe("サービス: 終わっていないイベントは 5 件まで（2026-
     return rows;
   }
 
-  it("5 件あると 6 件目は登録できず（409 limit）、削除すれば登録できる", async () => {
-    expect(MAX_ACTIVE_EVENTS).toBe(5);
-    const rows = await fill(5);
+  it("6 件あると 7 件目は登録できず（409 limit）、削除すれば登録できる", async () => {
+    expect(MAX_ACTIVE_EVENTS).toBe(6);
+    const rows = await fill(6);
     const error = await expectServiceError(createEvent(db, input({ startAt: BASE + 10 * DAY }), now), "limit", 409);
     expect(error.message).toContain("削除してください");
-    expect(await countActiveEvents(db, now)).toBe(5);
+    expect(await countActiveEvents(db, now)).toBe(6);
 
     await deleteEvent(db, rows[0].id);
     expect((await createEvent(db, input({ title: "新しいイベント", startAt: BASE + 10 * DAY }), now)).title).toBe("新しいイベント");
   });
 
   it("下書きも数える。終わったイベントは数えず、終わったイベントの登録（記録）は止めない", async () => {
-    await fill(4);
+    await fill(5);
     await createEvent(db, input({ title: "下書き", status: "draft", startAt: BASE + 20 * DAY }), now);
     await expectServiceError(createEvent(db, input({ startAt: BASE + 30 * DAY }), now), "limit", 409);
     // 昨日終わったイベントは数に入らず、上限でも登録できる
     const past = await createEvent(db, input({ title: "昨日の会", startAt: BASE - DAY, endAt: BASE - DAY + 3600 }), now);
     expect(past.title).toBe("昨日の会");
-    expect(await countActiveEvents(db, now)).toBe(5);
+    expect(await countActiveEvents(db, now)).toBe(6);
   });
 
   it("終了なしのイベントは開始日の終わりまで数える", async () => {
@@ -393,7 +393,7 @@ describe("サービス: 終わっていないイベントは 5 件まで（2026-
 
   it("上限でも、今あるイベントの手直しはできる。終わったイベントを先の日時に直すのは止める", async () => {
     const past = await createEvent(db, input({ title: "昨日の会", startAt: BASE - DAY, endAt: BASE - DAY + 3600 }), now);
-    const [first] = await fill(5);
+    const [first] = await fill(6);
     const edited = await updateEvent(db, first.id, input({ title: "イベント1（変更）", startAt: first.startAt, revision: 0 }), now);
     expect(edited.title).toBe("イベント1（変更）");
     await expectServiceError(
@@ -414,13 +414,13 @@ describe("Server Actions", () => {
     expect(await db.select().from(events)).toHaveLength(0);
   });
 
-  it("終わっていないイベントが 5 件あると、作成は limit のメッセージを返す", async () => {
+  it("終わっていないイベントが 6 件あると、作成は limit のメッセージを返す", async () => {
     await login();
     const soon = Math.floor(Date.now() / 1000) + 86400;
-    for (let i = 0; i < 5; i++) expect((await actions.createEventAction(input({ startAt: soon + i * 86400 }))).ok).toBe(true);
+    for (let i = 0; i < 6; i++) expect((await actions.createEventAction(input({ startAt: soon + i * 86400 }))).ok).toBe(true);
     const result = await actions.createEventAction(input({ startAt: soon + 10 * 86400 }));
-    expect(result).toEqual({ ok: false, error: { code: "limit", message: expect.stringContaining("5 件まで") } });
-    expect(await db.select().from(events)).toHaveLength(5);
+    expect(result).toEqual({ ok: false, error: { code: "limit", message: expect.stringContaining("6 件まで") } });
+    expect(await db.select().from(events)).toHaveLength(6);
   });
 
   it("サービスと同じ規則（作成・一覧・取得・409・deleting 画像・削除・404）", async () => {

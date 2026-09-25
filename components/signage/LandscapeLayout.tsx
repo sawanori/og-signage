@@ -1,10 +1,11 @@
 /**
  * 横型（1920×1080）の配置。モック image/UI-H.png の画面部分に合わせる。
+ * 2026-09-25 ユーザー指示: ヘッダーを 2/3 の高さ（92px）に。お知らせ（HOUSE NEWS）は右上の箱へ。
+ * 下段の 3 つの欄（お知らせ・今週の予定・メンバー情報）は外し、大きな枠をフッターまで広げ、Upcoming は 6 件。
  */
 import { Fragment } from "react";
 import { ArrowRight, Clock } from "lucide-react";
 import type { SignageConfig, SignageEvent } from "@/lib/config-schema";
-import { tokyoParts } from "@/lib/dates";
 import { COPY } from "./copy";
 import {
   formatDateJa,
@@ -51,21 +52,37 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
       </div>
       <div className={styles.lScript} aria-hidden>
         <span>{COPY.landscapeTaglineScript[0]}</span>
-        <span style={{ marginLeft: 70 }}>{COPY.landscapeTaglineScript[1]}</span>
+        <span style={{ marginLeft: 48 }}>{COPY.landscapeTaglineScript[1]}</span>
       </div>
-      <svg className={styles.lScriptLine} width="160" height="24" viewBox="0 0 160 24" aria-hidden>
-        <path d="M2 20 C 50 12, 100 8, 158 6" fill="none" stroke="#1B2530" strokeWidth="2" strokeLinecap="round" />
+      <svg className={styles.lScriptLine} width="110" height="16" viewBox="0 0 110 16" aria-hidden>
+        <path d="M2 13 C 34 8, 70 5, 108 4" fill="none" stroke="#1B2530" strokeWidth="2" strokeLinecap="round" />
       </svg>
-      {/* 右上の箱はキャッチコピー（ヘッダー用）だけ（2026-09-25 ユーザー指示で英語の添え書きを外した） */}
-      <div className={styles.lBox}>
-        {house.headerCopy ? <div className={styles.lBoxCopy}>{house.headerCopy}</div> : null}
+      {/* 右上の箱はお知らせ（HOUSE NEWS。2026-09-25 ユーザー指示で下段から移した）。キャッチコピー（ヘッダー用）は横型では出さない */}
+      <div className={styles.lBox} data-testid="notice">
+        <div className={styles.lBoxHead}>
+          <span className={styles.lBoxEn}>{COPY.news.en}</span>
+          <span className={styles.lBoxJa}>{COPY.news.ja}</span>
+        </div>
+        {view.notice ? (
+          <div className={styles.lBoxNotice}>
+            {view.notice.image ? (
+              <MediaImage media={view.notice.image} category={null} resolveMediaUrl={resolveMediaUrl} className={styles.lBoxImage} />
+            ) : null}
+            <div className={styles.lBoxText}>
+              <div className={styles.lBoxTitle}>{view.notice.title}</div>
+              {view.notice.body ? <div className={styles.lBoxBody}>{view.notice.body}</div> : null}
+            </div>
+          </div>
+        ) : (
+          <div className={styles.lBoxEmpty}>{COPY.noNotice}</div>
+        )}
       </div>
 
       {/* 今日のイベント */}
       <Hero hero={view.hero} config={config} resolveMediaUrl={resolveMediaUrl} />
 
       {/* Upcoming */}
-      <div className={styles.lSectionTitle} style={{ left: stretchX(1372, 1), top: 179 }}>
+      <div className={styles.lSectionTitle} style={{ left: stretchX(1372, 1), top: 133 }}>
         <span className={styles.lSectionEn}>{COPY.upcoming.en}</span>
         <span className={styles.lSectionJa}>{COPY.upcoming.ja}</span>
       </div>
@@ -76,77 +93,8 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
         ))}
       </div>
 
-      {/* 下段とフッター。縦に伸ばしたときは、伸びた分だけまとめて下へずらす（中の位置は 1920×1080 のまま） */}
+      {/* フッター。縦に伸ばしたときは、伸びた分だけ下へずらす（中の位置は 1920×1080 のまま） */}
       <div className={styles.lLower}>
-        <div className={styles.lBottomBand} />
-        <div className={styles.lSectionTitle} style={{ left: 50, top: 833 }}>
-          <span className={styles.lSectionEn}>{COPY.news.en}</span>
-          <span className={styles.lSectionJa}>{COPY.news.ja}</span>
-        </div>
-        <div className={styles.lNews} data-testid="notice">
-          {view.notice ? (
-            <>
-              {view.notice.image ? (
-                <MediaImage
-                  media={view.notice.image}
-                  category={null}
-                  resolveMediaUrl={resolveMediaUrl}
-                  className={styles.lNewsImage}
-                />
-              ) : null}
-              <div className={styles.lNewsText} data-has-image={view.notice.image ? "true" : "false"}>
-                <div className={styles.lNewsTitle}>{view.notice.title}</div>
-                {view.notice.body ? <div className={styles.lNewsBody}>{view.notice.body}</div> : null}
-              </div>
-            </>
-          ) : (
-            <div className={styles.pEmpty}>{COPY.noNotice}</div>
-          )}
-        </div>
-        <div className={styles.lDivider} style={{ left: stretchX(592, 1 / 3) }} />
-
-        <div className={styles.lSectionTitle} style={{ left: stretchX(618, 1 / 3), top: 833 }}>
-          <span className={styles.lSectionEn}>{COPY.week.en}</span>
-          <span className={styles.lSectionJa}>{COPY.week.ja}</span>
-        </div>
-        <div className={styles.lWeek} data-testid="week">
-          {view.week.map((day) => {
-            const p = tokyoParts(day.startAt);
-            const first = day.events[0];
-            return (
-              <div key={day.dateKey} className={styles.lWeekDay} data-today={day.isToday ? "true" : "false"}>
-                <span className={styles.lWeekName}>{formatWeekdayUpper(day.startAt)}</span>
-                <span className={styles.lWeekNum}>{p.day}</span>
-                <span className={styles.lWeekMark}>
-                  {first ? (
-                    first.emoji ? (
-                      <Emoji>{first.emoji}</Emoji>
-                    ) : (
-                      <span className={styles.lWeekDot} style={{ backgroundColor: first.category?.color ?? "#1B2530" }} />
-                    )
-                  ) : (
-                    <span className={styles.lWeekDash} />
-                  )}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-        <div className={styles.lDivider} style={{ left: stretchX(1290, 2 / 3) }} />
-
-        <div className={styles.lSectionTitle} style={{ left: stretchX(1317, 2 / 3), top: 833 }}>
-          <span className={styles.lSectionEn}>{COPY.rules.en}</span>
-          <span className={styles.lSectionJa}>{COPY.rules.ja}</span>
-        </div>
-        <div className={styles.lRules} data-testid="rules">
-          {house.rules.map((rule, i) => (
-            <div key={i} className={styles.lRule}>
-              {rule.title ? <span className={styles.lRuleTitle}>{rule.title}</span> : null}
-              <span className={styles.lRuleText}>{rule.text}</span>
-            </div>
-          ))}
-        </div>
-
         {/* フッター */}
         <div className={styles.lFooter}>
           <div className={styles.lFooterTime}>{view.clock.time}</div>

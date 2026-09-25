@@ -29,6 +29,8 @@ let videoWidth = 1920;
 let playImpl: () => Promise<void> = async () => {};
 /** play() が呼ばれたときのミュート状態（呼ばれた順） */
 let playCalls: boolean[] = [];
+/** <video> が前の読み込みに失敗したまま（error）か */
+let hasError = false;
 const stubbed: [object, string, PropertyDescriptor | undefined][] = [];
 function stub(proto: object, key: string, descriptor: PropertyDescriptor) {
   stubbed.push([proto, key, Object.getOwnPropertyDescriptor(proto, key)]);
@@ -48,7 +50,10 @@ beforeEach(() => {
   videoWidth = 1920;
   playImpl = async () => {};
   playCalls = [];
+  hasError = false;
   stub(HTMLMediaElement.prototype, "readyState", { get: () => HTMLMediaElement.HAVE_ENOUGH_DATA });
+  stub(HTMLMediaElement.prototype, "error", { get: () => (hasError ? { code: 4, message: "" } : null) });
+  stub(HTMLMediaElement.prototype, "load", { value: vi.fn() });
   stub(HTMLMediaElement.prototype, "play", {
     value: vi.fn(function (this: HTMLMediaElement) {
       playCalls.push(this.muted);
@@ -185,6 +190,15 @@ describe("VideoPlayer", () => {
     expect(shown()).toBe("false");
     expect(excluded()).toEqual(["med_hevc"]);
     expect(notice()).toBeNull();
+  });
+
+  it("前の読み込みに失敗したまま（error）の <video> は、読み直してから流す", async () => {
+    openedBefore();
+    hasError = true;
+    renderPlayer(testPlayConfig());
+    await advance(3000);
+    expect(HTMLMediaElement.prototype.load).toHaveBeenCalledTimes(1);
+    expect(shown()).toBe("true");
   });
 
   it("初めて開いたときでも、1 分以内のテスト表示の要求は流す（古い要求は流さない）", async () => {
