@@ -83,6 +83,20 @@ export function PortraitLayout({ config, view, resolveMediaUrl }: Props) {
           </span>
         </div>
       ) : null}
+      {/* 明日・明後日の天気を小さく（今の天気の左。2026-09-25 ユーザー指示） */}
+      {view.forecast.length > 0 ? (
+        <div className={styles.pForecast} data-testid="forecast">
+          {view.forecast.map(({ label, forecast }) => (
+            <span key={forecast.date} className={styles.pForecastDay}>
+              <span className={styles.pForecastLabel}>{label}</span>
+              <WeatherIcon condition={forecast.condition} size={22} strokeWidth={1.9} />
+              <span>
+                {Math.round(forecast.maxC)}°/{Math.round(forecast.minC)}°
+              </span>
+            </span>
+          ))}
+        </div>
+      ) : null}
 
       {/* 今日のイベント */}
       <Hero hero={view.hero} config={config} resolveMediaUrl={resolveMediaUrl} />

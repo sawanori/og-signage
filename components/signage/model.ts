@@ -3,8 +3,8 @@
  * 業務規則（どのイベントを出すか・状態・お知らせ・天気・表示スケジュール）は lib/display-rules.ts に任せ、
  * ここでは表示用の文字列への整形だけを行う。
  */
-import type { MediaRef, SignageConfig, SignageEvent, SignageNotice, Weather } from "@/lib/config-schema";
-import { tokyoParts } from "@/lib/dates";
+import type { DailyForecast, MediaRef, SignageConfig, SignageEvent, SignageNotice, Weather } from "@/lib/config-schema";
+import { tokyoDateKey, tokyoParts } from "@/lib/dates";
 import {
   heroSlideIndex,
   isWithinDisplaySchedule,
@@ -35,6 +35,8 @@ export type SignageView = {
   week: WeekDay[];
   notice: SignageNotice | null;
   weather: Weather | null;
+  /** 明日・明後日の天気（天気の横に小さく出す）。天気を出さないとき・予報が無いときは空 */
+  forecast: ForecastDay[];
   clock: ClockText;
 };
 
@@ -65,8 +67,28 @@ export function buildView(config: SignageConfig, now: number, timeSynced: boolea
     week: selectThisWeek(config.events, now),
     notice: selectNotice(config.notices, now),
     weather: shouldShowWeather(config.weather, now, timeSynced) ? config.weather : null,
+    forecast: shouldShowWeather(config.weather, now, timeSynced) ? upcomingForecast(config.weather?.forecast, now) : [],
     clock: clockText(now),
   };
+}
+
+export type ForecastDay = { label: "明日" | "明後日"; forecast: DailyForecast };
+
+/** 日本時間の日付（YYYY-MM-DD）同士が何日離れているか */
+function daysBetween(fromKey: string, toKey: string): number {
+  return Math.round((Date.parse(`${toKey}T00:00:00Z`) - Date.parse(`${fromKey}T00:00:00Z`)) / 86_400_000);
+}
+
+/**
+ * 保存してある予報（明日から 3 日分）から、今日から見た明日・明後日を選ぶ（2026-09-25 ユーザー指示）。
+ * 予報は 30 分ごとに取り直すので、日付が変わった直後も今日の日付で数え直す
+ */
+export function upcomingForecast(forecast: readonly DailyForecast[] | undefined, now: number): ForecastDay[] {
+  const today = tokyoDateKey(now);
+  return (forecast ?? []).flatMap<ForecastDay>((day) => {
+    const diff = daysBetween(today, day.date);
+    return diff === 1 ? [{ label: "明日", forecast: day }] : diff === 2 ? [{ label: "明後日", forecast: day }] : [];
+  });
 }
 
 export function clockText(unixSeconds: number): ClockText {

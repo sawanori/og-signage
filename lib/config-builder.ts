@@ -28,9 +28,12 @@ import {
   weatherCache,
 } from "../db/schema";
 import * as schema from "../db/schema";
+import { z } from "zod";
 import {
   SCHEMA_VERSION,
+  dailyForecastSchema,
   signageConfigSchema,
+  type DailyForecast,
   type MediaRef,
   type SignageConfig,
   type VideoIntervalMinutes,
@@ -132,6 +135,7 @@ async function readConfigBody(tx: Db, deviceId: string, now: number): Promise<Om
   const rules = await tx.select().from(houseRules).orderBy(asc(houseRules.position), asc(houseRules.id));
   const scheduleRows = await tx.select().from(displaySchedules).orderBy(asc(displaySchedules.weekday));
   const [weather] = await tx.select().from(weatherCache).orderBy(desc(weatherCache.fetchedAt)).limit(1);
+  const forecast = weather ? parseForecast(weather.forecast) : undefined;
 
   // ---- プレイリスト（再生できる active な動画だけ）
   const playlistRows = settings.playlistId
@@ -206,6 +210,7 @@ async function readConfigBody(tx: Db, deviceId: string, now: number): Promise<Om
           temperatureC: weather.temperatureC,
           condition: weather.condition,
           fetchedAt: weather.fetchedAt,
+          ...(forecast ? { forecast } : {}),
         }
       : null,
     video: {
@@ -267,4 +272,15 @@ export function matchesIfNoneMatch(header: string | null, version: string): bool
     const tag = raw.trim().replace(/^W\//, "").replace(/^"(.*)"$/, "$1");
     return tag === "*" || tag === version;
   });
+}
+
+/** weather_cache.forecast（JSON）を読む。無い・読めない・形が違うときは undefined（予報を出さない） */
+function parseForecast(raw: string | null): DailyForecast[] | undefined {
+  if (!raw) return undefined;
+  try {
+    const parsed = z.array(dailyForecastSchema).safeParse(JSON.parse(raw));
+    return parsed.success && parsed.data.length > 0 ? parsed.data : undefined;
+  } catch {
+    return undefined;
+  }
 }

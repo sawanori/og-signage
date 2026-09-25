@@ -231,6 +231,24 @@ describe("GET /api/device/config", () => {
     expect(configB.playlist.map((p) => p.mediaId)).toEqual(["vid_b"]);
   });
 
+  it("天気の予報（weather_cache.forecast）は weather.forecast に入る。読めない・形が違う JSON なら出さない", async () => {
+    const forecast = [
+      { date: "2023-11-15", condition: "rain", maxC: 18.2, minC: 12, pop: 0.8 },
+      { date: "2023-11-16", condition: "clear", maxC: 20, minC: 11.5, pop: null },
+    ];
+    await db
+      .insert(weatherCache)
+      .values({ locationName: "横浜市", temperatureC: 21.5, condition: "clear", fetchedAt: 1_700_000_000, forecast: JSON.stringify(forecast) });
+    expect((await fetchConfig()).weather?.forecast).toEqual(forecast);
+
+    for (const broken of ["{not json", JSON.stringify([{ date: "2023-11-15" }]), JSON.stringify([]), null]) {
+      await db.update(weatherCache).set({ forecast: broken });
+      const config = await fetchConfig();
+      expect(config.weather?.temperatureC).toBe(21.5);
+      expect(config.weather).not.toHaveProperty("forecast");
+    }
+  });
+
   it("version は version を除いた本文をキー順固定にした JSON の SHA-256", async () => {
     const config = await fetchConfig();
     const { version, ...body } = config;

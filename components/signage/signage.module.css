@@ -312,6 +312,34 @@
 }
 
 /* OpenWeatherMap 出典（無料プラン利用規約で必須。天気欄の下に小さく控えめに出す） */
+/* 明日・明後日の天気（今の天気の左に 2 行で小さく。2026-09-25 ユーザー指示） */
+.pForecast {
+  position: absolute;
+  right: 268px;
+  top: 184px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 18px;
+  border-right: 1px solid rgba(34, 42, 51, 0.18);
+  font-size: 17px;
+  line-height: 24px;
+  letter-spacing: 0.02em;
+  color: #222a33;
+  white-space: nowrap;
+}
+
+.pForecastDay {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pForecastLabel {
+  width: 54px;
+  color: var(--ink-mute);
+}
+
 .pWeatherAttribution {
   position: absolute;
   right: 0;
@@ -1638,6 +1666,30 @@
   letter-spacing: 0.04em;
 }
 
+/* 明日・明後日の天気（今の天気の右に 2 行で小さく。2026-09-25 ユーザー指示） */
+.lForecast {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-left: 16px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.25);
+  font-size: 13px;
+  line-height: 17px;
+  letter-spacing: 0.02em;
+}
+
+.lForecastDay {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.lForecastLabel {
+  width: 40px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
 /* OpenWeatherMap 出典（無料プラン利用規約で必須。天気欄の下に小さく控えめに出す） */
 .lWeatherAttribution {
   position: absolute;
@@ -1650,9 +1702,10 @@
   white-space: nowrap;
 }
 
+/* 明日・明後日の予報が入るぶん、830px から右へ寄せた（右のキャッチコピーは 860px からの枠の中央寄せなので動かない） */
 .lFooterDivider {
   position: absolute;
-  left: 830px;
+  left: 852px;
   top: 19px;
   width: 2px;
   height: 46px;

@@ -10,14 +10,86 @@
  * - 失敗（キー未設定・地域未設定・HTTP エラー・応答不正・通信エラー）は weather_cache を変更せず、
  *   ログだけ出す（前回値を保持）。
  * - API キーはどんな場合もログに出さない。
+ * - 現在の天気が取れたら、同じ地域の 5 日・3 時間ごとの予報（`/data/2.5/forecast`。無料プランで使える）も取り、
+ *   明日から 3 日分を日ごとにまとめて weather_cache.forecast に保存する（フッターの天気の横に明日・明後日を出すため。
+ *   2026-09-25 ユーザー指示）。予報だけ取れなかったときは、今の天気は保存し、予報は前回の値のまま。
  */
 import { eq } from "drizzle-orm";
 import type { Db } from "../db/index";
 import { houseSettings, weatherCache } from "../db/schema";
+import { tokyoDateKey, tokyoParts } from "./dates";
 
 export type FetchLike = typeof fetch;
 
 export const OPENWEATHER_URL = "https://api.openweathermap.org/data/2.5/weather";
+export const OPENWEATHER_FORECAST_URL = "https://api.openweathermap.org/data/2.5/forecast";
+
+/** 日ごとの予報（日本時間）。condition は現在の天気と同じ語彙（weather[0].main の小文字） */
+export type DailyForecast = { date: string; condition: string; maxC: number; minC: number; pop: number | null };
+
+/** 何日分を持つか。日付が変わってから次の取得（30 分ごと）までのあいだも明日・明後日を出せるよう 3 日分 */
+const FORECAST_DAYS = 3;
+
+type ForecastEntry = {
+  dt?: number;
+  main?: { temp_max?: number; temp_min?: number };
+  weather?: { main?: string }[];
+  pop?: number;
+};
+
+/**
+ * 3 時間ごとの予報を日本時間の日ごとにまとめる。今日は含めず、明日から FORECAST_DAYS 日分。
+ * 最高・最低はその日の値の最大・最小、天気は正午に近い時刻のもの、降水確率はその日の最大。
+ */
+export function summarizeForecast(list: readonly ForecastEntry[], now: number): DailyForecast[] {
+  const today = tokyoDateKey(now);
+  const days = new Map<string, { dt: number; max: number; min: number; condition: string; pop: number | null }[]>();
+  for (const e of list) {
+    const max = e.main?.temp_max;
+    const min = e.main?.temp_min;
+    const condition = e.weather?.[0]?.main;
+    if (typeof e.dt !== "number" || typeof max !== "number" || typeof min !== "number" || !condition) continue;
+    const date = tokyoDateKey(e.dt);
+    if (date <= today) continue;
+    const entries = days.get(date) ?? [];
+    entries.push({ dt: e.dt, max, min, condition: condition.toLowerCase(), pop: typeof e.pop === "number" ? e.pop : null });
+    days.set(date, entries);
+  }
+  return [...days.keys()]
+    .sort()
+    .slice(0, FORECAST_DAYS)
+    .map((date) => {
+      const entries = days.get(date)!;
+      const noon = entries.reduce((best, e) =>
+        Math.abs(tokyoParts(e.dt).hour - 12) < Math.abs(tokyoParts(best.dt).hour - 12) ? e : best,
+      );
+      const pops = entries.flatMap((e) => (e.pop === null ? [] : [e.pop]));
+      return {
+        date,
+        condition: noon.condition,
+        maxC: Math.max(...entries.map((e) => e.max)),
+        minC: Math.min(...entries.map((e) => e.min)),
+        pop: pops.length > 0 ? Math.max(...pops) : null,
+      };
+    });
+}
+
+/** 予報を取ってまとめる。取れない・形が違うときは null（前回の値のまま） */
+async function fetchForecast(query: URLSearchParams, fetchImpl: FetchLike): Promise<DailyForecast[] | null> {
+  try {
+    const response = await fetchImpl(`${OPENWEATHER_FORECAST_URL}?${query.toString()}`);
+    const body = (await response.json()) as { list?: ForecastEntry[]; message?: string };
+    if (!response.ok || !Array.isArray(body.list)) {
+      console.warn(`[weather] 予報を取得できませんでした（status=${response.status}）。予報は前回値を保持します`, body.message ?? "");
+      return null;
+    }
+    const days = summarizeForecast(body.list, Math.floor(Date.now() / 1000));
+    return days.length > 0 ? days : null;
+  } catch (e) {
+    console.warn("[weather] 予報の取得で通信エラーがありました。予報は前回値を保持します", e);
+    return null;
+  }
+}
 
 type OpenWeatherResponse = {
   name?: string;
@@ -49,7 +121,7 @@ function buildQuery(settings: LocationSettings, apiKey: string): URLSearchParams
 
 async function saveWeather(
   db: Db,
-  value: { locationName: string; temperatureC: number; condition: string; fetchedAt: number },
+  value: { locationName: string; temperatureC: number; condition: string; fetchedAt: number; forecast?: string },
 ): Promise<void> {
   const [existing] = await db.select({ id: weatherCache.id }).from(weatherCache).limit(1);
   if (existing) {
@@ -109,10 +181,12 @@ export async function refreshWeather(db: Db, apiKey: string | undefined, fetchIm
     return;
   }
 
+  const forecast = await fetchForecast(query, fetchImpl);
   await saveWeather(db, {
     locationName: settings.weatherLocationName ?? body.name ?? "",
     temperatureC,
     condition: main.toLowerCase(),
     fetchedAt: Math.floor(Date.now() / 1000),
+    ...(forecast ? { forecast: JSON.stringify(forecast) } : {}),
   });
 }

@@ -105,12 +105,25 @@ export const scheduleEntrySchema = z.object({
   enabled: z.boolean(),
 });
 
+/** 日ごとの予報（日本時間。lib/weather.ts の summarizeForecast） */
+export const dailyForecastSchema = z.object({
+  /** YYYY-MM-DD（日本時間） */
+  date: z.string(),
+  condition: z.string(),
+  maxC: z.number(),
+  minC: z.number(),
+  /** 降水確率 0〜1。無ければ null */
+  pop: z.number().min(0).max(1).nullable(),
+});
+
 export const weatherSchema = z.object({
   locationName: z.string(),
   temperatureC: z.number(),
   /** OpenWeatherMap の天気コード（weather[0].main を小文字化したもの） */
   condition: z.string(),
   fetchedAt: unixSeconds,
+  /** 明日からの予報（フッターの天気の横に明日・明後日を出す）。古い Worker の config には無い */
+  forecast: z.array(dailyForecastSchema).optional(),
 });
 
 export const playlistItemSchema = mediaRefSchema.extend({
@@ -162,6 +175,7 @@ export const signageConfigSchema = z.object({
   commands: commandsSchema,
 });
 
+export type DailyForecast = z.infer<typeof dailyForecastSchema>;
 export type MediaRef = z.infer<typeof mediaRefSchema>;
 export type EventCategory = z.infer<typeof eventCategorySchema>;
 export type SignageEvent = z.infer<typeof signageEventSchema>;

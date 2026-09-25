@@ -4,6 +4,7 @@
  */
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { upcomingForecast } from "@/components/signage/model";
 import { SignageScreen } from "@/components/signage/SignageScreen";
 import { WEWORK_LOGO_DARK_SRC } from "@/components/signage/wework-logo";
 import type { MediaRef, SignageConfig } from "@/lib/config-schema";
@@ -70,11 +71,31 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     );
   });
 
+  it("予報があれば、天気の横に明日・明後日を小さく出す（今日・3 日後は出さない）", () => {
+    const config = makeConfig();
+    const forecast = [
+      { date: "2025-09-24", condition: "clear", maxC: 31, minC: 26, pop: 0 },
+      { date: "2025-09-25", condition: "rain", maxC: 24.4, minC: 19.6, pop: 0.8 },
+      { date: "2025-09-26", condition: "clouds", maxC: 27, minC: 20, pop: 0.2 },
+      { date: "2025-09-27", condition: "clear", maxC: 29, minC: 22, pop: null },
+    ];
+    renderScreen({ config: { ...config, weather: { ...config.weather!, forecast } } }, orientation);
+    const days = screen.getByTestId("forecast").children;
+    expect([...days].map((d) => d.textContent)).toEqual(["明日24°/20°", "明後日27°/20°"]);
+  });
+
+  it("予報が無ければ（古い config）、予報の欄を出さない", () => {
+    renderScreen({}, orientation);
+    expect(screen.getByTestId("weather")).toBeTruthy();
+    expect(screen.queryByTestId("forecast")).toBeNull();
+  });
+
   it("天気なし: 出典も出さない", () => {
     const config = makeConfig();
     renderScreen({ config: { ...config, weather: null } }, orientation);
     expect(screen.queryByTestId("weather")).toBeNull();
     expect(screen.queryByTestId("weather-attribution")).toBeNull();
+    expect(screen.queryByTestId("forecast")).toBeNull();
   });
 
   it("STARTING SOON: 開始 30 分前から", () => {
@@ -129,11 +150,13 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     expect(screen.getByTestId("signage-canvas")).toBeTruthy();
   });
 
-  it("天気が 3 時間より古ければ出さない", () => {
+  it("天気が 3 時間より古ければ出さない（予報も）", () => {
     const config = makeConfig();
-    renderScreen({ config: { ...config, weather: { ...config.weather!, fetchedAt: NOW - 3 * 3600 - 1 } } }, orientation);
+    const forecast = [{ date: "2025-09-25", condition: "rain", maxC: 24, minC: 20, pop: 0.8 }];
+    renderScreen({ config: { ...config, weather: { ...config.weather!, fetchedAt: NOW - 3 * 3600 - 1, forecast } } }, orientation);
     expect(screen.queryByTestId("weather")).toBeNull();
     expect(screen.queryByTestId("weather-attribution")).toBeNull();
+    expect(screen.queryByTestId("forecast")).toBeNull();
   });
 
   it("画像なし: img を出さずカテゴリ色の面にする", () => {
@@ -288,5 +311,32 @@ describe("今週の予定（横型のみ）", () => {
   it("縦型には出さない", () => {
     renderScreen({}, "portrait");
     expect(screen.queryByTestId("week")).toBeNull();
+  });
+});
+
+describe("upcomingForecast", () => {
+  const days = [
+    { date: "2025-09-25", condition: "rain", maxC: 24, minC: 20, pop: 0.8 },
+    { date: "2025-09-26", condition: "clouds", maxC: 27, minC: 20, pop: 0.2 },
+    { date: "2025-09-27", condition: "clear", maxC: 29, minC: 22, pop: null },
+  ];
+
+  it("今日から見た明日・明後日を選ぶ", () => {
+    expect(upcomingForecast(days, NOW).map((d) => [d.label, d.forecast.date])).toEqual([
+      ["明日", "2025-09-25"],
+      ["明後日", "2025-09-26"],
+    ]);
+  });
+
+  it("日付が変わった直後（次の取得の前）も、今日の日付で数え直す", () => {
+    const justAfterMidnight = tokyoDateTime(2025, 9, 25, 0, 5);
+    expect(upcomingForecast(days, justAfterMidnight).map((d) => [d.label, d.forecast.date])).toEqual([
+      ["明日", "2025-09-26"],
+      ["明後日", "2025-09-27"],
+    ]);
+  });
+
+  it("予報が無ければ空", () => {
+    expect(upcomingForecast(undefined, NOW)).toEqual([]);
   });
 });

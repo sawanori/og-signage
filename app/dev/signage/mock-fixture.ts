@@ -99,6 +99,15 @@ export function mockConfig(orientation: Orientation): SignageConfig {
         { icon: "users", text: "お互いを尊重して\n気持ちよく" },
       ],
     },
+    // 明日・明後日の予報（天気の横に小さく出る。2026-09-25 ユーザー指示）
+    weather: base.weather && {
+      ...base.weather,
+      forecast: [
+        { date: "2025-09-25", condition: "rain", maxC: 24, minC: 20, pop: 0.8 },
+        { date: "2025-09-26", condition: "clouds", maxC: 27, minC: 21, pop: 0.3 },
+        { date: "2025-09-27", condition: "clear", maxC: 28, minC: 21, pop: 0.1 },
+      ],
+    },
     device: {
       ...base.device,
       orientation,

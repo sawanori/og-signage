@@ -157,6 +157,20 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
               <span className={styles.deg}>°</span>C
             </span>
               <span className={styles.lFooterPlace}>{view.weather.locationName}</span>
+              {/* 明日・明後日の天気を小さく（2026-09-25 ユーザー指示） */}
+              {view.forecast.length > 0 ? (
+                <span className={styles.lForecast} data-testid="forecast">
+                  {view.forecast.map(({ label, forecast }) => (
+                    <span key={forecast.date} className={styles.lForecastDay}>
+                      <span className={styles.lForecastLabel}>{label}</span>
+                      <WeatherIcon condition={forecast.condition} size={16} strokeWidth={2} />
+                      <span>
+                        {Math.round(forecast.maxC)}°/{Math.round(forecast.minC)}°
+                      </span>
+                    </span>
+                  ))}
+                </span>
+              ) : null}
               <span className={styles.lWeatherAttribution} data-testid="weather-attribution">
                 {COPY.weatherAttribution}
               </span>

@@ -325,4 +325,9 @@ export const weatherCache = sqliteTable("weather_cache", {
   /** OpenWeatherMap の weather[0].main を小文字化したもの */
   condition: text("condition").notNull(),
   fetchedAt: integer("fetched_at").notNull(),
+  /**
+   * 明日から 3 日分の予報（JSON。lib/weather.ts の DailyForecast[]）。5 日・3 時間ごとの予報を日本時間の日ごとにまとめたもの。
+   * 取れなかったときは前回の値のまま（2026-09-25 ユーザー指示「フッターの天気の横に明日・明後日の天気」）
+   */
+  forecast: text("forecast"),
 });

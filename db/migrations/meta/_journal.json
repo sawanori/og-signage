@@ -36,6 +36,13 @@
       "when": 1790297562703,
       "tag": "0004_test_play_media_id",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1790312628761,
+      "tag": "0005_weather_forecast",
+      "breakpoints": true
     }
   ]
 }
