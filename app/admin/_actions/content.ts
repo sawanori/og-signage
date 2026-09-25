@@ -13,7 +13,6 @@ import { getDb } from "../../../lib/runtime";
 import * as house from "../../../lib/services/house";
 import * as notices from "../../../lib/services/notices";
 import { ServiceError } from "../../../lib/services/notices";
-import * as schedule from "../../../lib/services/schedule";
 
 export type ActionResult<T> = { data: T; error?: undefined } | { data?: undefined; error: { code: string; message: string } };
 
@@ -66,8 +65,3 @@ export async function updateEventCategoriesAction(input: unknown): Promise<Actio
   return run("administrator", (user) => house.updateEventCategories(getDb(), user, input));
 }
 
-// ---------------------------------------------------------------- 表示スケジュール（Administrator）
-
-export async function updateDisplayScheduleAction(input: unknown): Promise<ActionResult<schedule.DisplayScheduleRow[]>> {
-  return run("administrator", (user) => schedule.replaceDisplaySchedule(getDb(), user, input));
-}
