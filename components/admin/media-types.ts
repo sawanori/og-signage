@@ -5,7 +5,7 @@
 
 /** 再生条件（要件定義書 15 節）を外れた動画に出す文言 */
 export const UNPLAYABLE_MESSAGE =
-  "この動画はサイネージで再生できない形式です（MP4・H.264・1080p 以下・30fps 以下に変換してください）";
+  "この動画はサイネージで再生できない形式です（MP4・H.264 または H.265・1080p 以下・30fps 以下に変換してください）";
 
 export type MediaFailureView = {
   deviceName: string;

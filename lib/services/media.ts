@@ -96,20 +96,24 @@ export type CompleteUploadInput = z.input<typeof completeUploadSchema>;
 
 // ---------------------------------------------------------------- 再生可否
 
-/** 要件定義書 15 節の推奨（task_003 の実測まで）。縦長の 1080x1920 も 1080p とみなす */
+/**
+ * 要件定義書 15 節の推奨（task_003 の実測まで）。縦長の 1080x1920 も 1080p とみなす。
+ * H.264 は 4:2:0・8bit。H.265（HEVC）も通す（2026-09-25 ユーザー指示）: 4:2:0 の 8bit・10bit（iPhone の HDR は 10bit）。
+ * 色の形式・ビット数を読む前にアップロードした H.265（記録が null）は、ほかの条件が合えば通す
+ */
 export function isPlayable(mimeType: string, info: VideoCodecInfo | null | undefined): boolean {
   if (mimeType !== "video/mp4" || !info) return false;
   const shortSide = Math.min(info.width, info.height);
   const longSide = Math.max(info.width, info.height);
-  return (
-    (info.codec === "avc1" || info.codec === "avc3") &&
-    shortSide <= 1080 &&
-    longSide <= 1920 &&
-    info.fps !== null &&
-    info.fps <= 30.01 &&
-    info.chromaFormat === "4:2:0" &&
-    info.bitDepth === 8
-  );
+  if (shortSide > 1080 || longSide > 1920 || info.fps === null || info.fps > 30.01) return false;
+  if (info.codec === "avc1" || info.codec === "avc3") return info.chromaFormat === "4:2:0" && info.bitDepth === 8;
+  if (info.codec === "hvc1" || info.codec === "hev1") {
+    return (
+      (info.chromaFormat === null || info.chromaFormat === "4:2:0") &&
+      (info.bitDepth === null || info.bitDepth === 8 || info.bitDepth === 10)
+    );
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------- アップロード

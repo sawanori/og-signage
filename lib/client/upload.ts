@@ -213,6 +213,14 @@ export async function parseMp4(file: Blob): Promise<Mp4Info | null> {
         ({ chromaFormat, bitDepth } = parseAvcSps(b.subarray(avcC.body + 8, avcC.body + 8 + spsLength)));
       }
     }
+    // H.265（HEVC）は hvcC の固定部から読む（ISO/IEC 14496-15 の HEVCDecoderConfigurationRecord。2026-09-25 から H.265 も通す）
+    const hvcC = children(b, entry.body + 78, entry.end).find((c) => c.type === "hvcC");
+    if (hvcC && hvcC.end - hvcC.body >= 19) {
+      profile = b[hvcC.body + 1] & 0x1f;
+      level = b[hvcC.body + 12];
+      chromaFormat = (["4:0:0", "4:2:0", "4:2:2", "4:4:4"] as const)[b[hvcC.body + 16] & 0x03];
+      bitDepth = (b[hvcC.body + 17] & 0x07) + 8;
+    }
 
     let fps: number | null = null;
     const stts = child(b, stbl, "stts");
