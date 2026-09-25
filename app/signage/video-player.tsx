@@ -11,7 +11,7 @@
  *   その動画を読み込んでから流す（順番の位置は進めない）。定期動画が OFF でも表示時間内なら流す（試せるように）。
  * - 音量は端末の設定（device.volume）。自動再生を断られたらミュートで流し直す（Pi の Chromium は
  *   --autoplay-policy=no-user-gesture-required で起動すれば音も出せる）。
- * - 流せなかった動画（error・長さ＋10 秒を過ぎても終わらない）はその日（日本時間）は外す。
+ * - 流せなかった動画（error・映像を読めない・長さ＋10 秒を過ぎても終わらない）はその日（日本時間）は外す。
  * - 再生の位置・処理済みのテスト表示・その日外す動画は localStorage に端末 id ごとに覚える。
  */
 import { useEffect, useRef, useState } from "react";
@@ -160,6 +160,13 @@ export function VideoPlayer({
             lastFinishedAt = nowSeconds();
             return;
           }
+        }
+        // 映像を読めない動画（このブラウザが H.265 に対応していない等）もその日は外す。音声付きだと error は来ず、
+        // 映像なし（videoWidth 0）のまま音だけ最後まで流れて、画面が黒くなる（2026-09-25 Chromium で確認）
+        if (el.videoWidth === 0) {
+          remember(excludeForToday(memory, item.mediaId, nowSeconds()));
+          lastFinishedAt = nowSeconds();
+          return;
         }
         remember({ ...memory, ...next });
 
