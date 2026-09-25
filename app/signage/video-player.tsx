@@ -11,8 +11,10 @@
  *   その動画を読み込んでから流す（順番の位置は進めない）。定期動画が OFF でも表示時間内なら流す（試せるように）。
  * - 音量は端末の設定（device.volume）。自動再生を断られたらミュートで流し直す（Pi の Chromium は
  *   --autoplay-policy=no-user-gesture-required で起動すれば音も出せる）。
- * - 流せなかった動画（error・映像を読めない・10 秒待っても再生が始まらない・長さ＋10 秒を過ぎても終わらない）は
- *   その日（日本時間）は外す。ブラウザが自動再生を止めたときは動画のせいではないので外さない。
+ * - 流せなかった動画（error・映像を読めない・10 秒待っても再生が始まらない・長さ＋10 秒を過ぎても終わらない・
+ *   映像が一色の緑にしか描けない）はその日（日本時間）は外す。ブラウザが自動再生を止めたときは動画のせいではないので外さない。
+ * - 再生を始めてから最初の 0.7 秒は隠したまま映像を 1 コマ調べ、一色の緑（Linux の Firefox でハードウェアデコードが
+ *   壊れているときの症状。2026-09-25 ユーザー報告）なら見せずに飛ばす。問題なければ頭に戻してから見せる。
  *   どの待ちにも上限があり、失敗しても必ず表示に戻る（ページが止まったままにならない）。
  * - テスト表示が流せなかったときは、画面の下に理由を数秒出す（押した人がその場で分かるように。定期動画は黙って飛ばす）。
  * - 再生の位置・処理済みのテスト表示・その日外す動画は localStorage に端末 id ごとに覚える。
@@ -40,15 +42,19 @@ const READY_TIMEOUT_MS = 20_000;
 const PLAY_TIMEOUT_MS = 10_000;
 /** 動画の長さをこれだけ過ぎても終わらなければ、止まったとみなす */
 const OVERRUN_SECONDS = 10;
+/** 再生を始めてから、映像を調べるまで隠しておく時間 */
+const FRAME_PROBE_MS = 700;
 /** テスト表示が流せなかった理由を出しておく時間 */
 const NOTICE_MS = 12_000;
 
 /** 流せなかった理由。テスト表示のときは画面に出す */
-type Failure = "load-error" | "no-video" | "blocked" | "not-started" | "play-error" | "stalled";
+type Failure = "load-error" | "no-video" | "broken-frames" | "blocked" | "not-started" | "play-error" | "stalled";
 
 export const FAILURE_TEXT: Record<Failure, string> = {
   "load-error": "動画を読み込めませんでした。「動画・メディア」で形式を確認してください",
   "no-video": "このブラウザでは、この動画の映像を再生できません（H.264 の動画にしてください）",
+  "broken-frames":
+    "映像が緑一色にしか描けません。Firefox の about:config で media.hardware-video-decoding.enabled を false にして、Firefox を再起動してください",
   blocked: "ブラウザが動画の自動再生を止めています。このサイトの自動再生を「許可」にしてください",
   "not-started": "動画の再生が始まりませんでした。ページを再読み込みして、もう一度お試しください",
   "play-error": "動画を再生できませんでした",
@@ -105,6 +111,41 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
     const timer = setTimeout(done, ms);
     signal.addEventListener("abort", done);
   });
+}
+
+/**
+ * 描いた映像が一色の緑か（デコーダが壊れているときの症状。正常な動画が一色の緑を 0.7 秒続けることはまず無い）。
+ * 同一オリジンの動画だけ調べられる。調べられないときは false（問題なしとして見せる）
+ */
+export function looksLikeBrokenFrames(el: HTMLVideoElement): boolean {
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = 32;
+    canvas.height = 18;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return false;
+    ctx.drawImage(el, 0, 0, canvas.width, canvas.height);
+    const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const n = data.length / 4;
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      r += data[i];
+      g += data[i + 1];
+      b += data[i + 2];
+    }
+    r /= n;
+    g /= n;
+    b /= n;
+    let spread = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      spread += Math.abs(data[i] - r) + Math.abs(data[i + 1] - g) + Math.abs(data[i + 2] - b);
+    }
+    return spread / n < 6 && g > r + 30 && g > b + 30;
+  } catch {
+    return false;
+  }
 }
 
 type StartResult = "ok" | "blocked" | "error" | "timeout";
@@ -226,19 +267,28 @@ export function VideoPlayer({
         el.currentTime = 0;
         el.volume = volume / 100;
         el.muted = volume === 0;
-        setShown(true);
 
+        // 隠したまま再生を始め、映像が描けているか確かめてから見せる
         const started = await startPlaying(el, signal);
         if (signal.aborted) return;
         if (started !== "ok") {
           el.pause();
-          setShown(false);
           fadingRef.current(false);
           // 自動再生を止められたのは動画のせいではないので、その日外さない（許可されれば次は流れる）
           if (started === "blocked") fail(item, test, "blocked", false);
           else fail(item, test, started === "timeout" ? "not-started" : "play-error");
           return;
         }
+        await sleep(FRAME_PROBE_MS, signal);
+        if (signal.aborted) return;
+        if (looksLikeBrokenFrames(el)) {
+          el.pause();
+          fadingRef.current(false);
+          fail(item, test, "broken-frames");
+          return;
+        }
+        el.currentTime = 0;
+        setShown(true);
 
         const ended = await waitFor(el, "ended", (item.durationSeconds + OVERRUN_SECONDS) * 1000, signal);
         if (signal.aborted) return;

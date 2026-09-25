@@ -6,7 +6,7 @@
  */
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { FAILURE_TEXT, VideoPlayer } from "@/app/signage/video-player";
+import { FAILURE_TEXT, VideoPlayer, looksLikeBrokenFrames } from "@/app/signage/video-player";
 import type { SignageConfig } from "@/lib/config-schema";
 import { tokyoDateTime } from "@/lib/dates";
 import { makeConfig, mediaRef } from "../fixtures/config.fixture";
@@ -31,6 +31,8 @@ let playImpl: () => Promise<void> = async () => {};
 let playCalls: boolean[] = [];
 /** <video> が前の読み込みに失敗したまま（error）か */
 let hasError = false;
+/** 描いた映像の色（[R, G, B]。null なら canvas が使えない＝調べられない） */
+let framePixel: [number, number, number] | null = null;
 const stubbed: [object, string, PropertyDescriptor | undefined][] = [];
 function stub(proto: object, key: string, descriptor: PropertyDescriptor) {
   stubbed.push([proto, key, Object.getOwnPropertyDescriptor(proto, key)]);
@@ -51,6 +53,26 @@ beforeEach(() => {
   playImpl = async () => {};
   playCalls = [];
   hasError = false;
+  framePixel = null;
+  stub(HTMLCanvasElement.prototype, "getContext", {
+    value: function (this: HTMLCanvasElement) {
+      if (!framePixel) return null;
+      const [r, g, b] = framePixel;
+      return {
+        drawImage: () => {},
+        getImageData: (_x: number, _y: number, w: number, h: number) => {
+          const data = new Uint8ClampedArray(w * h * 4);
+          for (let i = 0; i < data.length; i += 4) {
+            data[i] = r;
+            data[i + 1] = g;
+            data[i + 2] = b;
+            data[i + 3] = 255;
+          }
+          return { data };
+        },
+      };
+    },
+  });
   stub(HTMLMediaElement.prototype, "readyState", { get: () => HTMLMediaElement.HAVE_ENOUGH_DATA });
   stub(HTMLMediaElement.prototype, "error", { get: () => (hasError ? { code: 4, message: "" } : null) });
   stub(HTMLMediaElement.prototype, "load", { value: vi.fn() });
@@ -77,7 +99,10 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
-/** 100ms ずつ進める（act ごとに描き直すので、周期の間に <video> が付く。まとめて進めると描き直しが最後になる） */
+/**
+ * 100ms ずつ進める（act ごとに描き直すので、周期の間に <video> が付く。まとめて進めると描き直しが最後になる）。
+ * テスト表示は 1 秒後の周期で src が付き、2 秒後の周期で流し始める。黒へ溶かす 0.6 秒と映像を調べる 0.7 秒を経て 3.3 秒で見える
+ */
 async function advance(ms: number) {
   for (let t = 0; t < ms; t += 100) {
     await act(async () => {
@@ -111,7 +136,7 @@ describe("VideoPlayer", () => {
   it("映像を読める動画は、表示を黒へ溶かしてから画面いっぱいに出し、終わったら戻す", async () => {
     openedBefore();
     const onFadingChange = renderPlayer(testPlayConfig());
-    await advance(3000);
+    await advance(4000);
 
     expect(shown()).toBe("true");
     expect(onFadingChange).toHaveBeenLastCalledWith(true);
@@ -143,7 +168,8 @@ describe("VideoPlayer", () => {
     playImpl = () => new Promise(() => {});
     const onFadingChange = renderPlayer(testPlayConfig());
     await advance(3000);
-    expect(shown()).toBe("true");
+    // 黒へ溶かして再生を始めようとしている（映像を確かめるまで見せない）
+    expect(shown()).toBe("false");
     expect(onFadingChange).toHaveBeenLastCalledWith(true);
 
     await advance(10_500);
@@ -192,24 +218,58 @@ describe("VideoPlayer", () => {
     expect(notice()).toBeNull();
   });
 
+  it("映像が一色の緑にしか描けないときは見せずに飛ばし、その日は外して理由を出す（黒一色は普通の始まりなので飛ばさない）", async () => {
+    openedBefore();
+    framePixel = [0, 135, 0];
+    const onFadingChange = renderPlayer(testPlayConfig());
+    await advance(4000);
+    expect(shown()).toBe("false");
+    expect(onFadingChange).toHaveBeenLastCalledWith(false);
+    expect(excluded()).toEqual(["med_hevc"]);
+    expect(notice()).toBe(FAILURE_TEXT["broken-frames"]);
+    cleanup();
+    window.localStorage.clear();
+
+    openedBefore();
+    framePixel = [0, 0, 0];
+    renderPlayer(testPlayConfig());
+    await advance(4000);
+    expect(shown()).toBe("true");
+    expect(excluded()).toEqual([]);
+  });
+
+  it("looksLikeBrokenFrames: 一色の緑だけを壊れた映像とみなす", () => {
+    const el = document.createElement("video");
+    framePixel = [0, 135, 0];
+    expect(looksLikeBrokenFrames(el)).toBe(true);
+    framePixel = [255, 255, 255];
+    expect(looksLikeBrokenFrames(el)).toBe(false);
+    framePixel = [40, 120, 60];
+    expect(looksLikeBrokenFrames(el)).toBe(true);
+    framePixel = [120, 140, 130];
+    expect(looksLikeBrokenFrames(el)).toBe(false);
+    framePixel = null;
+    expect(looksLikeBrokenFrames(el)).toBe(false);
+  });
+
   it("前の読み込みに失敗したまま（error）の <video> は、読み直してから流す", async () => {
     openedBefore();
     hasError = true;
     renderPlayer(testPlayConfig());
-    await advance(3000);
+    await advance(4000);
     expect(HTMLMediaElement.prototype.load).toHaveBeenCalledTimes(1);
     expect(shown()).toBe("true");
   });
 
   it("初めて開いたときでも、1 分以内のテスト表示の要求は流す（古い要求は流さない）", async () => {
     renderPlayer(testPlayConfig({ commands: { testPlayRequestedAt: NOW - 30, testPlayMediaId: null } }));
-    await advance(3000);
+    await advance(4000);
     expect(shown()).toBe("true");
     cleanup();
     window.localStorage.clear();
 
     renderPlayer(testPlayConfig({ commands: { testPlayRequestedAt: NOW - 120, testPlayMediaId: null } }));
-    await advance(3000);
+    await advance(4000);
     expect(shown()).toBe("false");
   });
 });
