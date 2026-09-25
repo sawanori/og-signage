@@ -18,7 +18,7 @@ import { z } from "zod";
 import type { Db } from "../../db/index";
 import { devices, media, nowSeconds, playlistItems, playlists, videoPlaybackSettings } from "../../db/schema";
 import { VIDEO_INTERVAL_MINUTES } from "../config-schema";
-import { MAX_VIDEOS } from "../file-sniff";
+import { MAX_VIDEO_SECONDS, MAX_VIDEOS, isVideoTooLong } from "../file-sniff";
 
 export type PlaylistRow = typeof playlists.$inferSelect;
 export type PlaylistItemRow = typeof playlistItems.$inferSelect;
@@ -89,7 +89,7 @@ async function loadItemsWithMedia(tx: Queryable, playlistId: string): Promise<Pl
 /** playable=false・state=deleting・type≠video は追加不可（理由は利用者向けの日本語） */
 async function assertMediaEligible(tx: Queryable, mediaId: string): Promise<void> {
   const [row] = await tx
-    .select({ type: media.type, playable: media.playable, state: media.state })
+    .select({ type: media.type, playable: media.playable, state: media.state, durationSeconds: media.durationSeconds })
     .from(media)
     .where(eq(media.id, mediaId));
   if (!row) throw new PlaybackServiceError("invalid_media", "選んだ動画が見つかりません。削除された可能性があります");
@@ -98,6 +98,9 @@ async function assertMediaEligible(tx: Queryable, mediaId: string): Promise<void
   }
   if (row.type !== "video" || !row.playable) {
     throw new PlaybackServiceError("invalid_media", "この動画はサイネージで再生できない形式です");
+  }
+  if (isVideoTooLong(row.durationSeconds)) {
+    throw new PlaybackServiceError("invalid_media", `この動画は ${MAX_VIDEO_SECONDS} 秒を超えているため再生リストに入れられません`);
   }
 }
 

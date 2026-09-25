@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition, type KeyboardEvent } from "react";
 import { requestTestPlayAction, saveDevicePlaybackAction } from "@/app/admin/_actions/playback";
 import { VIDEO_INTERVAL_MINUTES } from "@/lib/config-schema";
-import { MAX_VIDEOS } from "@/lib/file-sniff";
+import { MAX_VIDEO_SECONDS, MAX_VIDEOS, isVideoTooLong } from "@/lib/file-sniff";
 import admin from "./admin.module.css";
 import { formatDuration } from "./format";
 import {
@@ -439,8 +439,9 @@ function LibraryCard({
         <ul className={styles.addList}>
           {library.map((video) => {
             const added = inList.has(video.mediaId);
+            const tooLong = isVideoTooLong(video.durationSeconds);
             return (
-              <li key={video.mediaId} className={styles.addItem} data-disabled={video.playable ? undefined : "true"}>
+              <li key={video.mediaId} className={styles.addItem} data-disabled={video.playable && !tooLong ? undefined : "true"}>
                 <Thumb url={video.thumbnailUrl} />
                 <div className={styles.playlistText}>
                   <p className={styles.playlistName} title={video.name}>
@@ -448,7 +449,9 @@ function LibraryCard({
                   </p>
                   <p className={styles.playlistDuration}>{formatDuration(video.durationSeconds)}</p>
                 </div>
-                {video.playable ? (
+                {tooLong ? (
+                  <p className={styles.addReason}>{MAX_VIDEO_SECONDS} 秒を超えているため使えません</p>
+                ) : video.playable ? (
                   <button
                     type="button"
                     className={styles.addButton}

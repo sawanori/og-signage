@@ -20,6 +20,14 @@ export const MEDIA_MAX_BYTES: Record<MediaKind, number> = {
 /** 置いておける動画の本数（アップロード済みの動画と再生リストの両方。2026-09-25 ユーザー指示） */
 export const MAX_VIDEOS = 3;
 
+/** 動画の長さの上限（秒。2026-09-25 ユーザー指示「動画の尺は 15 秒」） */
+export const MAX_VIDEO_SECONDS = 15;
+
+/** 15 秒を超える動画か。書き出しの端数（15.02 秒など）は許すため 0.5 秒の余裕を見る。長さが分からなければ false */
+export function isVideoTooLong(seconds: number | null | undefined): boolean {
+  return seconds !== null && seconds !== undefined && seconds > MAX_VIDEO_SECONDS + 0.5;
+}
+
 /** マルチパートの 1 パート（最後のパート以外はこの大きさちょうど） */
 export const UPLOAD_PART_SIZE = 10 * 1024 * 1024;
 

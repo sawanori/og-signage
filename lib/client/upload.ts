@@ -8,7 +8,16 @@
  * - パートは 10MB ずつ順に送り、各パートを 3 回まで再試行する。complete も冪等なので再試行する。
  */
 import { createSHA256 } from "hash-wasm";
-import { MEDIA_MAX_BYTES, SNIFF_BYTES, UPLOAD_PART_SIZE, kindOfMime, sniffMime, type MediaKind } from "../file-sniff";
+import {
+  MAX_VIDEO_SECONDS,
+  MEDIA_MAX_BYTES,
+  SNIFF_BYTES,
+  UPLOAD_PART_SIZE,
+  isVideoTooLong,
+  kindOfMime,
+  sniffMime,
+  type MediaKind,
+} from "../file-sniff";
 import type { CompleteUploadInput, MediaDto, VideoCodecInfo } from "../services/media";
 
 export const IMAGE_MAX_LONG_SIDE = 1920;
@@ -317,6 +326,14 @@ export async function uploadMedia(file: File, options: UploadOptions = {}): Prom
     meta.height = info?.codecInfo.height ?? null;
     meta.durationSeconds = info?.durationSeconds ?? thumb.durationSeconds;
     thumbnail = thumb.blob;
+    if (meta.durationSeconds === null || meta.durationSeconds === undefined) {
+      throw new UploadError("動画の長さを読み取れませんでした。MP4 の動画をお使いください");
+    }
+    if (isVideoTooLong(meta.durationSeconds)) {
+      throw new UploadError(
+        `動画は ${MAX_VIDEO_SECONDS} 秒以内にしてください（この動画は ${Math.round(meta.durationSeconds)} 秒です）`,
+      );
+    }
   }
 
   const { uploadId } = await expectOk<{ uploadId: string }>(

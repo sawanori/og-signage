@@ -246,6 +246,22 @@ describe("アップロード", () => {
     expect(bucket.pending.size).toBe(2);
   });
 
+  it("動画の尺は 15 秒まで（書き出しの端数 0.5 秒は許す）。超える・長さが分からない動画は完了時に 400 で、R2 の途中のアップロードも捨てる", async () => {
+    const long = await uploadVideo(12 * MB);
+    await expectMediaError(completeUpload(deps, staff, long.uploadId, meta(long.parts, { durationSeconds: 30 })), 400, "video_too_long");
+    const [aborted] = await db.select().from(uploads).where(eq(uploads.id, long.uploadId));
+    expect(aborted.state).toBe("aborted");
+    expect(bucket.pending.has(aborted.r2UploadId)).toBe(false);
+
+    const unknown = await uploadVideo(12 * MB);
+    await expectMediaError(completeUpload(deps, staff, unknown.uploadId, meta(unknown.parts, { durationSeconds: null })), 400, "video_too_long");
+
+    const ok = await uploadVideo(12 * MB);
+    const row = await completeUpload(deps, staff, ok.uploadId, meta(ok.parts, { durationSeconds: 15.3 }));
+    expect(row.durationSeconds).toBe(15.3);
+    expect(await db.select().from(media)).toHaveLength(1);
+  });
+
   it("動画は 3 本まで。4 本目は開始時に 409（画像は数えない・削除中の動画も数えない）", async () => {
     for (let i = 0; i < 3; i++) {
       const { uploadId, parts } = await uploadVideo(12 * MB);

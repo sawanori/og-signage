@@ -15,7 +15,17 @@ import { z } from "zod";
 import type { Db } from "../../db/index";
 import { devices, events, houseSettings, media, mediaFailures, notices, playlistItems, uploads } from "../../db/schema";
 import type { AuthUser } from "../auth";
-import { MAX_VIDEOS, MEDIA_MAX_BYTES, SNIFF_BYTES, UPLOAD_PART_SIZE, kindOfMime, sniffMime, type MediaKind } from "../file-sniff";
+import {
+  MAX_VIDEO_SECONDS,
+  MAX_VIDEOS,
+  MEDIA_MAX_BYTES,
+  SNIFF_BYTES,
+  UPLOAD_PART_SIZE,
+  isVideoTooLong,
+  kindOfMime,
+  sniffMime,
+  type MediaKind,
+} from "../file-sniff";
 import { mediaKeys, type MediaBucket, type R2Part } from "../r2";
 
 export const DELETE_DELAY_SECONDS = 7 * 24 * 60 * 60;
@@ -244,10 +254,23 @@ export async function completeUpload(
   if (upload.state === "aborted") throw new MediaError(409, "aborted", "このアップロードは中断されています");
   if (upload.state === "completed" && upload.mediaId) return getMediaOrThrow(db, upload.mediaId);
 
-  // 開始のあとに別の動画が入って上限に達していたら、R2 の途中のアップロードを捨てて断る
-  if (upload.kind === "video" && upload.state === "uploading" && (await countActiveVideos(db)) >= MAX_VIDEOS) {
-    await abortUpload({ db, bucket }, user, uploadId);
-    throw new MediaError(409, "video_limit", VIDEO_LIMIT_MESSAGE);
+  if (upload.kind === "video" && upload.state === "uploading") {
+    // 動画の尺は 15 秒まで（長さはブラウザが MP4 から読んで送る）。断るときは R2 の途中のアップロードも捨てる
+    if (meta.durationSeconds === null || meta.durationSeconds === undefined || isVideoTooLong(meta.durationSeconds)) {
+      await abortUpload({ db, bucket }, user, uploadId);
+      throw new MediaError(
+        400,
+        "video_too_long",
+        meta.durationSeconds === null || meta.durationSeconds === undefined
+          ? "動画の長さを読み取れませんでした。MP4 の動画をお使いください"
+          : `動画は ${MAX_VIDEO_SECONDS} 秒以内にしてください（この動画は ${Math.round(meta.durationSeconds)} 秒です）`,
+      );
+    }
+    // 開始のあとに別の動画が入って上限に達していたら、R2 の途中のアップロードを捨てて断る
+    if ((await countActiveVideos(db)) >= MAX_VIDEOS) {
+      await abortUpload({ db, bucket }, user, uploadId);
+      throw new MediaError(409, "video_limit", VIDEO_LIMIT_MESSAGE);
+    }
   }
 
   const count = partCountOf(upload.declaredSize);
