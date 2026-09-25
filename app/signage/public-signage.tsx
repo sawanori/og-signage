@@ -5,7 +5,7 @@
  *
  * - 縦横は ?layout で固定しなければ、見ている画面（ウィンドウ）の向きに合わせる。
  * - 画像は公開用の中継（/api/signage/media/<mediaId>）で読む。
- * - 全画面表示はブラウザの制約でボタン操作が要る。ボタンはマウスを動かしたときだけ 3 秒出す。
+ * - 全画面のボタンは置かない（2026-09-25 ユーザー指示で削除）。Pi では Chromium を --kiosk で起動して全画面にする。
  * - ウィンドウが 16:9 より縦長なら横型を縦に伸ばし、上下の黒い帯を出さない（fillHeight）。
  * - 管理画面の「定期動画の設定」どおりに動画を流す（video-player.tsx。Pi のブラウザで開いて使うため）。
  */
@@ -39,7 +39,6 @@ export function PublicSignage({
 }) {
   const [config, setConfig] = useState(initialConfig);
   const [now, setNow] = useState(initialNow);
-  const [controlsVisible, setControlsVisible] = useState(false);
   // 動画へ切り替える前後に表示を黒へ溶かす（VideoPlayer が切り替える）
   const [fading, setFading] = useState(false);
   // サーバーでは画面の向きが分からないので、端末の向きで描いてから合わせる
@@ -65,20 +64,6 @@ export function PublicSignage({
     return () => clearInterval(timer);
   }, [deviceId]);
 
-  useEffect(() => {
-    let hideTimer: ReturnType<typeof setTimeout> | undefined;
-    const show = () => {
-      setControlsVisible(true);
-      clearTimeout(hideTimer);
-      hideTimer = setTimeout(() => setControlsVisible(false), 3000);
-    };
-    window.addEventListener("mousemove", show);
-    return () => {
-      window.removeEventListener("mousemove", show);
-      clearTimeout(hideTimer);
-    };
-  }, []);
-
   const resolveMediaUrl = (ref: MediaRef) =>
     `/api/signage/media/${encodeURIComponent(ref.mediaId)}?device=${encodeURIComponent(deviceId)}`;
 
@@ -93,15 +78,6 @@ export function PublicSignage({
         fillHeight
       />
       <VideoPlayer deviceId={deviceId} config={config} resolveMediaUrl={resolveMediaUrl} onFadingChange={setFading} />
-      {controlsVisible ? (
-        <button
-          type="button"
-          onClick={() => void document.documentElement.requestFullscreen?.()}
-          className="fixed right-4 bottom-4 z-50 rounded-full bg-black/60 px-4 py-2 text-sm text-white"
-        >
-          全画面で表示
-        </button>
-      ) : null}
     </>
   );
 }
