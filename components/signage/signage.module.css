@@ -937,7 +937,7 @@
 /* ---------------------------------------------------------------- 横型 */
 /*
  * Web 公開で横長のウィンドウに合わせて横に伸ばしたとき（--canvas-extra-x。components/signage/ScaledCanvas.tsx）は、
- * 伸びた幅を大きな枠に回し、右の列（UPCOMING）・右上の箱（お知らせ）・添え書きはその分だけ右へずらす。
+ * 伸びた幅を大きな枠に回し、右の列（UPCOMING・お知らせ・メンバー情報）・右上の箱・添え書きはその分だけ右へずらす。
  * フッターは右側（キャッチコピーと QR・ロゴ）だけが広がる。伸ばさないときは 0
  */
 
@@ -1035,7 +1035,7 @@
 }
 
 /* 右上の箱。キャッチコピー（ヘッダー用）を上下の中央に置く */
-/* 右上の箱はお知らせ（HOUSE NEWS）。ヘッダーの帯（92px）より少し下まで（2026-09-25 ユーザー指示で下段から移した） */
+/* 右上の箱はキャッチコピー（ヘッダー用）。ヘッダーの帯（92px）より少し下まで */
 .lBox {
   position: absolute;
   left: calc(1480px + var(--canvas-extra-x, 0px));
@@ -1043,79 +1043,18 @@
   width: 440px;
   height: 110px;
   display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding: 14px 26px 0 30px;
+  align-items: center;
+  padding: 0 30px 0 36px;
   background: linear-gradient(160deg, #e0d8ce, #d8cdc1);
 }
 
-.lBoxHead {
-  display: flex;
-  align-items: baseline;
-  gap: 14px;
-}
-
-.lBoxEn {
+.lBoxCopy {
   font-weight: 700;
-  font-size: 15px;
-  line-height: 1;
-  letter-spacing: 0.06em;
-}
-
-.lBoxJa {
-  font-size: 11.5px;
-  line-height: 1;
-  letter-spacing: 0.14em;
-  color: var(--ink-soft);
-}
-
-.lBoxNotice {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.lBoxImage {
-  position: relative; /* 中の画像（.cover は absolute）をこの枠に収める */
-  flex: none;
-  width: 56px;
-  height: 56px;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.lBoxText {
-  min-width: 0;
-}
-
-.lBoxTitle {
-  font-weight: 700;
-  font-size: 18px;
-  line-height: 24px;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.lBoxBody {
-  margin-top: 3px;
-  font-size: 13px;
-  line-height: 18px;
-  letter-spacing: 0.04em;
-  color: var(--ink-mute);
+  font-size: 18.5px;
+  line-height: 28px;
+  letter-spacing: 0.13em;
   white-space: pre-line;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-}
-
-.lBoxEmpty {
-  font-size: 13px;
-  line-height: 18px;
-  color: var(--ink-mute);
+  word-break: auto-phrase;
 }
 
 /* 主イベント（横） */
@@ -1361,22 +1300,22 @@
   color: var(--ink-soft);
 }
 
-/* Upcoming（横）。最大 6 行（2026-09-25 ユーザー指示で 4 → 5 → 6。行は 108px で、下のメンバー情報（見出し 860px）の上まで） */
-/* 縦に伸ばしたときは、行の間隔を広げてメンバー情報との間をそろえる（6 行で間は 5 つ） */
+/* Upcoming（横）。最大 6 行（2026-09-25 ユーザー指示で 4 → 5 → 6。行は 94px で、下のお知らせ（772px）の上まで） */
+/* 縦に伸ばしたときは、行の間隔を広げて下のお知らせ・メンバー情報との間をそろえる（6 行で間は 5 つ） */
 .lUpcoming {
   position: absolute;
   left: calc(1368px + var(--canvas-extra-x, 0px));
   top: 174px;
   width: 516px;
-  height: calc(671px + var(--canvas-extra, 0px));
+  height: calc(584px + var(--canvas-extra, 0px));
   display: flex;
   flex-direction: column;
-  gap: calc(4.6px + var(--canvas-extra, 0px) / 5);
+  gap: calc(4px + var(--canvas-extra, 0px) / 5);
 }
 
 .lRow {
   position: relative;
-  height: 108px;
+  height: 94px;
   flex: none;
   border-radius: 14px;
   background: #f5f5f5;
@@ -1395,15 +1334,15 @@
 }
 
 .lRowDay {
-  margin-top: 24px;
+  margin-top: 20px;
   font-weight: 700;
-  font-size: 29px;
+  font-size: 26px;
   line-height: 1;
 }
 
 .lRowWeek {
-  margin-top: 14px;
-  font-size: 16px;
+  margin-top: 8px;
+  font-size: 14px;
   line-height: 1;
   letter-spacing: 0.04em;
 }
@@ -1411,8 +1350,8 @@
 .lRowDivider {
   position: absolute;
   left: 120px;
-  top: 16px;
-  bottom: 16px;
+  top: 14px;
+  bottom: 14px;
   width: 2px;
   background: #e6e6e6;
 }
@@ -1420,7 +1359,7 @@
 .lRowText {
   position: absolute;
   left: 140px;
-  top: 10px;
+  top: 9px;
   width: 236px;
   display: flex;
   flex-direction: column;
@@ -1428,22 +1367,22 @@
 }
 
 .lChip {
-  height: 28px;
-  padding: 0 12px;
-  border-radius: 8px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 7px;
   color: #fff;
-  font-size: 14px;
-  line-height: 28px;
+  font-size: 12.5px;
+  line-height: 24px;
   letter-spacing: 0.18em;
   white-space: nowrap;
 }
 
 .lRowTitle {
-  margin-top: 5px;
+  margin-top: 4px;
   max-width: 100%;
   font-weight: 700;
-  font-size: 22px;
-  line-height: 32px;
+  font-size: 21px;
+  line-height: 30px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1451,8 +1390,8 @@
 
 .lRowMeta {
   margin-top: 2px;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 15px;
+  line-height: 22px;
   letter-spacing: 0.01em;
   color: #2c343d;
   max-width: 100%;
@@ -1468,9 +1407,9 @@
 .lRowImage {
   position: absolute;
   left: 384px;
-  top: 16px;
+  top: 12px;
   width: 118px;
-  height: 76px;
+  height: 70px;
   border-radius: 10px;
   overflow: hidden;
 }
@@ -1485,13 +1424,98 @@
   height: 1080px;
 }
 
-/* メンバー情報（横）。右の列の下、UPCOMING と同じ左端にそろえる（2026-09-25 ユーザー指示で戻し、右へ寄せた） */
+/* お知らせ（横）。右の列の UPCOMING の下（772〜868px）。目立つように黄色のカード（2026-09-25 ユーザー指示） */
+.lNews {
+  position: absolute;
+  left: calc(1368px + var(--canvas-extra-x, 0px));
+  top: 772px;
+  width: 516px;
+  height: 96px;
+  padding: 10px 18px 0 20px;
+  border-radius: 16px;
+  background: #f9d164;
+  box-shadow: 0 8px 18px -10px rgba(80, 55, 0, 0.45);
+  color: #16202b;
+}
+
+.lNewsLabel {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.lNewsEn {
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: 0.1em;
+}
+
+.lNewsJa {
+  font-size: 11.5px;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  color: #5a4a1c;
+}
+
+.lNewsBody {
+  margin-top: 7px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.lNewsImage {
+  position: relative; /* 中の画像（.cover は absolute）をこの枠に収める */
+  flex: none;
+  width: 58px;
+  height: 58px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.lNewsText {
+  min-width: 0;
+}
+
+.lNewsTitle {
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 26px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lNewsDesc {
+  margin-top: 2px;
+  font-size: 14px;
+  line-height: 19px;
+  letter-spacing: 0.04em;
+  color: #3d3316;
+  white-space: pre-line;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.lNewsEmpty {
+  margin-top: 12px;
+  font-size: 14px;
+  line-height: 19px;
+  color: #5a4a1c;
+}
+
+/* メンバー情報（横）。お知らせの下、UPCOMING と同じ左端にそろえる（2026-09-25 ユーザー指示で戻し、右へ寄せた） */
 .lRules {
   position: absolute;
   left: calc(1368px + var(--canvas-extra-x, 0px));
-  top: 894px;
+  top: 906px;
   width: 516px;
-  height: 88px;
+  height: 76px;
   display: flex;
   gap: 10px;
 }

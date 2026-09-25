@@ -1,7 +1,7 @@
 /**
  * 横型（1920×1080）の配置。モック image/UI-H.png の画面部分に合わせる。
- * 2026-09-25 ユーザー指示: ヘッダーを 2/3 の高さ（92px）に。お知らせ（HOUSE NEWS）は右上の箱へ。
- * 下段の欄のうち今週の予定は外し、大きな枠をフッターまで広げ、Upcoming は 6 件。メンバー情報は右の列の下に右寄せで残す。
+ * 2026-09-25 ユーザー指示: ヘッダーを 2/3 の高さ（92px）に。下段の欄のうち今週の予定は外し、大きな枠をフッターまで広げる。
+ * 右の列は上から UPCOMING（6 件）・お知らせ（HOUSE NEWS。目立つ黄色のカード）・メンバー情報。
  */
 import { Fragment } from "react";
 import { ArrowRight, Clock } from "lucide-react";
@@ -57,25 +57,9 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
       <svg className={styles.lScriptLine} width="110" height="16" viewBox="0 0 110 16" aria-hidden>
         <path d="M2 13 C 34 8, 70 5, 108 4" fill="none" stroke="#1B2530" strokeWidth="2" strokeLinecap="round" />
       </svg>
-      {/* 右上の箱はお知らせ（HOUSE NEWS。2026-09-25 ユーザー指示で下段から移した）。キャッチコピー（ヘッダー用）は横型では出さない */}
-      <div className={styles.lBox} data-testid="notice">
-        <div className={styles.lBoxHead}>
-          <span className={styles.lBoxEn}>{COPY.news.en}</span>
-          <span className={styles.lBoxJa}>{COPY.news.ja}</span>
-        </div>
-        {view.notice ? (
-          <div className={styles.lBoxNotice}>
-            {view.notice.image ? (
-              <MediaImage media={view.notice.image} category={null} resolveMediaUrl={resolveMediaUrl} className={styles.lBoxImage} />
-            ) : null}
-            <div className={styles.lBoxText}>
-              <div className={styles.lBoxTitle}>{view.notice.title}</div>
-              {view.notice.body ? <div className={styles.lBoxBody}>{view.notice.body}</div> : null}
-            </div>
-          </div>
-        ) : (
-          <div className={styles.lBoxEmpty}>{COPY.noNotice}</div>
-        )}
+      {/* 右上の箱はキャッチコピー（ヘッダー用）だけ（2026-09-25 ユーザー指示で英語の添え書きを外した） */}
+      <div className={styles.lBox}>
+        {house.headerCopy ? <div className={styles.lBoxCopy}>{house.headerCopy}</div> : null}
       </div>
 
       {/* 今日のイベント */}
@@ -93,10 +77,30 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
         ))}
       </div>
 
-      {/* メンバー情報とフッター。縦に伸ばしたときは、伸びた分だけ下へずらす（中の位置は 1920×1080 のまま） */}
+      {/* お知らせ・メンバー情報・フッター。縦に伸ばしたときは、伸びた分だけ下へずらす（中の位置は 1920×1080 のまま） */}
       <div className={styles.lLower}>
+        {/* お知らせ。右の列の UPCOMING の下（2026-09-25 ユーザー指示。目立つように黄色のカード） */}
+        <div className={styles.lNews} data-testid="notice">
+          <div className={styles.lNewsLabel}>
+            <span className={styles.lNewsEn}>{COPY.news.en}</span>
+            <span className={styles.lNewsJa}>{COPY.news.ja}</span>
+          </div>
+          {view.notice ? (
+            <div className={styles.lNewsBody}>
+              {view.notice.image ? (
+                <MediaImage media={view.notice.image} category={null} resolveMediaUrl={resolveMediaUrl} className={styles.lNewsImage} />
+              ) : null}
+              <div className={styles.lNewsText}>
+                <div className={styles.lNewsTitle}>{view.notice.title}</div>
+                {view.notice.body ? <div className={styles.lNewsDesc}>{view.notice.body}</div> : null}
+              </div>
+            </div>
+          ) : (
+            <div className={styles.lNewsEmpty}>{COPY.noNotice}</div>
+          )}
+        </div>
         {/* メンバー情報。右の列（UPCOMING）と同じ左端で右寄せ（2026-09-25 ユーザー指示） */}
-        <div className={styles.lSectionTitle} style={{ left: stretchX(1372, 1), top: 860 }}>
+        <div className={styles.lSectionTitle} style={{ left: stretchX(1372, 1), top: 880 }}>
           <span className={styles.lSectionEn}>{COPY.rules.en}</span>
           <span className={styles.lSectionJa}>{COPY.rules.ja}</span>
         </div>
