@@ -139,7 +139,7 @@ export function NoticesView({ notices }: { notices: NoticeRow[] }) {
         <div>
           <h1 className={styles.pageTitle}>お知らせ</h1>
           <p className={styles.pageDesc}>
-            イベントがない時間にサイネージの「HOUSE NEWS」欄に表示します。有効なお知らせが複数あるときは、更新が新しいものだけが表示されます。
+            イベントがない時間にサイネージの「重要連絡：全メンバーへのお知らせ」欄に表示します。有効なお知らせが複数あるときは、更新が新しいものだけが表示されます。
           </p>
         </div>
         {form ? null : (

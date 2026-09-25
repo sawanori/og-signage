@@ -11,7 +11,9 @@ export const COPY = {
   portraitTagline: "Do What You Love",
   landscapeTaglineScript: ["Do What", "You Love"],
   upcoming: { en: "UPCOMING EVENTS", ja: "今後のイベント" },
-  news: { en: "HOUSE NEWS", ja: "お知らせ" },
+  // お知らせの欄の見出し。en は目立つ見出し（横型は黒い帯）、ja は添え書き（2026-09-25 ユーザー指示で
+  // 「HOUSE NEWS / お知らせ」から「重要連絡：全メンバーへのお知らせ」に）
+  news: { en: "重要連絡", ja: "全メンバーへのお知らせ" },
   // 旧ハウスルールの欄（2026-09-25 ユーザー指示でメンバー情報に。中身は管理画面のデザイン設定で変える）
   rules: { en: "MEMBER INFO", ja: "メンバー情報" },
   week: { en: "THIS WEEK", ja: "今週の予定" },

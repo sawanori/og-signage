@@ -235,7 +235,9 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     const notice = screen.getByTestId("notice");
     expect(notice.textContent).toContain("共用部の清掃にご協力ください");
     if (orientation === "landscape") {
-      expect(notice.textContent).toContain("HOUSE NEWS");
+      // 見出しは「重要連絡：全メンバーへのお知らせ」（2026-09-25 ユーザー指示で HOUSE NEWS から変更）
+      expect(notice.textContent).toContain("重要連絡");
+      expect(notice.textContent).toContain("全メンバーへのお知らせ");
       // 右上の箱はメンバー情報。キャッチコピー（ヘッダー用）は横型では出さない
       expect(screen.queryByText("Welcome Home!")).toBeNull();
     }
