@@ -502,6 +502,18 @@
   object-fit: cover;
 }
 
+/* 画像ファイルを重ねているあいだ（use-file-drop.ts） */
+.imageField[data-over="true"] .imagePreviewBox {
+  border: 1.5px solid var(--blue);
+  background: var(--blue-soft);
+  color: var(--blue-deep);
+}
+
+.imageDropText {
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .imageMeta {
   display: flex;
   flex-direction: column;

@@ -773,6 +773,25 @@
   color: var(--ink-mute);
 }
 
+.imageDropCue {
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+/* 画像ファイルを重ねているあいだ（use-file-drop.ts） */
+.imageDropOverlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--blue);
+  border-radius: 10px;
+  background: rgba(209, 230, 255, 0.9);
+  color: var(--blue-deep);
+  font-size: 15px;
+  font-weight: 700;
+}
+
 .imageProgress {
   position: absolute;
   left: 10px;
@@ -806,9 +825,15 @@
 
 .imageActions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
+  gap: 10px 14px;
   margin-top: 12px;
+}
+
+/* 幅が足りないときはボタンごと次の行へ送る（文字の途中で折り返さない） */
+.imageActions > button {
+  white-space: nowrap;
 }
 
 /* ---------------------------------------------------------------- 確認ダイアログ */

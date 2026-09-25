@@ -3,6 +3,7 @@
 /**
  * イベント画像の選択とアップロード（lib/client/upload.ts）。進捗を出し、終わったら画像の ID を返す。
  * アップロード済みの画像から選ぶこともできる（media-picker.tsx。2026-09-25 ユーザー指示）。
+ * 欄へのドラッグ＆ドロップでもアップロードできる（use-file-drop.ts。2026-09-25 ユーザー指示）。
  */
 import { ImagePlus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -10,6 +11,7 @@ import { UploadError, uploadMedia, type UploadProgress } from "@/lib/client/uplo
 import { mediaThumbnailUrl } from "./event-types";
 import { MediaPickerButton } from "./media-picker";
 import styles from "./events.module.css";
+import { useFileDrop } from "./use-file-drop";
 
 const ACCEPT = "image/jpeg,image/png,image/webp";
 
@@ -71,9 +73,10 @@ export function EventImageField({
   };
 
   const busy = progress !== null;
+  const drop = useFileDrop((file) => void upload(file), busy);
 
   return (
-    <div>
+    <div data-over={drop.over ? "true" : undefined} data-testid="image-drop" {...drop.handlers}>
       <div className={styles.imageBox}>
         {previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -82,8 +85,10 @@ export function EventImageField({
           <div className={styles.imageEmpty}>
             <ImagePlus size={30} strokeWidth={1.6} aria-hidden />
             <span>画像はまだありません</span>
+            <span className={styles.imageDropCue}>ここに画像をドラッグ＆ドロップできます</span>
           </div>
         )}
+        {drop.over ? <div className={styles.imageDropOverlay}>ここにドロップ</div> : null}
         {busy ? (
           <div className={styles.imageProgress} role="status">
             <span>{progressLabel(progress)}</span>

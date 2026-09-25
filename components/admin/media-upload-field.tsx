@@ -4,12 +4,14 @@
  * 画像1枚の選択・アップロード（lib/client/upload.ts）。お知らせ画像・ロゴ・フッター画像で共用する。
  * アップロードが終わると mediaId とプレビュー URL（/api/media/[id]/thumbnail）を親に返す。
  * アップロード済みの画像から選ぶこともできる（media-picker.tsx。2026-09-25 ユーザー指示）。
+ * 欄へのドラッグ＆ドロップでもアップロードできる（use-file-drop.ts。2026-09-25 ユーザー指示）。
  */
 import { ImagePlus } from "lucide-react";
 import { useRef, useState } from "react";
 import { UploadError, uploadMedia, type UploadProgress } from "@/lib/client/upload";
 import { MediaPickerButton } from "./media-picker";
 import styles from "./settings.module.css";
+import { useFileDrop } from "./use-file-drop";
 
 const ACCEPT = "image/jpeg,image/png,image/webp";
 
@@ -66,13 +68,16 @@ export function MediaUploadField({
       onBusyChange?.(false);
     }
   };
+  const drop = useFileDrop((file) => void upload(file), Boolean(disabled) || busy);
 
   return (
     <div className={styles.field}>
       <p className={styles.label}>{label}</p>
-      <div className={styles.imageField}>
+      <div className={styles.imageField} data-over={drop.over ? "true" : undefined} data-testid="image-drop" {...drop.handlers}>
         <div className={styles.imagePreviewBox}>
-          {previewUrl ? (
+          {drop.over ? (
+            <span className={styles.imageDropText}>ここにドロップ</span>
+          ) : previewUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={previewUrl} alt="" />
           ) : (
@@ -109,7 +114,9 @@ export function MediaUploadField({
               <div className={styles.progressBar} style={{ width: `${progressPercent(progress)}%` }} />
             </div>
           ) : null}
-          {hint ? <p className={styles.hint}>{hint}</p> : null}
+          <p className={styles.hint}>
+            {hint ? `${hint}。` : ""}この欄にドラッグ＆ドロップしてもアップロードできます
+          </p>
           {error ? (
             <p className={styles.fieldError} role="alert">
               {error}
