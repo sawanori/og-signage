@@ -13,8 +13,9 @@
  *   --autoplay-policy=no-user-gesture-required で起動すれば音も出せる）。
  * - 流せなかった動画（error・映像を読めない・10 秒待っても再生が始まらない・長さ＋10 秒を過ぎても終わらない・
  *   映像が一色の緑にしか描けない）はその日（日本時間）は外す。ブラウザが自動再生を止めたときは動画のせいではないので外さない。
- * - 再生を始めてから最初の 0.7 秒は隠したまま映像を 1 コマ調べ、一色の緑（Linux の Firefox でハードウェアデコードが
- *   壊れているときの症状。2026-09-25 ユーザー報告）なら見せずに飛ばす。問題なければ頭に戻してから見せる。
+ * - 流す前に、読み込み済みの最初のコマを調べ、一色の緑（Linux の Firefox でハードウェアデコードが壊れているときの症状。
+ *   2026-09-25 ユーザー報告）なら見せずに飛ばす。再生中には手を入れない（頭に戻すシークもしない）。
+ * - 読み込み・再生のエラーはブラウザが返すコードとメッセージを理由に添える（原因の切り分けのため）。
  *   どの待ちにも上限があり、失敗しても必ず表示に戻る（ページが止まったままにならない）。
  * - テスト表示が流せなかったときは、画面の下に理由を数秒出す（押した人がその場で分かるように。定期動画は黙って飛ばす）。
  * - 再生の位置・処理済みのテスト表示・その日外す動画は localStorage に端末 id ごとに覚える。
@@ -42,8 +43,6 @@ const READY_TIMEOUT_MS = 20_000;
 const PLAY_TIMEOUT_MS = 10_000;
 /** 動画の長さをこれだけ過ぎても終わらなければ、止まったとみなす */
 const OVERRUN_SECONDS = 10;
-/** 再生を始めてから、映像を調べるまで隠しておく時間 */
-const FRAME_PROBE_MS = 700;
 /** テスト表示が流せなかった理由を出しておく時間 */
 const NOTICE_MS = 12_000;
 
@@ -114,8 +113,8 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
 }
 
 /**
- * 描いた映像が一色の緑か（デコーダが壊れているときの症状。正常な動画が一色の緑を 0.7 秒続けることはまず無い）。
- * 同一オリジンの動画だけ調べられる。調べられないときは false（問題なしとして見せる）
+ * 読み込み済みのコマ（流す前の最初のコマ）が一色の緑か（デコーダが壊れているときの症状。正常な動画の最初のコマが
+ * 一色の緑であることはまず無い）。同一オリジンの動画だけ調べられる。調べられないときは false（問題なしとして見せる）
  */
 export function looksLikeBrokenFrames(el: HTMLVideoElement): boolean {
   try {
@@ -146,6 +145,15 @@ export function looksLikeBrokenFrames(el: HTMLVideoElement): boolean {
   } catch {
     return false;
   }
+}
+
+/** ブラウザが返した動画のエラー（コードとメッセージ）。理由に添えて、原因の切り分けに使う */
+function mediaErrorDetail(el: HTMLVideoElement): string {
+  const error = el.error;
+  if (!error) return "";
+  const names: Record<number, string> = { 1: "中断", 2: "通信", 3: "デコード", 4: "非対応" };
+  const message = error.message ? ` ${error.message.slice(0, 160)}` : "";
+  return `（エラー ${error.code} ${names[error.code] ?? ""}:${message}）`;
 }
 
 type StartResult = "ok" | "blocked" | "error" | "timeout";
@@ -223,12 +231,12 @@ export function VideoPlayer({
       noticeTimer = setTimeout(() => setNotice(null), NOTICE_MS);
     };
 
-    /** 流せなかった。exclude ならその日は外す。テスト表示なら理由を画面に出す */
-    const fail = (item: PlaylistItem, test: boolean, reason: Failure, exclude = true) => {
-      console.warn(`[signage-video] 動画 ${item.mediaId} を流せませんでした: ${reason}`);
+    /** 流せなかった。exclude ならその日は外す。テスト表示なら理由（detail があればそれも）を画面に出す */
+    const fail = (item: PlaylistItem, test: boolean, reason: Failure, exclude = true, detail = "") => {
+      console.warn(`[signage-video] 動画 ${item.mediaId} を流せませんでした: ${reason}${detail}`);
       if (exclude) remember(excludeForToday(memory, item.mediaId, nowSeconds()));
       lastFinishedAt = nowSeconds();
-      if (test) showNotice(FAILURE_TEXT[reason]);
+      if (test) showNotice(FAILURE_TEXT[reason] + detail);
     };
 
     const playOnce = async ({ item, next, test }: Upcoming) => {
@@ -242,7 +250,7 @@ export function VideoPlayer({
           const ready = await waitFor(el, "canplaythrough", READY_TIMEOUT_MS, signal);
           if (signal.aborted) return;
           if (ready === "error") {
-            fail(item, test, "load-error");
+            fail(item, test, "load-error", true, mediaErrorDetail(el));
             return;
           }
           // 間に合わないだけなら、定期動画は今回は見送り（次の間隔で再試行）。テスト表示はそのまま再生を試みる
@@ -258,37 +266,33 @@ export function VideoPlayer({
           fail(item, test, "no-video");
           return;
         }
+        // 流す前に、読み込み済みの最初のコマが描けているか調べる（一色の緑なら見せずに飛ばす）
+        if (looksLikeBrokenFrames(el)) {
+          fail(item, test, "broken-frames");
+          return;
+        }
         remember({ ...memory, ...next });
 
         fadingRef.current(true);
         await sleep(FADE_MS, signal);
         if (signal.aborted) return;
         const volume = configRef.current.device.volume;
-        el.currentTime = 0;
         el.volume = volume / 100;
         el.muted = volume === 0;
+        setShown(true);
 
-        // 隠したまま再生を始め、映像が描けているか確かめてから見せる
         const started = await startPlaying(el, signal);
         if (signal.aborted) return;
         if (started !== "ok") {
           el.pause();
+          setShown(false);
           fadingRef.current(false);
           // 自動再生を止められたのは動画のせいではないので、その日外さない（許可されれば次は流れる）
           if (started === "blocked") fail(item, test, "blocked", false);
-          else fail(item, test, started === "timeout" ? "not-started" : "play-error");
+          else if (started === "timeout") fail(item, test, "not-started");
+          else fail(item, test, "play-error", true, mediaErrorDetail(el));
           return;
         }
-        await sleep(FRAME_PROBE_MS, signal);
-        if (signal.aborted) return;
-        if (looksLikeBrokenFrames(el)) {
-          el.pause();
-          fadingRef.current(false);
-          fail(item, test, "broken-frames");
-          return;
-        }
-        el.currentTime = 0;
-        setShown(true);
 
         const ended = await waitFor(el, "ended", (item.durationSeconds + OVERRUN_SECONDS) * 1000, signal);
         if (signal.aborted) return;
@@ -296,7 +300,8 @@ export function VideoPlayer({
         setShown(false);
         fadingRef.current(false);
         if (ended !== "ok") {
-          fail(item, test, ended === "error" ? "play-error" : "stalled");
+          if (ended === "error") fail(item, test, "play-error", true, mediaErrorDetail(el));
+          else fail(item, test, "stalled");
           return;
         }
         lastFinishedAt = nowSeconds();

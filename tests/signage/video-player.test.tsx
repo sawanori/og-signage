@@ -31,7 +31,7 @@ let playImpl: () => Promise<void> = async () => {};
 let playCalls: boolean[] = [];
 /** <video> が前の読み込みに失敗したまま（error）か */
 let hasError = false;
-/** 描いた映像の色（[R, G, B]。null なら canvas が使えない＝調べられない） */
+/** 読み込み済みの最初のコマの色（[R, G, B]。null なら canvas が使えない＝調べられない） */
 let framePixel: [number, number, number] | null = null;
 const stubbed: [object, string, PropertyDescriptor | undefined][] = [];
 function stub(proto: object, key: string, descriptor: PropertyDescriptor) {
@@ -74,7 +74,7 @@ beforeEach(() => {
     },
   });
   stub(HTMLMediaElement.prototype, "readyState", { get: () => HTMLMediaElement.HAVE_ENOUGH_DATA });
-  stub(HTMLMediaElement.prototype, "error", { get: () => (hasError ? { code: 4, message: "" } : null) });
+  stub(HTMLMediaElement.prototype, "error", { get: () => (hasError ? { code: 3, message: "NS_ERROR_DOM_MEDIA_DECODE_ERR (0x806e0004)" } : null) });
   stub(HTMLMediaElement.prototype, "load", { value: vi.fn() });
   stub(HTMLMediaElement.prototype, "play", {
     value: vi.fn(function (this: HTMLMediaElement) {
@@ -101,7 +101,7 @@ afterEach(() => {
 
 /**
  * 100ms ずつ進める（act ごとに描き直すので、周期の間に <video> が付く。まとめて進めると描き直しが最後になる）。
- * テスト表示は 1 秒後の周期で src が付き、2 秒後の周期で流し始める。黒へ溶かす 0.6 秒と映像を調べる 0.7 秒を経て 3.3 秒で見える
+ * テスト表示は 1 秒後の周期で src が付き、2 秒後の周期で流し始める。黒へ溶かす 0.6 秒を経て 2.6 秒で見える
  */
 async function advance(ms: number) {
   for (let t = 0; t < ms; t += 100) {
@@ -168,8 +168,8 @@ describe("VideoPlayer", () => {
     playImpl = () => new Promise(() => {});
     const onFadingChange = renderPlayer(testPlayConfig());
     await advance(3000);
-    // 黒へ溶かして再生を始めようとしている（映像を確かめるまで見せない）
-    expect(shown()).toBe("false");
+    // 黒へ溶かして再生を始めようとしている
+    expect(shown()).toBe("true");
     expect(onFadingChange).toHaveBeenLastCalledWith(true);
 
     await advance(10_500);
@@ -218,13 +218,14 @@ describe("VideoPlayer", () => {
     expect(notice()).toBeNull();
   });
 
-  it("映像が一色の緑にしか描けないときは見せずに飛ばし、その日は外して理由を出す（黒一色は普通の始まりなので飛ばさない）", async () => {
+  it("最初のコマが一色の緑にしか描けないときは、黒へ溶かさずに飛ばし、その日は外して理由を出す（黒一色は普通の始まりなので飛ばさない）", async () => {
     openedBefore();
     framePixel = [0, 135, 0];
     const onFadingChange = renderPlayer(testPlayConfig());
     await advance(4000);
     expect(shown()).toBe("false");
-    expect(onFadingChange).toHaveBeenLastCalledWith(false);
+    expect(onFadingChange).not.toHaveBeenCalled();
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
     expect(excluded()).toEqual(["med_hevc"]);
     expect(notice()).toBe(FAILURE_TEXT["broken-frames"]);
     cleanup();
@@ -250,6 +251,21 @@ describe("VideoPlayer", () => {
     expect(looksLikeBrokenFrames(el)).toBe(false);
     framePixel = null;
     expect(looksLikeBrokenFrames(el)).toBe(false);
+  });
+
+  it("再生中にブラウザがエラーを出したら表示に戻し、理由にエラーのコードとメッセージを添える", async () => {
+    openedBefore();
+    const onFadingChange = renderPlayer(testPlayConfig());
+    await advance(3000);
+    expect(shown()).toBe("true");
+    hasError = true;
+    await act(async () => {
+      fireEvent.error(screen.getByTestId("signage-video"));
+    });
+    expect(shown()).toBe("false");
+    expect(onFadingChange).toHaveBeenLastCalledWith(false);
+    expect(excluded()).toEqual(["med_hevc"]);
+    expect(notice()).toBe(`${FAILURE_TEXT["play-error"]}（エラー 3 デコード: NS_ERROR_DOM_MEDIA_DECODE_ERR (0x806e0004)）`);
   });
 
   it("前の読み込みに失敗したまま（error）の <video> は、読み直してから流す", async () => {
