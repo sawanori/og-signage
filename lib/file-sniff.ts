@@ -7,11 +7,18 @@
 export type SniffedMime = "image/jpeg" | "image/png" | "image/webp" | "video/mp4";
 export type MediaKind = "image" | "video";
 
-/** 1 ファイルの上限（計画 6 節 7）。ブラウザとサーバーで共通 */
+/**
+ * 1 ファイルの上限（計画 6 節 7）。ブラウザとサーバーで共通。
+ * 動画は 15 秒・1920×1080 が入る大きさ（2026-09-25 ユーザー指示で 500MB から変更）。
+ * 一般的な書き出し（約 10〜20Mbps）で 20〜40MB、スマホで撮ったまま（約 26Mbps）でも約 50MB なので 60MB
+ */
 export const MEDIA_MAX_BYTES: Record<MediaKind, number> = {
   image: 20 * 1024 * 1024,
-  video: 500 * 1024 * 1024,
+  video: 60 * 1024 * 1024,
 };
+
+/** 置いておける動画の本数（アップロード済みの動画と再生リストの両方。2026-09-25 ユーザー指示） */
+export const MAX_VIDEOS = 3;
 
 /** マルチパートの 1 パート（最後のパート以外はこの大きさちょうど） */
 export const UPLOAD_PART_SIZE = 10 * 1024 * 1024;

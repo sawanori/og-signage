@@ -17,6 +17,7 @@ import { z } from "zod";
 import type { Db } from "../../db/index";
 import { devices, media, nowSeconds, playlistItems, playlists, videoPlaybackSettings } from "../../db/schema";
 import { VIDEO_INTERVAL_MINUTES } from "../config-schema";
+import { MAX_VIDEOS } from "../file-sniff";
 
 export type PlaylistRow = typeof playlists.$inferSelect;
 export type PlaylistItemRow = typeof playlistItems.$inferSelect;
@@ -121,6 +122,9 @@ export async function addPlaylistItem(db: Db, playlistId: string, input: unknown
       .select({ id: playlistItems.id })
       .from(playlistItems)
       .where(eq(playlistItems.playlistId, playlistId));
+    if (current.length >= MAX_VIDEOS) {
+      throw new PlaybackServiceError("invalid_input", `再生する動画は ${MAX_VIDEOS} 本までです`);
+    }
     await tx.insert(playlistItems).values({ playlistId, mediaId, position: current.length });
 
     const [updated] = await tx
@@ -276,7 +280,9 @@ const savePlaybackSchema = z.object({
   playlist: z
     .object({
       revision: z.int().nonnegative(),
-      mediaIds: z.array(z.string().min(1, "動画を選んでください")),
+      mediaIds: z
+        .array(z.string().min(1, "動画を選んでください"))
+        .max(MAX_VIDEOS, `再生する動画は ${MAX_VIDEOS} 本までです`),
     })
     .nullable(),
 });

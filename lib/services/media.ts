@@ -15,7 +15,7 @@ import { z } from "zod";
 import type { Db } from "../../db/index";
 import { devices, events, houseSettings, media, mediaFailures, notices, playlistItems, uploads } from "../../db/schema";
 import type { AuthUser } from "../auth";
-import { MEDIA_MAX_BYTES, SNIFF_BYTES, UPLOAD_PART_SIZE, kindOfMime, sniffMime, type MediaKind } from "../file-sniff";
+import { MAX_VIDEOS, MEDIA_MAX_BYTES, SNIFF_BYTES, UPLOAD_PART_SIZE, kindOfMime, sniffMime, type MediaKind } from "../file-sniff";
 import { mediaKeys, type MediaBucket, type R2Part } from "../r2";
 
 export const DELETE_DELAY_SECONDS = 7 * 24 * 60 * 60;
@@ -106,7 +106,20 @@ export function isPlayable(mimeType: string, info: VideoCodecInfo | null | undef
 // ---------------------------------------------------------------- アップロード
 
 function sizeLimitMessage(kind: MediaKind): string {
-  return kind === "video" ? "動画は 500MB 以下にしてください" : "画像は 20MB 以下にしてください";
+  return kind === "video"
+    ? "動画は 60MB 以下にしてください（15 秒・1920×1080 の動画が入る大きさです）"
+    : "画像は 20MB 以下にしてください";
+}
+
+const VIDEO_LIMIT_MESSAGE = `動画は ${MAX_VIDEOS} 本までです。新しい動画を入れるには、「動画・メディア」で今ある動画を削除してください`;
+
+/** 置いてある動画（削除中を除く）の本数 */
+async function countActiveVideos(db: Db): Promise<number> {
+  const rows = await db
+    .select({ id: media.id })
+    .from(media)
+    .where(and(eq(media.type, "video"), eq(media.state, "active")));
+  return rows.length;
 }
 
 const partCountOf = (size: number) => Math.ceil(size / UPLOAD_PART_SIZE);
@@ -138,6 +151,9 @@ export async function startUpload(
 ): Promise<{ uploadId: string; partSize: number }> {
   const { kind, size } = startUploadSchema.parse(input);
   if (size > MEDIA_MAX_BYTES[kind]) throw new MediaError(413, "too_large", sizeLimitMessage(kind));
+  if (kind === "video" && (await countActiveVideos(db)) >= MAX_VIDEOS) {
+    throw new MediaError(409, "video_limit", VIDEO_LIMIT_MESSAGE);
+  }
 
   const uploadId = crypto.randomUUID();
   const key = mediaKeys(uploadId).original;
@@ -227,6 +243,12 @@ export async function completeUpload(
   const upload = await loadOwnUpload(db, user, uploadId);
   if (upload.state === "aborted") throw new MediaError(409, "aborted", "このアップロードは中断されています");
   if (upload.state === "completed" && upload.mediaId) return getMediaOrThrow(db, upload.mediaId);
+
+  // 開始のあとに別の動画が入って上限に達していたら、R2 の途中のアップロードを捨てて断る
+  if (upload.kind === "video" && upload.state === "uploading" && (await countActiveVideos(db)) >= MAX_VIDEOS) {
+    await abortUpload({ db, bucket }, user, uploadId);
+    throw new MediaError(409, "video_limit", VIDEO_LIMIT_MESSAGE);
+  }
 
   const count = partCountOf(upload.declaredSize);
   const parts = [...meta.parts].sort((a, b) => a.partNumber - b.partNumber);

@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition, type KeyboardEvent } from "react";
 import { saveDevicePlaybackAction } from "@/app/admin/_actions/playback";
 import { VIDEO_INTERVAL_MINUTES } from "@/lib/config-schema";
+import { MAX_VIDEOS } from "@/lib/file-sniff";
 import admin from "./admin.module.css";
 import { formatDuration } from "./format";
 import {
@@ -202,7 +203,9 @@ function VideosForm({
         <div className={`${styles.fieldRow} ${styles.fieldRowTop}`}>
           <p className={styles.fieldName}>
             再生する動画
-            <span className={styles.fieldCount}>{entries.length} 本</span>
+            <span className={styles.fieldCount}>
+              {entries.length} / {MAX_VIDEOS} 本
+            </span>
           </p>
           <div className={styles.playlistArea}>
             {!playlist ? (
@@ -322,7 +325,8 @@ function VideosForm({
       <LibraryCard
         library={data.library}
         inList={inList}
-        canAdd={playlist !== null && !pending}
+        canAdd={playlist !== null && !pending && entries.length < MAX_VIDEOS}
+        full={entries.length >= MAX_VIDEOS}
         onAdd={add}
         showDeviceHint={devices.length > 1}
       />
@@ -378,12 +382,15 @@ function LibraryCard({
   library,
   inList,
   canAdd,
+  full,
   onAdd,
   showDeviceHint,
 }: {
   library: VideoLibraryItem[];
   inList: Set<string>;
   canAdd: boolean;
+  /** 再生する動画が上限（3 本）に達している */
+  full: boolean;
   onAdd: (video: VideoLibraryItem) => void;
   showDeviceHint: boolean;
 }) {
@@ -397,6 +404,7 @@ function LibraryCard({
       </div>
       <p className={`${admin.cardSub} ${styles.addSub}`}>
         {showDeviceHint ? "選んでいる端末の再生リストに追加します。" : "アップロード済みの動画から選びます。"}
+        {full ? ` 再生する動画は ${MAX_VIDEOS} 本までです。入れ替えるときは、左のリストから外してから追加してください。` : null}
       </p>
       {library.length === 0 ? (
         <div className={`${admin.empty} ${styles.addEmpty}`}>

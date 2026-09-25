@@ -264,7 +264,7 @@ async function errorMessage(res: Response): Promise<string> {
   const body = (await res.json().catch(() => null)) as ApiError | null;
   console.error("upload request failed", res.status, res.url);
   if (body?.error?.message) return body.error.message;
-  if (res.status === 413) return "ファイルが大きすぎます（動画は 500MB、画像は 20MB まで）";
+  if (res.status === 413) return "ファイルが大きすぎます（動画は 60MB、画像は 20MB まで）";
   if (res.status === 415) return "この形式のファイルは使えません（JPEG・PNG・WebP・MP4）";
   return "アップロードに失敗しました。時間をおいてもう一度お試しください";
 }
@@ -296,7 +296,9 @@ export async function uploadMedia(file: File, options: UploadOptions = {}): Prom
   const mime = sniffMime(await readBytes(file, 0, SNIFF_BYTES));
   if (!mime) throw new UploadError("対応していない形式です（画像は JPEG・PNG・WebP、動画は MP4）");
   const kind: MediaKind = kindOfMime(mime);
-  if (kind === "video" && file.size > MEDIA_MAX_BYTES.video) throw new UploadError("動画は 500MB 以下にしてください");
+  if (kind === "video" && file.size > MEDIA_MAX_BYTES.video) {
+    throw new UploadError("動画は 60MB 以下にしてください（15 秒・1920×1080 の動画が入る大きさです）");
+  }
 
   onProgress?.({ phase: "preparing", sentBytes: 0, totalBytes: file.size });
   let body: Blob = file;
