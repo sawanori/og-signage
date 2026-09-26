@@ -1076,17 +1076,19 @@
   color: #fff;
 }
 
+/*
+ * 写真の上の文字は白（2026-09-26 ユーザー指示の見本どおり）。明るい写真でも読めるよう、左側を暗くする
+ */
 .lHeroShade {
   position: absolute;
   inset: 0;
   background: linear-gradient(
     90deg,
-    rgba(240, 237, 233, 0.55) 0%,
-    rgba(240, 237, 233, 0.85) 20%,
-    rgba(240, 237, 233, 0.86) 30%,
-    rgba(240, 237, 233, 0.55) 45%,
-    rgba(240, 237, 233, 0) 62%,
-    rgba(240, 237, 233, 0) 100%
+    rgba(18, 14, 10, 0.56) 0%,
+    rgba(18, 14, 10, 0.5) 28%,
+    rgba(18, 14, 10, 0.3) 44%,
+    rgba(18, 14, 10, 0.1) 56%,
+    rgba(18, 14, 10, 0) 66%
   );
 }
 
@@ -1094,19 +1096,23 @@
   background: linear-gradient(135deg, #2b3440, #1b2530);
 }
 
-
+/*
+ * 文字の配置は見本（2026-09-26 ユーザー指示。1595×986 の画像）を、大きな枠の高さの比（890 ÷ 827 ≒ 1.076 倍）で写したもの。
+ * 丸い目印（左上）・カテゴリ（丸の右）・タイトル（2 行）・短い線・説明・日付／時間／場所／参加の一覧
+ */
 .lCircle {
   position: absolute;
-  left: 39px;
-  top: 92px;
-  width: 192px;
-  height: 192px;
+  left: 34px;
+  top: 119px;
+  width: 154px;
+  height: 154px;
   border-radius: 50%;
   background: #f9d164;
   color: #16202b;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
 }
 
 .lCircle[data-state="now_happening"] {
@@ -1115,24 +1121,22 @@
 }
 
 .lCircleEn {
-  margin-top: 36px;
+  margin-bottom: 6px;
   font-weight: 700;
-  font-size: 29px;
+  font-size: 20px;
   line-height: 1;
   letter-spacing: 0.04em;
   white-space: nowrap;
 }
 
 .lCircleEn[data-long="true"] {
-  margin-top: 42px;
-  font-size: 16.5px;
+  font-size: 13px;
   letter-spacing: 0;
 }
 
 .lCircleDate {
-  margin-top: 10px;
   font-weight: 700;
-  font-size: 57px;
+  font-size: 50px;
   line-height: 1;
   letter-spacing: 0;
 }
@@ -1140,21 +1144,24 @@
 .lCircleWeek {
   margin-top: 6px;
   font-weight: 700;
-  font-size: 24px;
+  font-size: 23px;
   line-height: 1;
   letter-spacing: 0.04em;
 }
 
+/* 本文の列の左端は 190px。一覧のアイコンはそれより外（122〜158px）に出すので、枠は 122px から取って左に 68px 空ける */
 .lHeroBody {
   position: absolute;
-  left: 252px;
-  top: 143px;
-  width: 560px;
-  height: calc(823px + var(--canvas-extra, 0px));
+  left: 122px;
+  top: 160px;
+  width: 708px;
+  height: calc(812px + var(--canvas-extra, 0px));
+  padding-left: 68px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  color: #fff;
 }
 
 .lHeroBody > * {
@@ -1162,93 +1169,120 @@
 }
 
 .lPill {
-  height: 41px;
-  padding: 0 24px;
-  border-radius: 21px;
+  margin-left: 20px;
+  height: 38px;
+  padding: 0 23px;
+  border-radius: 19px;
   background: #f7cb61;
-  font-size: 20px;
-  line-height: 41px;
-  letter-spacing: 0.12em;
+  color: #1b2530;
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 38px;
+  letter-spacing: 0.08em;
   white-space: nowrap;
 }
 
 .lTitle {
-  margin-top: 8px;
+  margin-top: 17px;
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   font-weight: 700;
-  font-size: 59px;
-  line-height: 70px;
-  letter-spacing: 0.005em;
+  font-size: 94px;
+  line-height: 98px;
+  letter-spacing: 0.01em;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.28);
 }
 
+/*
+ * 見本の大きさ（10 文字まで）は句のまとまりで折り返す（コーヒーの／淹れ方講座）。1 句が 1 行に入らなければ句の途中でも折る。
+ * 長いタイトルは詰めて折り返し、2 行に収まるよう枠を広げる（11〜16 文字は 1 行 8 文字、17 文字からは 1 行 13 文字まで）
+ */
 .lTitleText {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
   max-width: 480px;
+  word-break: auto-phrase;
+  overflow-wrap: anywhere;
 }
 
-.lTitle[data-long="true"] {
-  font-size: 40px;
-  line-height: 48px;
+.lTitle[data-size="m"] {
+  font-size: 68px;
+  line-height: 76px;
 }
 
-.lTitle[data-long="true"] .lTitleText {
-  max-height: 96px;
+.lTitle[data-size="s"] {
+  font-size: 46px;
+  line-height: 56px;
 }
 
-.lTitle[data-long="true"] + .lDesc {
-  margin-top: 14px;
+.lTitle[data-size="m"] .lTitleText {
+  max-width: 560px;
+  word-break: normal;
+}
+
+.lTitle[data-size="s"] .lTitleText {
+  max-width: 620px;
+  word-break: normal;
 }
 
 .lTitleEmoji {
-  font-size: 58px;
+  font-size: 0.8em;
 }
 
-.lDesc {
+.lTitleRule {
+  display: block;
   margin-top: 26px;
-  width: 530px;
+  margin-left: 2px;
+  width: 82px;
+  height: 2px;
+  background: #fff;
+}
+
+/* 説明も句のまとまりで折り返す（「しましょ／う！」のように切れないように） */
+.lDesc {
+  margin-top: 23px;
+  width: 520px;
+  word-break: auto-phrase;
   font-size: 20px;
-  line-height: 33px;
-  letter-spacing: 0.1em;
-  color: #333a42;
+  line-height: 32px;
+  letter-spacing: 0.06em;
   white-space: pre-line;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.3);
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
   overflow: hidden;
 }
 
+/* アイコンの箱（36px）＋間（32px）＝ 68px 左に出し、文字の左端を本文の列にそろえる */
 .lInfo {
-  margin-top: 21px;
+  margin-top: 36px;
+  margin-left: -68px;
   display: flex;
   flex-direction: column;
-  color: #1b2530;
 }
 
 .lInfo li {
-  display: flex;
+  display: grid;
+  grid-template-columns: 36px auto;
+  column-gap: 32px;
   align-items: center;
-  flex: 0 1 50px;
+  flex: 0 1 48.5px;
   min-height: 38px;
-  font-size: 22px;
-  letter-spacing: 0.06em;
+  font-weight: 500;
+  font-size: 25px;
+  letter-spacing: 0.01em;
   white-space: nowrap;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.3);
 }
 
+/* 見本ではアイコンが文字の中心より少し上にある */
 .lInfo li > svg {
-  flex: none;
-}
-
-.lInfo li > span {
-  margin-left: 16px;
-}
-
-.lInfoStrong {
-  font-weight: 700;
+  justify-self: center;
+  transform: translateY(-3px);
 }
 
 

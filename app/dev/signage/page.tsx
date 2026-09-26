@@ -7,11 +7,13 @@
  * &house=wework で本番に近いヘッダー（ロゴ未設定で WeWork のロゴ・ハウス名 OCEAN GATE MINATOMIRAI・本番のキャッチコピー）
  * &member=sample でメンバー情報に見出しつきの見本（見出しの見た目の確認用）
  * &footerqr=sample でフッターの QR に見本の URL（未指定なら QR の場所は枠だけ）
+ * &slide=<番号> で大きな枠のスライドを選ぶ（0 始まり。未指定は 1 枚目）
  */
 import { SignageScreen } from "@/components/signage/SignageScreen";
 import type { Orientation } from "@/components/signage/model";
 import type { SignageConfig } from "@/lib/config-schema";
 import { tokyoDateTime } from "@/lib/dates";
+import { HERO_SLIDE_SECONDS } from "@/lib/display-rules";
 import { NOW, atFirstSlide, mockConfig, mockMediaResolver } from "./mock-fixture";
 
 export const metadata = { title: "表示ページ確認（固定データ）" };
@@ -130,7 +132,7 @@ export default async function DevSignagePage({
   return (
     <SignageScreen
       config={withFooterQr}
-      now={atFirstSlide(s.config.events, s.now)}
+      now={atFirstSlide(s.config.events, s.now) + (Number(params.slide) || 0) * HERO_SLIDE_SECONDS}
       resolveMediaUrl={mockMediaResolver(orientation)}
       orientation={orientation}
       timeSynced={s.timeSynced}

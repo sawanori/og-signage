@@ -5,7 +5,7 @@
  * どれも同じ左端（1368px）・幅（516px）。キャッチコピー（ヘッダー用）は横型では出さない。
  */
 import { Fragment } from "react";
-import { ArrowRight, Clock } from "lucide-react";
+import { ArrowRight, CalendarDays, Clock } from "lucide-react";
 import type { SignageConfig, SignageEvent } from "@/lib/config-schema";
 import { COPY } from "./copy";
 import {
@@ -197,7 +197,9 @@ function Hero({
   const { event, state } = slide;
   const label = stateLabel(state);
   const catchLines = splitCatchCopy(event.catchCopy);
-  const longTitle = [...event.title].length > 12;
+  const titleLength = [...event.title].length;
+  // 見本（2026-09-26 ユーザー指示）の大きさは 10 文字（2 行）まで。長いものは段階的に小さくする
+  const titleSize = titleLength <= 10 ? "l" : titleLength <= 16 ? "m" : "s";
   // 写真（QR と点の並びを含む）・丸い目印・本文は別々の要素なので、同じ key でまとめて入れ替え、それぞれフェードで出す
   const fade = count > 1 ? styles.heroFade : "";
   return (
@@ -230,47 +232,56 @@ function Hero({
           {count > 1 ? <HeroDots index={index} count={count} /> : null}
         </div>
       </MediaImage>
+      {/* 丸い目印は日付と曜日（見本どおり）。今日・まもなく・開催中のときだけ、その上に状態を添える */}
       <div className={`${styles.lCircle} ${fade}`} data-state={state} data-testid="state-badge">
-        <span className={styles.lCircleEn} data-long={label.en.length > 5 ? "true" : "false"}>
-          {label.en}
-        </span>
+        {state === "upcoming" ? null : (
+          <span className={styles.lCircleEn} data-long={label.en.length > 5 ? "true" : "false"}>
+            {label.en}
+          </span>
+        )}
         <span className={styles.lCircleDate}>{formatMonthDay(event.startAt)}</span>
         <span className={styles.lCircleWeek}>{formatWeekdayUpper(event.startAt)}</span>
       </div>
+      {/* 文字の配置は見本（2026-09-26 ユーザー指示）どおり。カテゴリ・大きなタイトル・短い線・説明・日付／時間／場所／参加の一覧 */}
       <div className={`${styles.lHeroBody} ${fade}`}>
         {event.category ? <span className={styles.lPill}>{event.category.name}</span> : null}
-        <h1 className={styles.lTitle} data-long={longTitle ? "true" : "false"} data-testid="main-title">
+        <h1 className={styles.lTitle} data-size={titleSize} data-testid="main-title">
           <span className={styles.lTitleText}>{event.title}</span>
           {event.emoji ? <Emoji className={styles.lTitleEmoji}>{event.emoji}</Emoji> : null}
         </h1>
+        <span className={styles.lTitleRule} aria-hidden />
         {event.description ? <p className={styles.lDesc}>{event.description}</p> : null}
-        <EventInfo event={event} withDate={state === "upcoming"} />
+        <EventInfo event={event} />
       </div>
     </Fragment>
   );
 }
 
-/** 明日以降のイベントは、時間の前に日付を付ける（どの日のイベントか分かるように） */
-function EventInfo({ event, withDate }: { event: SignageEvent; withDate: boolean }) {
+/** 日付・時間・場所・参加（見本どおり 1 行ずつ。アイコンは本文の左端より外に出す）。主催があれば最後に足す */
+function EventInfo({ event }: { event: SignageEvent }) {
   return (
     <ul className={styles.lInfo}>
-      <li className={styles.lInfoStrong}>
-        <Clock size={32} strokeWidth={1.8} aria-hidden />
-        <span>{withDate ? `${formatDateJa(event.startAt)} ${formatTimeRange(event)}` : formatTimeRange(event)}</span>
+      <li>
+        <CalendarDays size={36} strokeWidth={1.7} aria-hidden />
+        <span>{formatDateJa(event.startAt)}</span>
+      </li>
+      <li>
+        <Clock size={36} strokeWidth={1.7} aria-hidden />
+        <span>{formatTimeRange(event)}</span>
       </li>
       {event.location ? (
-        <li className={styles.lInfoStrong}>
-          <PinIcon size={34} />
+        <li>
+          <PinIcon size={42} />
           <span>{event.location}</span>
         </li>
       ) : null}
       <li>
-        <GroupIcon size={34} />
+        <GroupIcon size={42} />
         <span>{formatParticipation(event)}</span>
       </li>
       {event.hostName ? (
         <li>
-          <PersonIcon size={34} />
+          <PersonIcon size={38} />
           <span>
             {COPY.hostPrefix}
             {event.hostName}

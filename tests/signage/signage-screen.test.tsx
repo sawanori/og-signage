@@ -132,10 +132,23 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
   it("今日のイベントがなければ、明日以降のイベントを大きく出す（日付つき）", () => {
     const config = makeConfig();
     renderScreen({ config: { ...config, events: config.events.filter((e) => e.id !== pizzaNight.id) } }, orientation);
-    expect(screen.getByTestId("state-badge").textContent).toContain("UPCOMING");
-    expect(screen.getByTestId("state-badge").dataset.state).toBe("upcoming");
+    const badge = screen.getByTestId("state-badge");
+    expect(badge.dataset.state).toBe("upcoming");
     expect(screen.getByTestId("main-title").textContent).toContain("Movie Night");
-    expect(screen.getByText(/9月26日（金） 20:00/)).toBeTruthy();
+    if (orientation === "landscape") {
+      // 横型は見本（2026-09-26 ユーザー指示）どおり、丸は日付と曜日だけ。日付と時間は一覧の別の行
+      expect(badge.textContent).toBe("9.26FRI");
+      const hero = screen.getByTestId("main-title").parentElement!;
+      expect([...hero.querySelectorAll("li")].map((li) => li.textContent)).toEqual([
+        "9月26日（金）",
+        "20:00 - 22:00",
+        "1F シアタールーム",
+        "参加自由（予約不要）",
+      ]);
+    } else {
+      expect(badge.textContent).toContain("UPCOMING");
+      expect(screen.getByText(/9月26日（金） 20:00/)).toBeTruthy();
+    }
     expect(screen.queryByTestId("no-event")).toBeNull();
     // 次のイベント（明日）も Upcoming の先頭に出す
     expect(screen.getByTestId("upcoming").firstElementChild?.textContent).toContain("Movie Night");
@@ -200,7 +213,9 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
       orientation,
     );
     const title = screen.getByTestId("main-title");
-    expect(title.dataset.long).toBe("true");
+    // 横型は文字数で 3 段階の大きさ（10 文字までが見本の大きさ）。縦型は長文用の組み
+    if (orientation === "landscape") expect(title.dataset.size).toBe("s");
+    else expect(title.dataset.long).toBe("true");
     expect(title.textContent).toContain(long);
   });
 
