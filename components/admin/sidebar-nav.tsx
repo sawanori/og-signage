@@ -3,7 +3,7 @@
 /**
  * サイドバーの項目。Administrator 専用の画面（計画 6 節の権限表）は Staff には出さない。
  */
-import { BookOpen, Bell, CalendarDays, House, Monitor, Palette, Sparkles, SquarePlay, type LucideIcon } from "lucide-react";
+import { BookOpen, Bell, CalendarDays, House, Palette, Sparkles, SquarePlay, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Role } from "@/lib/auth";
@@ -17,7 +17,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/admin", label: "ダッシュボード", icon: House },
   { href: "/admin/events", label: "イベント管理", icon: CalendarDays },
   { href: "/admin/media", label: "動画・メディア", icon: SquarePlay, alsoCurrentFor: ["/admin/videos"] },
-  { href: "/admin/devices", label: "サイネージ端末", icon: Monitor, adminOnly: true },
+  // サイネージ端末（/admin/devices）は一旦メニューから外す（2026-09-27 ユーザー指示「一旦不要なので非表示に」）。画面は残してある
   { href: "/admin/design", label: "デザイン設定", icon: Palette, adminOnly: true },
   { href: "/admin/notices", label: "お知らせ", icon: Bell },
   // サイネージの「MEMBER SPOTLIGHT」の欄（2026-09-26 ユーザー指示）。Staff も使う

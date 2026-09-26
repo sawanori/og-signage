@@ -25,6 +25,11 @@ describe("SidebarNav", () => {
     expect(visibleNavItems("administrator").map((i) => i.label)).not.toContain("メンバー情報");
   });
 
+  it("サイネージ端末は一旦メニューに出さない（2026-09-27 ユーザー指示。画面の /admin/devices は残す）", () => {
+    expect(visibleNavItems("administrator").map((i) => i.label)).not.toContain("サイネージ端末");
+    expect(visibleNavItems("administrator").map((i) => i.href)).not.toContain("/admin/devices");
+  });
+
   it("ダッシュボードは /admin のときだけ選択中", () => {
     expect(currentLabels("/admin")).toEqual(["ダッシュボード"]);
     expect(currentLabels("/admin/notices")).toEqual(["お知らせ"]);
