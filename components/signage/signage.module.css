@@ -1354,102 +1354,107 @@
 
 /*
  * Upcoming（横）。最大 5 行（2026-09-25 ユーザー指示で 4 → 5 → 6、2026-09-26 に 5）。
- * 右の列は上から メンバー情報（見出し 54px・カード 90〜158px）、Upcoming（見出し 186px・行 222〜834px）、
- * お知らせ（862〜982px）。欄と欄の間はどちらも 28px、見出しと中身の間は 12px（2026-09-25・26 ユーザー指示で釣り合いをとり、
- * 20px ずつ 2 回下げた）。5 行で同じ高さを埋めるよう、行の間は 30.5px（98px × 5 + 30.5px × 4 = 612px）
+ * 2026-09-26 ユーザー指示の見本（メンバー紹介を足した右の列）に合わせ、1 行を低くして 左から 日付・写真・イベント名と時間・説明。
+ * 右の列は上から メンバー紹介（見出し 38px・カード 73〜382px・点）、Upcoming（見出し 420px・行 455〜834px）、お知らせ（862〜982px）。
+ * 見本（1595×986）の右の列を、横は幅の比（516 ÷ 476 ≒ 1.084 倍）、縦は見出しから行の下端までの比（≒ 1.125 倍）で写した
  */
 /* 縦に伸ばしたときは、行の間隔を広げて下のお知らせとの間をそろえる（5 行で間は 4 つ） */
 .lUpcoming {
   position: absolute;
   left: calc(1368px + var(--canvas-extra-x, 0px));
-  top: 222px;
+  top: 455px;
   width: 516px;
-  height: calc(612px + var(--canvas-extra, 0px));
+  height: calc(379px + var(--canvas-extra, 0px));
   display: flex;
   flex-direction: column;
-  gap: calc(30.5px + var(--canvas-extra, 0px) / 4);
+  gap: calc(11.6px + var(--canvas-extra, 0px) / 4);
 }
 
 .lRow {
   position: relative;
-  height: 98px;
+  height: 66.5px;
   flex: none;
-  border-radius: 14px;
-  background: #f5f5f5;
-  box-shadow: 0 1px 2px rgba(40, 30, 20, 0.06);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(40, 30, 20, 0.08);
 }
 
 .lRowDate {
   position: absolute;
   left: 0;
   top: 0;
-  width: 124px;
+  width: 87px;
   height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
 }
 
 .lRowDay {
-  margin-top: 19px;
   font-weight: 700;
-  font-size: 28px;
+  font-size: 25px;
   line-height: 1;
 }
 
 .lRowWeek {
-  margin-top: 9px;
-  font-size: 15px;
+  margin-top: 6px;
+  font-size: 13px;
   line-height: 1;
   letter-spacing: 0.04em;
 }
 
 .lRowDivider {
   position: absolute;
-  left: 120px;
-  top: 13px;
-  bottom: 13px;
-  width: 2px;
-  background: #e6e6e6;
+  left: 87px;
+  top: 10px;
+  bottom: 10px;
+  width: 1px;
+  background: #e8e8e8;
+}
+
+.lRowImage {
+  position: absolute;
+  left: 98px;
+  top: 3px;
+  width: 77px;
+  height: 60px;
+  border-radius: 7px;
+  overflow: hidden;
 }
 
 .lRowText {
   position: absolute;
-  left: 140px;
-  top: 8px;
-  width: 236px;
+  left: 191px;
+  top: 0;
+  width: 190px;
+  height: 100%;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   align-items: flex-start;
 }
 
-.lChip {
-  height: 26px;
-  padding: 0 11px;
-  border-radius: 7px;
-  color: #fff;
-  font-size: 13.5px;
-  line-height: 26px;
-  letter-spacing: 0.18em;
-  white-space: nowrap;
-}
-
 .lRowTitle {
-  margin-top: 4px;
   max-width: 100%;
   font-weight: 700;
-  font-size: 22px;
-  line-height: 31px;
+  font-size: 18px;
+  line-height: 24px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* 説明が無い行は、右の説明の欄のぶんまでイベント名と時間を広げる */
+.lRow[data-has-desc="false"] .lRowText {
+  width: 309px;
+}
+
 .lRowMeta {
-  margin-top: 2px;
-  font-size: 15.5px;
-  line-height: 23px;
-  letter-spacing: 0.01em;
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 18px;
+  letter-spacing: 0;
   color: #2c343d;
   max-width: 100%;
   white-space: nowrap;
@@ -1458,17 +1463,33 @@
 }
 
 .lRowPlace {
-  margin-left: 20px;
+  margin-left: 10px;
 }
 
-.lRowImage {
+/* 説明の書き出し（2 行まで。上下の中央）。左に細い区切り線 */
+.lRowDesc {
   position: absolute;
-  left: 384px;
-  top: 11px;
-  width: 118px;
-  height: 76px;
-  border-radius: 10px;
+  left: 388px;
+  top: 10px;
+  bottom: 10px;
+  right: 0;
+  padding: 0 10px 0 11px;
+  border-left: 1px solid #e8e8e8;
+  display: flex;
+  align-items: center;
+}
+
+.lRowDesc > span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
+  font-size: 12.5px;
+  line-height: 22px;
+  letter-spacing: 0;
+  color: #4a525c;
+  white-space: pre-line;
+  word-break: auto-phrase;
 }
 
 
@@ -1589,55 +1610,203 @@
   color: var(--ink-mute);
 }
 
-/* メンバー情報（横）。右の列の一番上で、UPCOMING と同じ左端・幅（見出しは 54px、カードは 90〜158px。2026-09-25・26 ユーザー指示） */
-.lRules {
+/*
+ * メンバー紹介（横。MEMBER SPOTLIGHT。2026-09-26 ユーザー指示の見本どおり）。右の列の一番上の白いカード。
+ * 左に写真（縦長）、右に 会社名（右上にロゴ）・お名前「さん」・肩書き・「ひとこと」・紹介文・タグ。カードの下に何人目かの点
+ */
+.lSpot {
   position: absolute;
   left: calc(1368px + var(--canvas-extra-x, 0px));
-  top: 90px;
+  top: 73px;
   width: 516px;
-  height: 68px;
-  display: flex;
-  gap: 10px;
+  height: 309px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(40, 30, 20, 0.1);
+  overflow: hidden;
 }
 
-.lRule {
-  flex: 1 1 0;
-  min-width: 0;
-  border-radius: 14px;
-  background: #f5f5f5;
-  box-shadow: 0 1px 2px rgba(40, 30, 20, 0.06);
+.lSpotBody {
+  position: absolute;
+  inset: 0;
+}
+
+.lSpotEmpty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  color: var(--ink-mute);
+}
+
+.lSpotPhoto {
+  position: absolute;
+  left: 7px;
+  top: 10px;
+  width: 193px;
+  height: 291px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.lSpotText {
+  position: absolute;
+  left: 218px;
+  top: 0;
+  width: 285px;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  padding: 0 8px;
+  align-items: flex-start;
+  color: #1b2530;
 }
 
-/* メンバー情報の見出し（アイコンの代わりに出す 1 行。管理画面のデザイン設定で入れる） */
-.lRuleTitle {
+.lSpotCompany {
+  margin-top: 24px;
+  max-width: 174px;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 会社のロゴ。右上に、切らずに収める */
+.lSpotLogo {
+  position: absolute;
+  right: 19px;
+  top: 25px;
+  width: 100px;
+  height: 26px;
+  object-fit: contain;
+  object-position: right center;
+}
+
+.lSpotName {
+  margin-top: 8px;
   max-width: 100%;
   font-weight: 700;
-  font-size: 12.5px;
-  line-height: 16px;
+  font-size: 29px;
+  line-height: 36px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lSpotSan {
+  margin-left: 10px;
+  font-weight: 500;
+  font-size: 17px;
+  letter-spacing: 0.04em;
+}
+
+.lSpotRole {
+  margin-top: 3px;
+  max-width: 100%;
+  font-size: 15px;
+  line-height: 20px;
   letter-spacing: 0.04em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.lRuleText {
-  font-size: 13.5px;
-  line-height: 18px;
-  letter-spacing: 0.04em;
-  text-align: center;
+/* ひとこと（「」で囲んで 2 行まで）。右の矢印と重ならないよう、紹介文より少し狭く */
+.lSpotQuote {
+  margin-top: 20px;
+  max-width: 262px;
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 31.5px;
+  letter-spacing: 0.02em;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  white-space: pre-line;
-  line-break: strict;
   word-break: auto-phrase;
+}
+
+.lSpotBio {
+  margin-top: 12px;
+  max-width: 100%;
+  font-size: 13px;
+  line-height: 21.4px;
+  letter-spacing: 0.04em;
+  color: #4a525c;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  word-break: auto-phrase;
+}
+
+.lSpotTags {
+  margin-top: 9px;
+  max-width: 100%;
+  display: flex;
+  gap: 9px;
+  overflow: hidden;
+}
+
+.lSpotTags > span {
+  flex: none;
+  height: 29px;
+  padding: 0 11px;
+  border-radius: 15px;
+  background: #e4ece7;
+  color: #3e4a44;
+  font-size: 12.5px;
+  line-height: 29px;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+/* 左右の矢印（目印）。左は写真の上なので白く、右はカードの右端に濃く */
+.lSpotPrev,
+.lSpotNext {
+  position: absolute;
+  top: calc(50% - 14px);
+}
+
+.lSpotPrev {
+  left: 6px;
+  color: #fff;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.45));
+}
+
+.lSpotNext {
+  right: 6px;
+  color: #1b2530;
+}
+
+/* 何人目か（点の並び）。カードの下の中央に、今の 1 人だけ大きく濃く */
+.lSpotDots {
+  position: absolute;
+  left: calc(1368px + var(--canvas-extra-x, 0px));
+  top: 391px;
+  width: 516px;
+  height: 15px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 13px;
+}
+
+.lSpotDots > span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #cfd3d8;
+}
+
+.lSpotDots > span[data-active="true"] {
+  width: 15px;
+  height: 15px;
+  background: #1b2530;
 }
 
 

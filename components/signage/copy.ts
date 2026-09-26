@@ -11,6 +11,10 @@ export const COPY = {
   portraitTagline: "Do What You Love",
   landscapeTaglineScript: ["Do What", "You Love"],
   upcoming: { en: "UPCOMING EVENTS", ja: "今後のイベント" },
+  // メンバー紹介の欄（2026-09-26 ユーザー指示。横型の右の列の一番上）
+  spotlight: { en: "MEMBER SPOTLIGHT", ja: "注目のメンバー" },
+  spotlightHonorific: "さん",
+  noSpotlight: "メンバー紹介は準備中です",
   // お知らせの欄の見出し。en は目立つ見出し（横型は黒い帯）、ja は添え書き（2026-09-25 ユーザー指示で
   // 「HOUSE NEWS / お知らせ」から「重要連絡：全メンバーへのお知らせ」に）
   news: { en: "重要連絡", ja: "全メンバーへのお知らせ" },

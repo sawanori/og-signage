@@ -74,6 +74,19 @@ export const signageNoticeSchema = z.object({
   updatedAt: unixSeconds,
 });
 
+/** メンバー紹介（MEMBER SPOTLIGHT。2026-09-26 から）。管理画面で「サイネージに出す」にしたものを登録順に */
+export const signageSpotlightSchema = z.object({
+  id: z.string().min(1),
+  companyName: z.string().min(1),
+  personName: z.string().min(1),
+  role: z.string().nullable(),
+  quote: z.string().nullable(),
+  bio: z.string().nullable(),
+  tags: z.array(z.string().min(1)),
+  photo: mediaRefSchema.nullable(),
+  logo: mediaRefSchema.nullable(),
+});
+
 /** メンバー情報（旧ハウスルール）の項目 */
 export const houseRuleSchema = z.object({
   /** 旧: Lucide のアイコン名。表示には使わない（古い表示バンドルが読めるよう送り続ける） */
@@ -167,6 +180,8 @@ export const signageConfigSchema = z.object({
   version: sha256Hex,
   events: z.array(signageEventSchema),
   notices: z.array(signageNoticeSchema),
+  /** メンバー紹介。古い Worker の config には無い */
+  spotlights: z.array(signageSpotlightSchema).optional(),
   house: houseSchema,
   schedule: z.array(scheduleEntrySchema),
   weather: weatherSchema.nullable(),
@@ -182,6 +197,7 @@ export type MediaRef = z.infer<typeof mediaRefSchema>;
 export type EventCategory = z.infer<typeof eventCategorySchema>;
 export type SignageEvent = z.infer<typeof signageEventSchema>;
 export type SignageNotice = z.infer<typeof signageNoticeSchema>;
+export type SignageSpotlight = z.infer<typeof signageSpotlightSchema>;
 export type HouseRule = z.infer<typeof houseRuleSchema>;
 export type House = z.infer<typeof houseSchema>;
 export type ScheduleEntry = z.infer<typeof scheduleEntrySchema>;
@@ -211,6 +227,10 @@ export function collectMediaRefs(config: SignageConfig): MediaRefEntry[] {
   add(config.house.footerImage, "image");
   for (const event of config.events) add(event.image, "image");
   for (const notice of config.notices) add(notice.image, "image");
+  for (const spotlight of config.spotlights ?? []) {
+    add(spotlight.photo, "image");
+    add(spotlight.logo, "image");
+  }
   for (const item of config.playlist) add(item, "video");
 
   return [...byId.values()];

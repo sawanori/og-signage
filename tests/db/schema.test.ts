@@ -15,6 +15,7 @@ import {
   houseSettings,
   media,
   mediaFailures,
+  memberSpotlights,
   notices,
   playlistItems,
   playlists,
@@ -35,6 +36,7 @@ const TABLES = [
   "house_settings",
   "media",
   "media_failures",
+  "member_spotlights",
   "notices",
   "playlist_items",
   "playlists",
@@ -114,6 +116,14 @@ describe("参照中の media は削除できない", () => {
     await db.insert(houseSettings).values({ id: "h", houseName: "H", logoMediaId: "logo", footerImageMediaId: "footer" });
     await expectConstraintError(deleteMedia("logo"), FK);
     await expectConstraintError(deleteMedia("footer"), FK);
+  });
+
+  it("member_spotlights.photo_media_id と logo_media_id（メンバー紹介の写真とロゴ）", async () => {
+    await insertMedia("photo");
+    await insertMedia("logo");
+    await db.insert(memberSpotlights).values({ companyName: "株式会社サンプル", personName: "山田 陸", photoMediaId: "photo", logoMediaId: "logo" });
+    await expectConstraintError(deleteMedia("photo"), FK);
+    await expectConstraintError(deleteMedia("logo"), FK);
   });
 
   it("playlist_items.media_id", async () => {

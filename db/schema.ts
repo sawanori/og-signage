@@ -273,6 +273,30 @@ export const notices = sqliteTable("notices", {
   updatedAt: updatedAt(),
 });
 
+/**
+ * メンバー紹介（サイネージの MEMBER SPOTLIGHT。2026-09-26 ユーザー指示）。各企業のメンバーを 1 人ずつスライドで紹介する。
+ * 並びは登録順。写真と会社のロゴは media（画像）を参照する
+ */
+export const memberSpotlights = sqliteTable("member_spotlights", {
+  id: id(),
+  companyName: text("company_name").notNull(),
+  personName: text("person_name").notNull(),
+  /** 肩書き（任意） */
+  role: text("role"),
+  /** ひとこと（任意。サイネージでは「」で囲んで出す） */
+  quote: text("quote"),
+  /** 紹介文（任意） */
+  bio: text("bio"),
+  /** タグ（文字列の配列。最大 3 つ） */
+  tags: text("tags", { mode: "json" }).$type<string[]>().notNull().$defaultFn(() => []),
+  photoMediaId: text("photo_media_id").references(() => media.id, { onDelete: "restrict" }),
+  logoMediaId: text("logo_media_id").references(() => media.id, { onDelete: "restrict" }),
+  enabled: bool("enabled").notNull().default(true),
+  revision: revision(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
 /** 1 行だけ */
 export const houseSettings = sqliteTable("house_settings", {
   id: id(),

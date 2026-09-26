@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { upcomingForecast } from "@/components/signage/model";
 import { SignageScreen } from "@/components/signage/SignageScreen";
 import { WEWORK_LOGO_DARK_SRC } from "@/components/signage/wework-logo";
-import type { MediaRef, SignageConfig } from "@/lib/config-schema";
+import type { MediaRef, SignageConfig, SignageSpotlight } from "@/lib/config-schema";
 import { tokyoDateTime } from "@/lib/dates";
 import { HERO_SLIDE_SECONDS, heroSlideIndex, selectHeroSlides } from "@/lib/display-rules";
 import { NOW, makeConfig, movieNight, pizzaNight } from "../fixtures/config.fixture";
@@ -307,6 +307,13 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     ];
     renderScreen({ config: { ...config, house: { ...config.house, rules } } }, orientation);
     expect(screen.queryByText("THIS WEEK")).toBeNull();
+    if (orientation === "landscape") {
+      // 横型は 2026-09-26 ユーザー指示の見本で、メンバー情報を外してメンバー紹介（MEMBER SPOTLIGHT）にした
+      expect(screen.queryByText("MEMBER INFO")).toBeNull();
+      expect(screen.queryByTestId("rules")).toBeNull();
+      expect(screen.getByText("MEMBER SPOTLIGHT")).toBeTruthy();
+      return;
+    }
     expect(screen.getByText("MEMBER INFO")).toBeTruthy();
     const section = screen.getByTestId("rules");
     expect(section.children).toHaveLength(2);
@@ -376,6 +383,89 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
   });
 });
 
+
+describe("メンバー紹介（横型の右上。2026-09-26 ユーザー指示）", () => {
+  const photo = { mediaId: "med_spot_photo", sha256: "a".repeat(64), size: 10 };
+  const logo = { mediaId: "med_spot_logo", sha256: "b".repeat(64), size: 20 };
+  const yamada: SignageSpotlight = {
+    id: "sp_yamada",
+    companyName: "株式会社サンプル",
+    personName: "山田 陸",
+    role: "プロダクトデザイナー",
+    quote: "デザインの力で、事業の可能性を広げる",
+    bio: "プロダクトのデザインを支援しています。",
+    tags: ["UI/UX", "プロダクト開発", "デザイン組織"],
+    photo,
+    logo,
+  };
+  const sato: SignageSpotlight = {
+    id: "sp_sato",
+    companyName: "合同会社サンプル",
+    personName: "佐藤 花",
+    role: null,
+    quote: null,
+    bio: null,
+    tags: [],
+    photo: null,
+    logo: null,
+  };
+  // 1 人目が出る時刻（切り替えは (時刻 + 7) ÷ 15 の切り捨てで決まる）
+  const first = NOW - ((NOW + 7) % 30);
+  const config = { ...makeConfig(), spotlights: [yamada, sato] };
+
+  it("会社名・お名前「さん」・肩書き・「ひとこと」・紹介文・タグ・写真・ロゴを出し、何人目かの点と左右の矢印を付ける", () => {
+    renderScreen({ config, now: first, align: false }, "landscape");
+    const card = screen.getByTestId("spotlight");
+    expect(card.textContent).toBe(
+      "株式会社サンプル山田 陸さんプロダクトデザイナー「デザインの力で、事業の可能性を広げる」" +
+        "プロダクトのデザインを支援しています。UI/UXプロダクト開発デザイン組織",
+    );
+    expect([...card.querySelectorAll("img")].map((img) => img.getAttribute("src"))).toEqual([
+      `/media/${photo.sha256}`,
+      `/media/${logo.sha256}`,
+    ]);
+    expect(card.querySelectorAll("svg")).toHaveLength(2);
+    const dots = [...screen.getByTestId("spotlight-dots").children];
+    expect(dots.map((d) => d.getAttribute("data-active"))).toEqual(["true", null]);
+  });
+
+  it("15 秒ごとに次の人へ切り替わる。肩書き・ひとこと・紹介文・タグ・写真・ロゴが無い人は、その行を出さない", () => {
+    renderScreen({ config, now: first + 15, align: false }, "landscape");
+    const card = screen.getByTestId("spotlight");
+    expect(card.textContent).toBe("合同会社サンプル佐藤 花さん");
+    expect(card.querySelectorAll("img")).toHaveLength(0);
+    const dots = [...screen.getByTestId("spotlight-dots").children];
+    expect(dots.map((d) => d.getAttribute("data-active"))).toEqual([null, "true"]);
+  });
+
+  it("1 人だけなら点と矢印を出さない。登録が無い（古い Worker の config を含む）ときは「準備中」とだけ出す", () => {
+    renderScreen({ config: { ...config, spotlights: [yamada] } }, "landscape");
+    expect(screen.queryByTestId("spotlight-dots")).toBeNull();
+    expect(screen.getByTestId("spotlight").querySelectorAll("svg")).toHaveLength(0);
+    cleanup();
+    renderScreen({ config: makeConfig() }, "landscape");
+    expect(screen.getByTestId("spotlight").textContent).toBe("メンバー紹介は準備中です");
+    expect(screen.queryByTestId("spotlight-dots")).toBeNull();
+  });
+
+  it("縦型には出さない（縦型のメンバー情報はそのまま）", () => {
+    renderScreen({ config }, "portrait");
+    expect(screen.queryByTestId("spotlight")).toBeNull();
+    expect(screen.getByText("MEMBER INFO")).toBeTruthy();
+  });
+
+  it("Upcoming の行は 左から 日付・写真・イベント名と時間／場所・説明の書き出し。カテゴリの帯は出さない", () => {
+    const base = makeConfig();
+    const events = base.events.map((e) => (e.id === movieNight.id ? { ...e, description: "話題の作品を\nみんなで楽しもう" } : e));
+    renderScreen({ config: { ...base, events } }, "landscape");
+    const [movie, next] = [...screen.getByTestId("upcoming").children] as HTMLElement[];
+    expect(movie.textContent).toContain("Movie Night");
+    expect(movie.textContent).toContain("話題の作品を");
+    expect(movie.textContent).not.toContain(movieNight.category!.name);
+    expect(movie.dataset.hasDesc).toBe("true");
+    expect(next.dataset.hasDesc).toBe("false");
+  });
+});
 
 describe("upcomingForecast", () => {
   const days = [

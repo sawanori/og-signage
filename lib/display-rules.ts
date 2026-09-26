@@ -98,6 +98,16 @@ export function heroSlideIndex(now: number, count: number): number {
   return count <= 1 ? 0 : Math.floor(now / HERO_SLIDE_SECONDS) % count;
 }
 
+/** メンバー紹介（MEMBER SPOTLIGHT）で 1 人を出す秒数 */
+export const SPOTLIGHT_SLIDE_SECONDS = 15;
+/** 大きな欄のスライドと同じ瞬間に切り替わらないよう、半分ほどずらす */
+const SPOTLIGHT_OFFSET_SECONDS = 7;
+
+/** 今出すメンバー紹介の番号。大きな欄のスライドと同じく時刻だけで決める */
+export function spotlightIndex(now: number, count: number): number {
+  return count <= 1 ? 0 : Math.floor((now + SPOTLIGHT_OFFSET_SECONDS) / SPOTLIGHT_SLIDE_SECONDS) % count;
+}
+
 /**
  * 今日の主イベント。開催中を優先し、なければ今日これから始まるもの。
  * 前日から続いて開催中のもの（日またぎ）も今日のイベントに含める。

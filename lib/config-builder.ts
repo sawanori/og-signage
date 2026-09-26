@@ -10,7 +10,7 @@
  * - 返す前に signageConfigSchema で検査する。通らなければ例外（壊れた config は配らない）。
  */
 import type { Client } from "@libsql/client";
-import { and, asc, desc, eq, gte, isNotNull, isNull, lte, or } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import type { Db } from "../db/index";
 import {
@@ -22,6 +22,7 @@ import {
   houseRules,
   houseSettings,
   media,
+  memberSpotlights,
   notices,
   playlistItems,
   videoPlaybackSettings,
@@ -133,6 +134,21 @@ async function readConfigBody(tx: Db, deviceId: string, now: number): Promise<Om
     ? (await tx.select(mediaColumns).from(media).where(eq(media.id, house.footerImageMediaId)))[0] ?? null
     : null;
   const rules = await tx.select().from(houseRules).orderBy(asc(houseRules.position), asc(houseRules.id));
+
+  // ---- メンバー紹介（サイネージに出すものを登録順に）。写真とロゴは media をまとめて引く
+  const spotlightRows = await tx
+    .select()
+    .from(memberSpotlights)
+    .where(eq(memberSpotlights.enabled, true))
+    .orderBy(asc(memberSpotlights.createdAt), asc(memberSpotlights.id));
+  const spotlightMediaIds = spotlightRows.flatMap((r) => [r.photoMediaId, r.logoMediaId]).filter((v): v is string => v !== null);
+  const spotlightMedia = new Map(
+    (spotlightMediaIds.length > 0
+      ? await tx.select(mediaColumns).from(media).where(inArray(media.id, spotlightMediaIds))
+      : []
+    ).map((m) => [m.id, m]),
+  );
+  const spotlightImage = (id: string | null) => (id === null ? null : toMediaRef(spotlightMedia.get(id) ?? null));
   const scheduleRows = await tx.select().from(displaySchedules).orderBy(asc(displaySchedules.weekday));
   const [weather] = await tx.select().from(weatherCache).orderBy(desc(weatherCache.fetchedAt)).limit(1);
   const forecast = weather ? parseForecast(weather.forecast) : undefined;
@@ -189,6 +205,17 @@ async function readConfigBody(tx: Db, deviceId: string, now: number): Promise<Om
       displayStartTime: notice.displayStartTime,
       displayEndTime: notice.displayEndTime,
       updatedAt: notice.updatedAt,
+    })),
+    spotlights: spotlightRows.map((r) => ({
+      id: r.id,
+      companyName: r.companyName,
+      personName: r.personName,
+      role: r.role,
+      quote: r.quote,
+      bio: r.bio,
+      tags: r.tags,
+      photo: spotlightImage(r.photoMediaId),
+      logo: spotlightImage(r.logoMediaId),
     })),
     house: {
       name: house.houseName,

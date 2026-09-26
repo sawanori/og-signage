@@ -13,7 +13,17 @@
 import { and, asc, desc, eq, isNotNull, lte, notExists, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../../db/index";
-import { devices, events, houseSettings, media, mediaFailures, notices, playlistItems, uploads } from "../../db/schema";
+import {
+  devices,
+  events,
+  houseSettings,
+  media,
+  mediaFailures,
+  memberSpotlights,
+  notices,
+  playlistItems,
+  uploads,
+} from "../../db/schema";
 import type { AuthUser } from "../auth";
 import {
   MAX_VIDEO_MB,
@@ -403,6 +413,8 @@ export async function requestMediaDeletion(db: Db, id: string, now: number): Pro
         eq(media.state, "active"),
         notExists(db.select({ x: one }).from(events).where(eq(events.imageMediaId, id))),
         notExists(db.select({ x: one }).from(notices).where(eq(notices.imageMediaId, id))),
+        notExists(db.select({ x: one }).from(memberSpotlights).where(eq(memberSpotlights.photoMediaId, id))),
+        notExists(db.select({ x: one }).from(memberSpotlights).where(eq(memberSpotlights.logoMediaId, id))),
         notExists(db.select({ x: one }).from(houseSettings).where(eq(houseSettings.logoMediaId, id))),
         notExists(db.select({ x: one }).from(houseSettings).where(eq(houseSettings.footerImageMediaId, id))),
         notExists(db.select({ x: one }).from(playlistItems).where(eq(playlistItems.mediaId, id))),
@@ -416,7 +428,7 @@ export async function requestMediaDeletion(db: Db, id: string, now: number): Pro
   throw new MediaError(
     409,
     "in_use",
-    "使用中のため削除できません。イベント・お知らせ・デザイン設定・プレイリストから外してから削除してください",
+    "使用中のため削除できません。イベント・お知らせ・メンバー紹介・デザイン設定・プレイリストから外してから削除してください",
   );
 }
 

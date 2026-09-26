@@ -228,6 +228,27 @@ def test_extract_media_references_reads_house_events_and_notices_images():
     assert media_ids == ["logo1", "footer1", "eventimg1", "noticeimg1", "video1"]
 
 
+def test_extract_media_references_reads_spotlight_photos_and_logos():
+    """メンバー紹介（spotlights。2026-09-26 から）の写真とロゴも、notices の後・playlist の前に集める。"""
+    config = {
+        "notices": [{"id": "n1", "image": {"mediaId": "noticeimg1", "sha256": "4" * 64, "size": 400}}],
+        "spotlights": [
+            {
+                "id": "s1",
+                "photo": {"mediaId": "photo1", "sha256": "6" * 64, "size": 600},
+                "logo": {"mediaId": "logo2", "sha256": "7" * 64, "size": 700},
+            },
+            # 写真もロゴも無いメンバー紹介・同じロゴの重複
+            {"id": "s2", "photo": None, "logo": {"mediaId": "logo2", "sha256": "7" * 64, "size": 700}},
+        ],
+        "playlist": [{"mediaId": "video1", "sha256": "5" * 64, "size": 500, "durationSeconds": 10}],
+    }
+
+    media_ids = [r.media_id for r in sync_mod.extract_media_references(config)]
+
+    assert media_ids == ["noticeimg1", "photo1", "logo2", "video1"]
+
+
 def test_extract_media_references_handles_missing_playlist_and_bundle():
     assert sync_mod.extract_media_references({}) == []
     manifest = sync_mod.build_manifest("v1", {})

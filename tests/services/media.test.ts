@@ -12,6 +12,7 @@ import {
   houseSettings,
   media,
   mediaFailures,
+  memberSpotlights,
   notices,
   playlistItems,
   playlists,
@@ -471,6 +472,14 @@ describe("削除予約と削除の実行", () => {
   it.each([
     ["イベントの画像", async (id: string) => void (await db.insert(events).values({ title: "e", startAt: NOW, imageMediaId: id }))],
     ["お知らせの画像", async (id: string) => void (await db.insert(notices).values({ title: "n", imageMediaId: id }))],
+    [
+      "メンバー紹介の写真",
+      async (id: string) => void (await db.insert(memberSpotlights).values({ companyName: "c", personName: "p", photoMediaId: id })),
+    ],
+    [
+      "メンバー紹介のロゴ",
+      async (id: string) => void (await db.insert(memberSpotlights).values({ companyName: "c", personName: "p", logoMediaId: id })),
+    ],
     ["デザイン設定のロゴ", async (id: string) => void (await db.insert(houseSettings).values({ houseName: "h", logoMediaId: id }))],
     [
       "デザイン設定のフッター画像",

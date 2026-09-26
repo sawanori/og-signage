@@ -14,6 +14,8 @@ import {
   selectThisWeek,
   selectUpcomingEvents,
   shouldShowWeather,
+  SPOTLIGHT_SLIDE_SECONDS,
+  spotlightIndex,
 } from "../../lib/display-rules";
 import {
   NOW,
@@ -46,6 +48,21 @@ describe("fixture と config スキーマ", () => {
 
   it("schemaVersion が 1 以外は拒否する", () => {
     expect(signageConfigSchema.safeParse({ ...makeConfig(), schemaVersion: 2 }).success).toBe(false);
+  });
+
+  it("collectMediaRefs はメンバー紹介の写真とロゴも、お知らせの後・動画の前に集める（2026-09-26）", () => {
+    const photo = { mediaId: "med_spot_photo", sha256: "a".repeat(64), size: 10 };
+    const logo = { mediaId: "med_spot_logo", sha256: "b".repeat(64), size: 20 };
+    const spotlight = { id: "sp1", companyName: "株式会社サンプル", personName: "山田 陸", role: null, quote: null, bio: null, tags: [] };
+    const config = makeConfig({
+      spotlights: [
+        { ...spotlight, photo, logo },
+        { ...spotlight, id: "sp2", photo: null, logo },
+      ],
+    });
+    const ids = collectMediaRefs(config).map((r) => r.mediaId);
+    expect(ids.slice(-4)).toEqual(["med_spot_photo", "med_spot_logo", "med_welcome", "med_rules_movie"]);
+    expect(collectMediaRefs({ ...config, spotlights: undefined }).map((r) => r.mediaId)).not.toContain("med_spot_photo");
   });
 
   it("collectMediaRefs は画像と動画を重複なく列挙する", () => {
@@ -240,6 +257,20 @@ describe("大きな欄のスライドショー", () => {
   it("0 件・1 件なら常に 0", () => {
     expect(heroSlideIndex(NOW, 0)).toBe(0);
     expect(heroSlideIndex(NOW + 12345, 1)).toBe(0);
+  });
+
+  it(`メンバー紹介は ${SPOTLIGHT_SLIDE_SECONDS} 秒ごとに次の人へ。大きな欄のスライドと同じ瞬間には切り替わらない（2026-09-26）`, () => {
+    const t = 1_000_000_000 - (1_000_000_000 % HERO_SLIDE_SECONDS); // 大きな欄の切れ目
+    // 大きな欄が切り替わる瞬間の前後で、メンバー紹介は同じ人のまま
+    for (let k = 0; k < 20; k++) {
+      const edge = t + k * HERO_SLIDE_SECONDS;
+      expect(spotlightIndex(edge, 3)).toBe(spotlightIndex(edge - 1, 3));
+    }
+    // 切り替わりは大きな欄の切れ目の 8 秒後（7 秒ずらしている）
+    expect(spotlightIndex(t + 8, 3)).toBe((spotlightIndex(t + 7, 3) + 1) % 3);
+    expect(spotlightIndex(t + 8 + 3 * SPOTLIGHT_SLIDE_SECONDS, 3)).toBe(spotlightIndex(t + 8, 3));
+    expect(spotlightIndex(NOW, 0)).toBe(0);
+    expect(spotlightIndex(NOW + 12345, 1)).toBe(0);
   });
 });
 

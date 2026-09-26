@@ -1,11 +1,12 @@
 /**
  * 横型（1920×1080）の配置。モック image/UI-H.png の画面部分に合わせる。
  * 2026-09-25 ユーザー指示: ヘッダーを 2/3 の高さ（92px）に。下段の欄のうち今週の予定は外し、大きな枠をフッターまで広げる。
- * 右の列は上から メンバー情報・UPCOMING（5 件）・お知らせ（重要連絡。白いカードで縁はドロップシャドウ）。
+ * 右の列は上から メンバー紹介（MEMBER SPOTLIGHT）・UPCOMING（5 件）・お知らせ（重要連絡。白いカードで縁はドロップシャドウ）。
+ * 2026-09-26 ユーザー指示の見本で、メンバー情報（MEMBER INFO）を外してメンバー紹介に置き換えた（縦型のメンバー情報はそのまま）。
  * どれも同じ左端（1368px）・幅（516px）。キャッチコピー（ヘッダー用）は横型では出さない。
  */
 import { Fragment } from "react";
-import { ArrowRight, CalendarDays, Clock } from "lucide-react";
+import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import type { SignageConfig, SignageEvent } from "@/lib/config-schema";
 import { COPY } from "./copy";
 import {
@@ -17,7 +18,6 @@ import {
   splitCatchCopy,
   splitFooterCopy,
   stateLabel,
-  tint,
   type ResolveMediaUrl,
   type SignageView,
 } from "./model";
@@ -60,25 +60,18 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
       <svg className={styles.lScriptLine} width="110" height="16" viewBox="0 0 110 16" aria-hidden>
         <path d="M2 13 C 34 8, 70 5, 108 4" fill="none" stroke="#1B2530" strokeWidth="2" strokeLinecap="round" />
       </svg>
-      {/* メンバー情報。右の列の一番上で、UPCOMING と同じ左端・幅・見出しの並び（2026-09-25 ユーザー指示） */}
-      <div className={styles.lSectionTitle} style={{ left: stretchX(1372, 1), top: 54 }}>
-        <span className={styles.lSectionEn}>{COPY.rules.en}</span>
-        <span className={styles.lSectionJa}>{COPY.rules.ja}</span>
+      {/* メンバー紹介。右の列の一番上で、UPCOMING と同じ左端・幅・見出しの並び（2026-09-26 ユーザー指示の見本どおり） */}
+      <div className={styles.lSectionTitle} style={{ left: stretchX(1372, 1), top: 38 }}>
+        <span className={styles.lSectionEn}>{COPY.spotlight.en}</span>
+        <span className={styles.lSectionJa}>{COPY.spotlight.ja}</span>
       </div>
-      <div className={styles.lRules} data-testid="rules">
-        {house.rules.map((rule, i) => (
-          <div key={i} className={styles.lRule}>
-            {rule.title ? <span className={styles.lRuleTitle}>{rule.title}</span> : null}
-            <span className={styles.lRuleText}>{rule.text}</span>
-          </div>
-        ))}
-      </div>
+      <Spotlight spotlight={view.spotlight} resolveMediaUrl={resolveMediaUrl} />
 
       {/* 今日のイベント */}
       <Hero hero={view.hero} config={config} resolveMediaUrl={resolveMediaUrl} />
 
       {/* Upcoming */}
-      <div className={styles.lSectionTitle} style={{ left: stretchX(1372, 1), top: 186 }}>
+      <div className={styles.lSectionTitle} style={{ left: stretchX(1372, 1), top: 420 }}>
         <span className={styles.lSectionEn}>{COPY.upcoming.en}</span>
         <span className={styles.lSectionJa}>{COPY.upcoming.ja}</span>
       </div>
@@ -300,32 +293,92 @@ function EventInfo({ event }: { event: SignageEvent }) {
   );
 }
 
+/** 1 行（見本どおり 左から 日付・写真・イベント名と時間／場所・説明の書き出し） */
 function UpcomingRow({ event, resolveMediaUrl }: { event: SignageEvent; resolveMediaUrl: ResolveMediaUrl }) {
   return (
-    <div className={styles.lRow}>
+    <div className={styles.lRow} data-has-desc={event.description ? "true" : "false"}>
       <div className={styles.lRowDate}>
         <span className={styles.lRowDay}>{formatMonthDay(event.startAt)}</span>
         <span className={styles.lRowWeek}>{formatWeekdayUpper(event.startAt)}</span>
       </div>
       <div className={styles.lRowDivider} />
-      <div className={styles.lRowText}>
-        {event.category ? (
-          <span className={styles.lChip} style={{ backgroundColor: tint(event.category.color, 0.35) }}>
-            {event.category.name}
-          </span>
-        ) : null}
-        <span className={styles.lRowTitle}>{event.title}</span>
-        <span className={styles.lRowMeta}>
-          {formatTimeRange(event)}
-          {event.location ? <span className={styles.lRowPlace}>{event.location}</span> : null}
-        </span>
-      </div>
       <MediaImage
         media={event.image}
         category={event.category}
         resolveMediaUrl={resolveMediaUrl}
         className={styles.lRowImage}
       />
+      <div className={styles.lRowText}>
+        <span className={styles.lRowTitle}>{event.title}</span>
+        <span className={styles.lRowMeta}>
+          {formatTimeRange(event)}
+          {event.location ? <span className={styles.lRowPlace}>{event.location}</span> : null}
+        </span>
+      </div>
+      {event.description ? (
+        <div className={styles.lRowDesc}>
+          <span>{event.description}</span>
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+/**
+ * メンバー紹介（2026-09-26 ユーザー指示の見本どおり）。左に写真、右に会社名・ロゴ・お名前「さん」・肩書き・「ひとこと」・紹介文・タグ。
+ * 1 人ずつ時刻で切り替える（spotlightIndex）。左右の矢印と下の点は、ほかにも紹介があることの目印（押す操作は無い）
+ */
+function Spotlight({ spotlight, resolveMediaUrl }: { spotlight: SignageView["spotlight"]; resolveMediaUrl: ResolveMediaUrl }) {
+  if (!spotlight) {
+    return (
+      <div className={styles.lSpot} data-testid="spotlight">
+        <div className={styles.lSpotEmpty}>{COPY.noSpotlight}</div>
+      </div>
+    );
+  }
+  const { item, index, count } = spotlight;
+  const fade = count > 1 ? styles.heroFade : "";
+  return (
+    <>
+      <div className={styles.lSpot} data-testid="spotlight">
+        <div key={item.id} className={`${styles.lSpotBody} ${fade}`}>
+          <MediaImage media={item.photo} category={null} resolveMediaUrl={resolveMediaUrl} className={styles.lSpotPhoto} />
+          <div className={styles.lSpotText}>
+            <div className={styles.lSpotCompany}>{item.companyName}</div>
+            <div className={styles.lSpotName}>
+              {item.personName}
+              <span className={styles.lSpotSan}>{COPY.spotlightHonorific}</span>
+            </div>
+            {item.role ? <div className={styles.lSpotRole}>{item.role}</div> : null}
+            {item.quote ? <p className={styles.lSpotQuote}>「{item.quote}」</p> : null}
+            {item.bio ? <p className={styles.lSpotBio}>{item.bio}</p> : null}
+            {item.tags.length > 0 ? (
+              <div className={styles.lSpotTags}>
+                {item.tags.map((tag, i) => (
+                  <span key={i}>{tag}</span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          {item.logo ? (
+            // eslint-disable-next-line @next/next/no-img-element -- オフライン配信のため素の img
+            <img src={resolveMediaUrl(item.logo)} alt="" className={styles.lSpotLogo} />
+          ) : null}
+        </div>
+        {count > 1 ? (
+          <>
+            <ChevronLeft className={styles.lSpotPrev} size={28} strokeWidth={2} aria-hidden />
+            <ChevronRight className={styles.lSpotNext} size={28} strokeWidth={2} aria-hidden />
+          </>
+        ) : null}
+      </div>
+      {count > 1 ? (
+        <div className={styles.lSpotDots} data-testid="spotlight-dots" aria-hidden>
+          {Array.from({ length: count }, (_, i) => (
+            <span key={i} data-active={i === index ? "true" : undefined} />
+          ))}
+        </div>
+      ) : null}
+    </>
   );
 }

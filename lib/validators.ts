@@ -121,6 +121,32 @@ function checkNotice(value: NoticeFields, ctx: z.RefinementCtx) {
 export const noticeInputSchema = noticeFields.superRefine(checkNotice);
 export const noticeUpdateSchema = noticeFields.extend({ revision }).superRefine(checkNotice);
 
+// ---------------------------------------------------------------- メンバー紹介（MEMBER SPOTLIGHT）
+
+export const SPOTLIGHT_TAGS_MAX = 3;
+export const SPOTLIGHT_TAG_MAX = 10;
+export const SPOTLIGHT_QUOTE_MAX = 30;
+export const SPOTLIGHT_BIO_MAX = 60;
+
+const spotlightFields = z.object({
+  companyName: requiredText("会社名", 30),
+  personName: requiredText("お名前", 20),
+  role: optionalText("肩書き", 30),
+  /** ひとこと（サイネージでは「」で囲んで 2 行まで） */
+  quote: optionalText("ひとこと", SPOTLIGHT_QUOTE_MAX),
+  bio: optionalText("紹介文", SPOTLIGHT_BIO_MAX),
+  tags: z
+    .array(requiredText("タグ", SPOTLIGHT_TAG_MAX))
+    .max(SPOTLIGHT_TAGS_MAX, `タグは${SPOTLIGHT_TAGS_MAX}つまでです`)
+    .default([]),
+  photoMediaId: optionalId,
+  logoMediaId: optionalId,
+  enabled: z.boolean(),
+});
+
+export const spotlightInputSchema = spotlightFields;
+export const spotlightUpdateSchema = spotlightFields.extend({ revision });
+
 // ---------------------------------------------------------------- デザイン設定
 
 export const designSettingsSchema = z.object({
@@ -250,6 +276,8 @@ export type EventInput = z.infer<typeof eventInputSchema>;
 export type EventUpdate = z.infer<typeof eventUpdateSchema>;
 export type NoticeInput = z.infer<typeof noticeInputSchema>;
 export type NoticeUpdate = z.infer<typeof noticeUpdateSchema>;
+export type SpotlightInput = z.infer<typeof spotlightInputSchema>;
+export type SpotlightUpdate = z.infer<typeof spotlightUpdateSchema>;
 export type DesignSettingsInput = z.infer<typeof designSettingsSchema>;
 export type HouseRulesInput = z.infer<typeof houseRulesSchema>;
 export type DisplayScheduleInput = z.infer<typeof displayScheduleSchema>;

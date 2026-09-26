@@ -18,6 +18,7 @@ import {
   videoPlaybackSettings,
   weatherCache,
   notices,
+  memberSpotlights,
 } from "../../db/schema";
 import { SEED_PLAYLIST_ID, seed } from "../../db/seed";
 import { buildDeviceConfig, canonicalJson } from "../../lib/config-builder";
@@ -258,6 +259,44 @@ describe("GET /api/device/config", () => {
     const config = await fetchConfig();
     const byTitle = Object.fromEntries(config.notices.map((n) => [n.title, n.qrUrl]));
     expect(byTitle).toEqual({ 停電のお知らせ: "https://example.com/power", "QR なし": null });
+  });
+
+  it("メンバー紹介は「サイネージに出す」ものだけを登録順に spotlights へ入れ、写真とロゴは media の参照。端末の中継からも取れる（2026-09-26 ユーザー指示）", async () => {
+    await insertMedia("img_photo", "image", IMAGE_BYTES, 11);
+    await insertMedia("img_logo", "image", IMAGE_BYTES, 12);
+    await db.insert(memberSpotlights).values([
+      {
+        id: "sp_yamada",
+        companyName: "株式会社サンプル",
+        personName: "山田 陸",
+        role: "プロダクトデザイナー",
+        quote: "デザインの力で、事業の可能性を広げる",
+        bio: "紹介文です",
+        tags: ["UI/UX", "プロダクト開発"],
+        photoMediaId: "img_photo",
+        logoMediaId: "img_logo",
+        createdAt: 100,
+      },
+      { id: "sp_hidden", companyName: "出さない会社", personName: "非表示", enabled: false, createdAt: 200 },
+      { id: "sp_sato", companyName: "合同会社サンプル", personName: "佐藤 花", createdAt: 300 },
+    ]);
+    const config = await fetchConfig();
+    expect(config.spotlights).toEqual([
+      {
+        id: "sp_yamada",
+        companyName: "株式会社サンプル",
+        personName: "山田 陸",
+        role: "プロダクトデザイナー",
+        quote: "デザインの力で、事業の可能性を広げる",
+        bio: "紹介文です",
+        tags: ["UI/UX", "プロダクト開発"],
+        photo: { mediaId: "img_photo", sha256: sha(11), size: IMAGE_BYTES.length },
+        logo: { mediaId: "img_logo", sha256: sha(12), size: IMAGE_BYTES.length },
+      },
+      { id: "sp_sato", companyName: "合同会社サンプル", personName: "佐藤 花", role: null, quote: null, bio: null, tags: [], photo: null, logo: null },
+    ]);
+    expect((await relay("/api/device/media/img_photo"))!.status).toBe(200);
+    expect((await relay("/api/device/media/img_logo"))!.status).toBe(200);
   });
 
   it("version は version を除いた本文をキー順固定にした JSON の SHA-256", async () => {

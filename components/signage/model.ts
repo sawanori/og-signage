@@ -3,7 +3,15 @@
  * 業務規則（どのイベントを出すか・状態・お知らせ・天気・表示スケジュール）は lib/display-rules.ts に任せ、
  * ここでは表示用の文字列への整形だけを行う。
  */
-import type { DailyForecast, MediaRef, SignageConfig, SignageEvent, SignageNotice, Weather } from "@/lib/config-schema";
+import type {
+  DailyForecast,
+  MediaRef,
+  SignageConfig,
+  SignageEvent,
+  SignageNotice,
+  SignageSpotlight,
+  Weather,
+} from "@/lib/config-schema";
 import { tokyoDateKey, tokyoParts } from "@/lib/dates";
 import {
   heroSlideIndex,
@@ -14,6 +22,7 @@ import {
   selectThisWeek,
   selectUpcomingEvents,
   shouldShowWeather,
+  spotlightIndex,
   type HeroSlide,
   type HeroSlideState,
   type MainEventSelection,
@@ -32,6 +41,8 @@ export type SignageView = {
   /** 大きな欄のスライドショー。今出す 1 枚と、何枚中の何枚目か。流すイベントが無ければ null */
   hero: { slide: HeroSlide; index: number; count: number } | null;
   upcoming: SignageEvent[];
+  /** メンバー紹介（横型の右上）。今出す 1 人と、何人中の何人目か。登録が無ければ null */
+  spotlight: { item: SignageSpotlight; index: number; count: number } | null;
   week: WeekDay[];
   notice: SignageNotice | null;
   weather: Weather | null;
@@ -57,6 +68,8 @@ export function buildView(config: SignageConfig, now: number, timeSynced: boolea
   const main = selectMainEvent(config.events, now);
   const slides = selectHeroSlides(config.events, now);
   const index = heroSlideIndex(now, slides.length);
+  const spotlights = config.spotlights ?? [];
+  const spotlightAt = spotlightIndex(now, spotlights.length);
   return {
     visible: isWithinDisplaySchedule(config.schedule, now, timeSynced),
     main,
@@ -64,6 +77,8 @@ export function buildView(config: SignageConfig, now: number, timeSynced: boolea
     // Upcoming から外すのは今日の主イベントだけ。今日のイベントが無い日は、次のイベント（明日など）も先頭に出す
     // （次のイベントを出していた NEXT EVENT の欄は外したため）
     upcoming: selectUpcomingEvents(config.events, now, main.kind === "today" ? main : { kind: "none" }),
+    spotlight:
+      spotlights.length > 0 ? { item: spotlights[spotlightAt], index: spotlightAt, count: spotlights.length } : null,
     week: selectThisWeek(config.events, now),
     notice: selectNotice(config.notices, now),
     weather: shouldShowWeather(config.weather, now, timeSynced) ? config.weather : null,

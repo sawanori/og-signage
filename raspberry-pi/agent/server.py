@@ -243,8 +243,10 @@ class LocalServer:
         if matches(house.get("logo")) or matches(house.get("footerImage")):
             image_marker = True
         else:
-            image_marker = any(matches(e.get("image")) for e in config.get("events") or []) or any(
-                matches(n.get("image")) for n in config.get("notices") or []
+            image_marker = (
+                any(matches(e.get("image")) for e in config.get("events") or [])
+                or any(matches(n.get("image")) for n in config.get("notices") or [])
+                or any(matches(s.get("photo")) or matches(s.get("logo")) for s in config.get("spotlights") or [])
             )
 
         try:

@@ -5,7 +5,7 @@
  * 縦型と横型のモックはキャッチコピーやロゴ・写真が違うため、向きごとに作る。
  * 写真は tests/visual/extract-fixtures.py がモックから切り出した public/fixtures/<向き>/ のもの。
  */
-import type { MediaRef, SignageConfig, SignageEvent } from "@/lib/config-schema";
+import type { MediaRef, SignageConfig, SignageEvent, SignageSpotlight } from "@/lib/config-schema";
 import { tokyoDateTime } from "@/lib/dates";
 import { HERO_SLIDE_SECONDS, heroSlideIndex, selectHeroSlides } from "@/lib/display-rules";
 import {
@@ -61,20 +61,74 @@ export const mockEvents: SignageEvent[] = [
     hostName: "Yuki",
   },
   // 今週の予定の絵文字はモックの絵柄（ビデオカメラ）に合わせる
-  { ...movieNight, emoji: "🎥", location: "2F ラウンジ", category: category.movie },
+  // Upcoming の行の右に出る説明の書き出し（2026-09-26 ユーザー指示の見本の文面）
+  {
+    ...movieNight,
+    emoji: "🎥",
+    location: "2F ラウンジ",
+    category: category.movie,
+    description: "話題の作品を\nみんなで楽しもう",
+  },
   {
     ...bbqParty,
     startAt: tokyoDateTime(2025, 9, 27, 15, 0),
     endAt: tokyoDateTime(2025, 9, 27, 20, 0),
     category: category.outdoor,
+    description: "おいしいごはんと\n新しい出会い",
   },
   {
     ...englishMeetup,
     startAt: tokyoDateTime(2025, 9, 30, 20, 0),
     endAt: tokyoDateTime(2025, 9, 30, 21, 30),
     category: category.social,
+    description: "英語で気軽に\nつながる時間",
   },
-  { ...coffeeWorkshop, category: category.workshop, image: mediaRef("med_coffee", 11) },
+  {
+    ...coffeeWorkshop,
+    category: category.workshop,
+    image: mediaRef("med_coffee", 11),
+    description: "ハンドドリップの\n基本を学ぶ",
+  },
+];
+
+/**
+ * メンバー紹介（横型の右上。2026-09-26 ユーザー指示の見本の文面）。会社名とロゴは架空のもの。
+ * 写真は見本の画像から切り出した public/fixtures/landscape/med_spot_photo.jpg
+ */
+const mockSpotlights: SignageSpotlight[] = [
+  {
+    id: "spot_yamada",
+    companyName: "株式会社サンプル",
+    personName: "山田 陸",
+    role: "プロダクトデザイナー",
+    quote: "デザインの力で、事業の可能性を広げる",
+    bio: "プロダクト・ブランド・組織のデザイン支援を通じて、企業の成長を伴走します。",
+    tags: ["UI/UX", "プロダクト開発", "デザイン組織"],
+    photo: mediaRef("med_spot_photo", 21),
+    logo: mediaRef("med_spot_logo", 22),
+  },
+  {
+    id: "spot_sato",
+    companyName: "オーシャンゲート合同会社",
+    personName: "佐藤 花",
+    role: "コミュニティマネージャー",
+    quote: "人と人がつながる場をつくる",
+    bio: "イベントの企画とメンバー同士の交流づくりを担当しています。",
+    tags: ["コミュニティ", "イベント"],
+    photo: null,
+    logo: null,
+  },
+  {
+    id: "spot_suzuki",
+    companyName: "株式会社みなとテック",
+    personName: "鈴木 健太",
+    role: "エンジニア",
+    quote: null,
+    bio: null,
+    tags: [],
+    photo: null,
+    logo: null,
+  },
 ];
 
 export function mockConfig(orientation: Orientation): SignageConfig {
@@ -82,6 +136,7 @@ export function mockConfig(orientation: Orientation): SignageConfig {
   return {
     ...base,
     events: mockEvents,
+    spotlights: mockSpotlights,
     notices: [
       {
         ...cleaningNotice,
@@ -121,5 +176,5 @@ export function mockConfig(orientation: Orientation): SignageConfig {
 
 /** fixture の画像 URL（public/fixtures/<向き>/<mediaId>） */
 export function mockMediaResolver(orientation: Orientation) {
-  return (ref: MediaRef) => `/fixtures/${orientation}/${ref.mediaId}.${ref.mediaId === "med_logo" ? "png" : "jpg"}`;
+  return (ref: MediaRef) => `/fixtures/${orientation}/${ref.mediaId}.${ref.mediaId.endsWith("_logo") ? "png" : "jpg"}`;
 }

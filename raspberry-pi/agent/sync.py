@@ -52,7 +52,8 @@ def extract_media_references(config: dict[str, Any]) -> list[MediaReference]:
     """config JSON が参照する media を mediaId で重複を除いて列挙する。
 
     lib/config-schema.ts の `collectMediaRefs` と同じ規則:
-    house.logo / house.footerImage / events[].image / notices[].image / playlist[] を集める。
+    house.logo / house.footerImage / events[].image / notices[].image /
+    spotlights[].photo・logo（メンバー紹介。2026-09-26 から） / playlist[] を集める。
     表示バンドルは対象外（build_manifest が別枠で追加する）。
     """
     refs: list[MediaReference] = []
@@ -67,6 +68,10 @@ def extract_media_references(config: dict[str, Any]) -> list[MediaReference]:
 
     for notice in config.get("notices") or []:
         _add_media_ref(refs, seen, notice.get("image"))
+
+    for spotlight in config.get("spotlights") or []:
+        _add_media_ref(refs, seen, spotlight.get("photo"))
+        _add_media_ref(refs, seen, spotlight.get("logo"))
 
     for item in config.get("playlist") or []:
         _add_media_ref(refs, seen, item)
