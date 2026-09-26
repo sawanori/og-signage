@@ -3,22 +3,14 @@
  *
  * - 画像: WebP・長辺 1920px 以下に縮小してから送る。
  * - 動画: mp4 のボックスを読んでコーデック情報・尺を取り、<video> でサムネイル（WebP）を作る。
- *   動画は変換しない。再生可否（playable）はサーバーがコーデック情報から判定する。
+ *   動画は変換しない。規格（lib/video-requirements.ts）に合わない動画は、足りない点をすべて並べて送る前に断る。
  * - SHA-256 はパートごとに増分計算する（hash-wasm。ファイル全体をメモリに載せない）。
  * - パートは 10MB ずつ順に送り、各パートを 3 回まで再試行する。complete も冪等なので再試行する。
  */
 import { createSHA256 } from "hash-wasm";
-import {
-  MAX_VIDEO_SECONDS,
-  MEDIA_MAX_BYTES,
-  SNIFF_BYTES,
-  UPLOAD_PART_SIZE,
-  isVideoTooLong,
-  kindOfMime,
-  sniffMime,
-  type MediaKind,
-} from "../file-sniff";
+import { MEDIA_MAX_BYTES, SNIFF_BYTES, UPLOAD_PART_SIZE, kindOfMime, sniffMime, type MediaKind } from "../file-sniff";
 import type { CompleteUploadInput, MediaDto, VideoCodecInfo } from "../services/media";
+import { videoRequirementMessage, videoRequirementViolations } from "../video-requirements";
 
 export const IMAGE_MAX_LONG_SIDE = 1920;
 export const THUMBNAIL_LONG_SIDE = 640;
@@ -313,9 +305,6 @@ export async function uploadMedia(file: File, options: UploadOptions = {}): Prom
   const mime = sniffMime(await readBytes(file, 0, SNIFF_BYTES));
   if (!mime) throw new UploadError("対応していない形式です（画像は JPEG・PNG・WebP、動画は MP4）");
   const kind: MediaKind = kindOfMime(mime);
-  if (kind === "video" && file.size > MEDIA_MAX_BYTES.video) {
-    throw new UploadError("動画は 12MB 以下にしてください（20 秒の 1920×1080 なら、書き出しのビットレートを 4Mbps 程度に）");
-  }
 
   onProgress?.({ phase: "preparing", sentBytes: 0, totalBytes: file.size });
   let body: Blob = file;
@@ -334,14 +323,13 @@ export async function uploadMedia(file: File, options: UploadOptions = {}): Prom
     meta.height = info?.codecInfo.height ?? null;
     meta.durationSeconds = info?.durationSeconds ?? thumb.durationSeconds;
     thumbnail = thumb.blob;
-    if (meta.durationSeconds === null || meta.durationSeconds === undefined) {
-      throw new UploadError("動画の長さを読み取れませんでした。MP4 の動画をお使いください");
-    }
-    if (isVideoTooLong(meta.durationSeconds)) {
-      throw new UploadError(
-        `動画は ${MAX_VIDEO_SECONDS} 秒以内にしてください（この動画は ${Math.round(meta.durationSeconds)} 秒です）`,
-      );
-    }
+    // 規格外の動画は送る前に断り、足りない点をすべて並べる（2026-09-26 ユーザー指示）
+    const problems = videoRequirementViolations({
+      fileSize: file.size,
+      durationSeconds: meta.durationSeconds,
+      codecInfo: meta.codecInfo,
+    });
+    if (problems.length > 0) throw new UploadError(videoRequirementMessage(problems));
   }
 
   const { uploadId } = await expectOk<{ uploadId: string }>(

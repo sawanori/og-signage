@@ -15,17 +15,9 @@ import { z } from "zod";
 import type { Db } from "../../db/index";
 import { devices, events, houseSettings, media, mediaFailures, notices, playlistItems, uploads } from "../../db/schema";
 import type { AuthUser } from "../auth";
-import {
-  MAX_VIDEO_SECONDS,
-  MEDIA_MAX_BYTES,
-  SNIFF_BYTES,
-  UPLOAD_PART_SIZE,
-  isVideoTooLong,
-  kindOfMime,
-  sniffMime,
-  type MediaKind,
-} from "../file-sniff";
+import { MEDIA_MAX_BYTES, SNIFF_BYTES, UPLOAD_PART_SIZE, kindOfMime, sniffMime, type MediaKind } from "../file-sniff";
 import { mediaKeys, type MediaBucket, type R2Part } from "../r2";
+import { videoCodecViolations, videoRequirementMessage, videoRequirementViolations } from "../video-requirements";
 
 export const DELETE_DELAY_SECONDS = 7 * 24 * 60 * 60;
 export const THUMBNAIL_MAX_BYTES = 2 * 1024 * 1024;
@@ -99,21 +91,11 @@ export type CompleteUploadInput = z.input<typeof completeUploadSchema>;
 /**
  * 要件定義書 15 節の推奨（task_003 の実測まで）。縦長の 1080x1920 も 1080p とみなす。
  * H.264 は 4:2:0・8bit。H.265（HEVC）も通す（2026-09-25 ユーザー指示）: 4:2:0 の 8bit・10bit（iPhone の HDR は 10bit）。
- * 色の形式・ビット数を読む前にアップロードした H.265（記録が null）は、ほかの条件が合えば通す
+ * 色の形式・ビット数を読む前にアップロードした H.265（記録が null）は、ほかの条件が合えば通す。
+ * 条件の表はアップロード時に断る条件と同じ（lib/video-requirements.ts の videoCodecViolations）
  */
 export function isPlayable(mimeType: string, info: VideoCodecInfo | null | undefined): boolean {
-  if (mimeType !== "video/mp4" || !info) return false;
-  const shortSide = Math.min(info.width, info.height);
-  const longSide = Math.max(info.width, info.height);
-  if (shortSide > 1080 || longSide > 1920 || info.fps === null || info.fps > 30.01) return false;
-  if (info.codec === "avc1" || info.codec === "avc3") return info.chromaFormat === "4:2:0" && info.bitDepth === 8;
-  if (info.codec === "hvc1" || info.codec === "hev1") {
-    return (
-      (info.chromaFormat === null || info.chromaFormat === "4:2:0") &&
-      (info.bitDepth === null || info.bitDepth === 8 || info.bitDepth === 10)
-    );
-  }
-  return false;
+  return mimeType === "video/mp4" && videoCodecViolations(info).length === 0;
 }
 
 // ---------------------------------------------------------------- アップロード
@@ -245,16 +227,16 @@ export async function completeUpload(
   if (upload.state === "completed" && upload.mediaId) return getMediaOrThrow(db, upload.mediaId);
 
   if (upload.kind === "video" && upload.state === "uploading") {
-    // 動画の尺は 20 秒まで（長さはブラウザが MP4 から読んで送る）。断るときは R2 の途中のアップロードも捨てる
-    if (meta.durationSeconds === null || meta.durationSeconds === undefined || isVideoTooLong(meta.durationSeconds)) {
+    // 規格外の動画は、足りない点をすべて並べて断る（2026-09-26 ユーザー指示。長さ・コーデック情報はブラウザが MP4 から読んで送る）。
+    // 断るときは R2 の途中のアップロードも捨てる
+    const problems = videoRequirementViolations({
+      fileSize: upload.declaredSize,
+      durationSeconds: meta.durationSeconds,
+      codecInfo: meta.codecInfo,
+    });
+    if (problems.length > 0) {
       await abortUpload({ db, bucket }, user, uploadId);
-      throw new MediaError(
-        400,
-        "video_too_long",
-        meta.durationSeconds === null || meta.durationSeconds === undefined
-          ? "動画の長さを読み取れませんでした。MP4 の動画をお使いください"
-          : `動画は ${MAX_VIDEO_SECONDS} 秒以内にしてください（この動画は ${Math.round(meta.durationSeconds)} 秒です）`,
-      );
+      throw new MediaError(400, "video_requirements", videoRequirementMessage(problems));
     }
   }
 

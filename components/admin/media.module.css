@@ -222,6 +222,7 @@
   font-size: 12px;
   line-height: 1.5;
   color: #56657b;
+  white-space: pre-line; /* 規格外の動画は、足りない点を 1 行ずつ並べる */
 }
 
 .queueStatus[data-tone="done"] {

@@ -246,19 +246,34 @@ describe("アップロード", () => {
     expect(bucket.pending.size).toBe(2);
   });
 
-  it("動画の尺は 20 秒まで（書き出しの端数 0.5 秒は許す）。超える・長さが分からない動画は完了時に 400 で、R2 の途中のアップロードも捨てる", async () => {
-    const long = await uploadVideo(12 * MB);
-    await expectMediaError(completeUpload(deps, staff, long.uploadId, meta(long.parts, { durationSeconds: 30 })), 400, "video_too_long");
-    const [aborted] = await db.select().from(uploads).where(eq(uploads.id, long.uploadId));
+  it("規格外の動画は完了時に 400 で、足りない点をすべて並べて断り、R2 の途中のアップロードも捨てる（尺は書き出しの端数 0.5 秒まで許す）", async () => {
+    const bad = await uploadVideo(12 * MB);
+    const e = await completeUpload(
+      deps,
+      staff,
+      bad.uploadId,
+      meta(bad.parts, { durationSeconds: 30, codecInfo: { ...H264_1080P, fps: 60 } }),
+    ).catch((err: unknown) => err);
+    expect(e).toBeInstanceOf(MediaError);
+    expect(e).toMatchObject({ status: 400, code: "video_requirements" });
+    expect((e as MediaError).message).toBe(
+      "この動画はサイネージの規格に合っていないため、アップロードできません。次の点を直して書き出し直してください。\n" +
+        "・長さ: 30 秒（20 秒以内にしてください）\n" +
+        "・フレームレート: 60fps（30fps 以下にしてください）",
+    );
+    const [aborted] = await db.select().from(uploads).where(eq(uploads.id, bad.uploadId));
     expect(aborted.state).toBe("aborted");
     expect(bucket.pending.has(aborted.r2UploadId)).toBe(false);
 
     const unknown = await uploadVideo(12 * MB);
-    await expectMediaError(completeUpload(deps, staff, unknown.uploadId, meta(unknown.parts, { durationSeconds: null })), 400, "video_too_long");
+    await expectMediaError(completeUpload(deps, staff, unknown.uploadId, meta(unknown.parts, { durationSeconds: null })), 400, "video_requirements");
+    const noVideo = await uploadVideo(1000);
+    await expectMediaError(completeUpload(deps, staff, noVideo.uploadId, meta(noVideo.parts, { codecInfo: null })), 400, "video_requirements");
+    expect(await db.select().from(media)).toHaveLength(0);
 
     const ok = await uploadVideo(12 * MB);
     const row = await completeUpload(deps, staff, ok.uploadId, meta(ok.parts, { durationSeconds: 20.4 }));
-    expect(row.durationSeconds).toBe(20.4);
+    expect(row).toMatchObject({ durationSeconds: 20.4, playable: true });
     expect(await db.select().from(media)).toHaveLength(1);
   });
 
@@ -415,11 +430,14 @@ describe("isPlayable（要件定義書 15 節の推奨）", () => {
     expect(isPlayable("video/mp4", null)).toBe(false);
   });
 
-  it("条件を外れた動画も登録はでき、playable = false で保存される", async () => {
+  it("条件を外れた動画は登録しない（完了時に 400 で断り、media はできない。2026-09-26 ユーザー指示）", async () => {
     const { uploadId, parts } = await uploadVideo(1000);
-    const row = await completeUpload(deps, staff, uploadId, meta(parts, { codecInfo: { ...H264_1080P, fps: 60 } }));
-    expect(row.playable).toBe(false);
-    expect(row.codecInfo).toMatchObject({ fps: 60 });
+    await expectMediaError(
+      completeUpload(deps, staff, uploadId, meta(parts, { codecInfo: { ...H264_1080P, fps: 60 } })),
+      400,
+      "video_requirements",
+    );
+    expect(await db.select().from(media)).toHaveLength(0);
   });
 });
 
