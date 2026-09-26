@@ -18,12 +18,12 @@ const H264_1080P: VideoCodecInfo = {
   chromaFormat: "4:2:0",
   bitDepth: 8,
 };
-const OK = { fileSize: 12 * MB, durationSeconds: 20.4, codecInfo: H264_1080P };
+const OK = { fileSize: 18 * MB, durationSeconds: 30.4, codecInfo: H264_1080P };
 
 describe("videoRequirementViolations", () => {
-  it("規格どおり（12MB ちょうど・20 秒と書き出しの端数・1080p・30fps・4:2:0・8bit）なら何も出ない", () => {
+  it("規格どおり（18MB ちょうど・30 秒と書き出しの端数・1080p・30fps・4:2:0・8bit）なら何も出ない", () => {
     expect(videoRequirementViolations(OK)).toEqual([]);
-    expect(videoRequirementViolations({ ...OK, durationSeconds: 20.5 })).toEqual([]);
+    expect(videoRequirementViolations({ ...OK, durationSeconds: 30.5 })).toEqual([]);
   });
 
   it("縦長の 1080×1920・29.97fps・H.265 の 10bit も通す", () => {
@@ -39,8 +39,8 @@ describe("videoRequirementViolations", () => {
       codecInfo: { ...H264_1080P, width: 3840, height: 2160, fps: 59.94, chromaFormat: "4:2:2", bitDepth: 10 },
     });
     expect(problems).toEqual([
-      "ファイルの大きさ: 25.3MB（12MB 以下にしてください。20 秒の 1920×1080 なら書き出しのビットレートを 4Mbps 程度に）",
-      "長さ: 32.5 秒（20 秒以内にしてください）",
+      "ファイルの大きさ: 25.3MB（18MB 以下にしてください。30 秒の 1920×1080 なら書き出しのビットレートを 4Mbps 程度に）",
+      "長さ: 32.5 秒（30 秒以内にしてください）",
       "解像度: 3840×2160（1920×1080 以下、縦長なら 1080×1920 以下にしてください）",
       "フレームレート: 59.94fps（30fps 以下にしてください）",
       "色の形式: 4:2:2（4:2:0 にしてください。書き出しの設定の yuv420p）",
@@ -48,14 +48,14 @@ describe("videoRequirementViolations", () => {
     ]);
   });
 
-  it("大きさは 12MB（12×1024×1024 バイト）を 1 バイトでも超えたら断る", () => {
-    expect(videoRequirementViolations({ ...OK, fileSize: 12 * MB + 1 })).toEqual([
-      "ファイルの大きさ: 12.6MB（12MB 以下にしてください。20 秒の 1920×1080 なら書き出しのビットレートを 4Mbps 程度に）",
+  it("大きさは 18MB（18×1024×1024 バイト）を 1 バイトでも超えたら断る", () => {
+    expect(videoRequirementViolations({ ...OK, fileSize: 18 * MB + 1 })).toEqual([
+      "ファイルの大きさ: 18.9MB（18MB 以下にしてください。30 秒の 1920×1080 なら書き出しのビットレートを 4Mbps 程度に）",
     ]);
   });
 
-  it("長さは 20 秒と書き出しの端数 0.5 秒まで。読み取れなければ断る", () => {
-    expect(videoRequirementViolations({ ...OK, durationSeconds: 20.51 })).toEqual(["長さ: 20.51 秒（20 秒以内にしてください）"]);
+  it("長さは 30 秒と書き出しの端数 0.5 秒まで。読み取れなければ断る", () => {
+    expect(videoRequirementViolations({ ...OK, durationSeconds: 30.51 })).toEqual(["長さ: 30.51 秒（30 秒以内にしてください）"]);
     expect(videoRequirementViolations({ ...OK, durationSeconds: null })).toEqual(["長さ: 読み取れませんでした（MP4 の動画にしてください）"]);
     expect(videoRequirementViolations({ ...OK, durationSeconds: undefined })).toHaveLength(1);
   });
@@ -95,9 +95,9 @@ describe("videoRequirementViolations", () => {
 
 describe("videoRequirementMessage", () => {
   it("断る理由の後に、足りない点を 1 行ずつ「・」で並べる", () => {
-    expect(videoRequirementMessage(["長さ: 30 秒（20 秒以内にしてください）", "フレームレート: 60fps（30fps 以下にしてください）"])).toBe(
+    expect(videoRequirementMessage(["長さ: 40 秒（30 秒以内にしてください）", "フレームレート: 60fps（30fps 以下にしてください）"])).toBe(
       "この動画はサイネージの規格に合っていないため、アップロードできません。次の点を直して書き出し直してください。\n" +
-        "・長さ: 30 秒（20 秒以内にしてください）\n" +
+        "・長さ: 40 秒（30 秒以内にしてください）\n" +
         "・フレームレート: 60fps（30fps 以下にしてください）",
     );
   });

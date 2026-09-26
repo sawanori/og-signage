@@ -8,6 +8,7 @@ import { CircleAlert, CircleCheck, CloudUpload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type DragEvent } from "react";
 import { UploadError, uploadMedia, type UploadProgress } from "@/lib/client/upload";
+import { MAX_VIDEO_MB, MAX_VIDEO_SECONDS } from "@/lib/file-sniff";
 import admin from "./admin.module.css";
 import { UNPLAYABLE_MESSAGE } from "./media-types";
 import styles from "./media.module.css";
@@ -157,7 +158,9 @@ export function UploadDropzone() {
         <button type="button" className={`${admin.outlineButton} ${styles.pickButton}`} onClick={() => inputRef.current?.click()}>
           ファイルを選ぶ
         </button>
-        <p className={styles.dropHint}>画像は JPEG・PNG・WebP（20MB まで）、動画は MP4（20 秒・12MB まで。定期動画に入れられるのは 3 本まで）</p>
+        <p className={styles.dropHint}>
+          画像は JPEG・PNG・WebP（20MB まで）、動画は MP4（{MAX_VIDEO_SECONDS} 秒・{MAX_VIDEO_MB}MB まで。定期動画に入れられるのは 3 本まで）
+        </p>
         <input
           ref={inputRef}
           type="file"

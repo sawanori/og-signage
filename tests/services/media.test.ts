@@ -194,7 +194,7 @@ const meta = (parts: R2Part[], extra: Partial<CompleteUploadInput> = {}): Comple
   ...extra,
 });
 
-async function uploadVideo(size = 12 * MB) {
+async function uploadVideo(size = 18 * MB) {
   const data = file(MP4_HEAD, size);
   const { uploadId } = await startUpload(deps, staff, { kind: "video", size });
   const parts = await sendParts(uploadId, data);
@@ -214,7 +214,7 @@ async function expectMediaError(p: Promise<unknown>, status: number, code?: stri
 // ---------------------------------------------------------------- アップロード
 
 describe("アップロード", () => {
-  it("動画 12MB を 2 パートで送り、完了すると media ができる（キーはサーバーが決める）", async () => {
+  it("動画 18MB（上限ちょうど）を 2 パートで送り、完了すると media ができる（キーはサーバーが決める）", async () => {
     const { uploadId, parts, data } = await uploadVideo();
     expect(parts.map((p) => p.partNumber)).toEqual([1, 2]);
 
@@ -222,7 +222,7 @@ describe("アップロード", () => {
     expect(row).toMatchObject({
       type: "video",
       mimeType: "video/mp4",
-      fileSize: 12 * MB,
+      fileSize: 18 * MB,
       width: 1920,
       height: 1080,
       durationSeconds: 12.5,
@@ -238,42 +238,47 @@ describe("アップロード", () => {
     expect((await listMedia(db)).map((m) => m.id)).toEqual([row.id]);
   });
 
-  it("上限超過は開始時に 413（画像 20MB・動画 12MB）", async () => {
+  it("上限超過は開始時に 413（画像 20MB・動画 18MB）", async () => {
     await expectMediaError(startUpload(deps, staff, { kind: "image", size: 20 * MB + 1 }), 413, "too_large");
-    await expectMediaError(startUpload(deps, staff, { kind: "video", size: 12 * MB + 1 }), 413, "too_large");
+    const tooLarge = await startUpload(deps, staff, { kind: "video", size: 18 * MB + 1 }).catch((err: unknown) => err);
+    expect(tooLarge).toMatchObject({
+      status: 413,
+      code: "too_large",
+      message: "動画は 18MB 以下にしてください（30 秒の 1920×1080 なら、書き出しのビットレートを 4Mbps 程度に）",
+    });
     await expect(startUpload(deps, staff, { kind: "image", size: 20 * MB })).resolves.toBeTruthy();
-    await expect(startUpload(deps, staff, { kind: "video", size: 12 * MB })).resolves.toBeTruthy();
+    await expect(startUpload(deps, staff, { kind: "video", size: 18 * MB })).resolves.toBeTruthy();
     expect(bucket.pending.size).toBe(2);
   });
 
   it("規格外の動画は完了時に 400 で、足りない点をすべて並べて断り、R2 の途中のアップロードも捨てる（尺は書き出しの端数 0.5 秒まで許す）", async () => {
-    const bad = await uploadVideo(12 * MB);
+    const bad = await uploadVideo();
     const e = await completeUpload(
       deps,
       staff,
       bad.uploadId,
-      meta(bad.parts, { durationSeconds: 30, codecInfo: { ...H264_1080P, fps: 60 } }),
+      meta(bad.parts, { durationSeconds: 40, codecInfo: { ...H264_1080P, fps: 60 } }),
     ).catch((err: unknown) => err);
     expect(e).toBeInstanceOf(MediaError);
     expect(e).toMatchObject({ status: 400, code: "video_requirements" });
     expect((e as MediaError).message).toBe(
       "この動画はサイネージの規格に合っていないため、アップロードできません。次の点を直して書き出し直してください。\n" +
-        "・長さ: 30 秒（20 秒以内にしてください）\n" +
+        "・長さ: 40 秒（30 秒以内にしてください）\n" +
         "・フレームレート: 60fps（30fps 以下にしてください）",
     );
     const [aborted] = await db.select().from(uploads).where(eq(uploads.id, bad.uploadId));
     expect(aborted.state).toBe("aborted");
     expect(bucket.pending.has(aborted.r2UploadId)).toBe(false);
 
-    const unknown = await uploadVideo(12 * MB);
+    const unknown = await uploadVideo(1000);
     await expectMediaError(completeUpload(deps, staff, unknown.uploadId, meta(unknown.parts, { durationSeconds: null })), 400, "video_requirements");
     const noVideo = await uploadVideo(1000);
     await expectMediaError(completeUpload(deps, staff, noVideo.uploadId, meta(noVideo.parts, { codecInfo: null })), 400, "video_requirements");
     expect(await db.select().from(media)).toHaveLength(0);
 
-    const ok = await uploadVideo(12 * MB);
-    const row = await completeUpload(deps, staff, ok.uploadId, meta(ok.parts, { durationSeconds: 20.4 }));
-    expect(row).toMatchObject({ durationSeconds: 20.4, playable: true });
+    const ok = await uploadVideo(1000);
+    const row = await completeUpload(deps, staff, ok.uploadId, meta(ok.parts, { durationSeconds: 30.4 }));
+    expect(row).toMatchObject({ durationSeconds: 30.4, playable: true });
     expect(await db.select().from(media)).toHaveLength(1);
   });
 

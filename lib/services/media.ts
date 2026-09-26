@@ -15,7 +15,16 @@ import { z } from "zod";
 import type { Db } from "../../db/index";
 import { devices, events, houseSettings, media, mediaFailures, notices, playlistItems, uploads } from "../../db/schema";
 import type { AuthUser } from "../auth";
-import { MEDIA_MAX_BYTES, SNIFF_BYTES, UPLOAD_PART_SIZE, kindOfMime, sniffMime, type MediaKind } from "../file-sniff";
+import {
+  MAX_VIDEO_MB,
+  MAX_VIDEO_SECONDS,
+  MEDIA_MAX_BYTES,
+  SNIFF_BYTES,
+  UPLOAD_PART_SIZE,
+  kindOfMime,
+  sniffMime,
+  type MediaKind,
+} from "../file-sniff";
 import { mediaKeys, type MediaBucket, type R2Part } from "../r2";
 import { videoCodecViolations, videoRequirementMessage, videoRequirementViolations } from "../video-requirements";
 
@@ -102,7 +111,7 @@ export function isPlayable(mimeType: string, info: VideoCodecInfo | null | undef
 
 function sizeLimitMessage(kind: MediaKind): string {
   return kind === "video"
-    ? "動画は 12MB 以下にしてください（20 秒の 1920×1080 なら、書き出しのビットレートを 4Mbps 程度に）"
+    ? `動画は ${MAX_VIDEO_MB}MB 以下にしてください（${MAX_VIDEO_SECONDS} 秒の 1920×1080 なら、書き出しのビットレートを 4Mbps 程度に）`
     : "画像は 20MB 以下にしてください";
 }
 

@@ -8,7 +8,15 @@
  * - パートは 10MB ずつ順に送り、各パートを 3 回まで再試行する。complete も冪等なので再試行する。
  */
 import { createSHA256 } from "hash-wasm";
-import { MEDIA_MAX_BYTES, SNIFF_BYTES, UPLOAD_PART_SIZE, kindOfMime, sniffMime, type MediaKind } from "../file-sniff";
+import {
+  MAX_VIDEO_MB,
+  MEDIA_MAX_BYTES,
+  SNIFF_BYTES,
+  UPLOAD_PART_SIZE,
+  kindOfMime,
+  sniffMime,
+  type MediaKind,
+} from "../file-sniff";
 import type { CompleteUploadInput, MediaDto, VideoCodecInfo } from "../services/media";
 import { videoRequirementMessage, videoRequirementViolations } from "../video-requirements";
 
@@ -273,7 +281,7 @@ async function errorMessage(res: Response): Promise<string> {
   const body = (await res.json().catch(() => null)) as ApiError | null;
   console.error("upload request failed", res.status, res.url);
   if (body?.error?.message) return body.error.message;
-  if (res.status === 413) return "ファイルが大きすぎます（動画は 12MB、画像は 20MB まで）";
+  if (res.status === 413) return `ファイルが大きすぎます（動画は ${MAX_VIDEO_MB}MB、画像は 20MB まで）`;
   if (res.status === 415) return "この形式のファイルは使えません（JPEG・PNG・WebP・MP4）";
   return "アップロードに失敗しました。時間をおいてもう一度お試しください";
 }
