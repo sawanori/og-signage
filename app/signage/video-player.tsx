@@ -4,15 +4,17 @@
  * Web 公開のサイネージ（/signage）の定期動画（2026-09-25 ユーザー指示。Pi のブラウザで /signage を開いて使うため）。
  *
  * - いつ・どれを流すか（次の時刻・次の 1 本・テスト表示）は lib/web-video-schedule.ts。規則は Pi の player.py と同じ。
- * - 次の 1 本は隠した <video preload="auto"> で先に読み込み、時刻になったら canplaythrough を待つ
- *   （20 秒で間に合わなければ今回は見送り、次の間隔で再試行。テスト表示は待たずに再生を試みる）。
+ * - 流す動画は丸ごと読み込んで（fetch → Blob → object URL）から流す。読み込みの途中から流すと、通信が再生に
+ *   追いつかない動画（ビットレートが高い・Wi-Fi が遅い）が途中で止まるため（2026-09-26 ユーザー報告）。
+ *   再生リストの動画は読み込んだものを覚えておき、次からは読み込み直さない。テスト表示は読み込みの進み具合を画面に出す。
  * - 表示を 600ms で黒へ溶かしてから（SignageScreen の fading）動画を画面いっぱいに出し、終わったら表示に戻す。
  * - テスト表示（管理画面のボタン）は、数秒ごとに /api/signage/commands を確かめてすぐ流す。動画を選んで押したときは
  *   その動画を読み込んでから流す（順番の位置は進めない）。定期動画が OFF でも表示時間内なら流す（試せるように）。
  * - 音量は端末の設定（device.volume）。自動再生を断られたらミュートで流し直す（Pi の Chromium は
  *   --autoplay-policy=no-user-gesture-required で起動すれば音も出せる）。
- * - 流せなかった動画（error・映像を読めない・10 秒待っても再生が始まらない・長さ＋10 秒を過ぎても終わらない・
- *   映像が一色の緑にしか描けない）はその日（日本時間）は外す。ブラウザが自動再生を止めたときは動画のせいではないので外さない。
+ * - 流せなかった動画（読み込めない・映像を読めない・10 秒待っても再生が始まらない・再生位置が 10 秒進まない・
+ *   映像が一色の緑にしか描けない）はその日（日本時間）は外す。ブラウザが自動再生を止めたとき・通信が遅くて読み込みが
+ *   間に合わないときは動画のせいではないので外さない。再生が遅くても進んでいれば止めない（長さの 3 倍＋10 秒まで）。
  * - 流す前に、読み込み済みの最初のコマを調べ、一色の緑（Linux の Firefox でハードウェアデコードが壊れているときの症状。
  *   2026-09-25 ユーザー報告）なら見せずに飛ばす。再生中には手を入れない（頭に戻すシークもしない）。
  * - 読み込み・再生のエラーはブラウザが返すコードとメッセージを理由に添える（原因の切り分けのため）。
@@ -41,16 +43,21 @@ const FADE_MS = 600;
 const READY_TIMEOUT_MS = 20_000;
 /** play() を呼んでからこれだけ待っても再生が始まらなければ、あきらめて表示に戻す */
 const PLAY_TIMEOUT_MS = 10_000;
-/** 動画の長さをこれだけ過ぎても終わらなければ、止まったとみなす */
-const OVERRUN_SECONDS = 10;
+/** 再生位置がこれだけ進まなければ、止まったとみなす */
+const STALL_MS = 10_000;
+/** テスト表示の動画の読み込みを待つ上限（丸ごと読み込むため、遅い通信では時間がかかる） */
+const TEST_LOAD_TIMEOUT_MS = 120_000;
+/** 定期動画の読み込みに失敗したら、これだけ待ってから読み込み直す（通信が一時的に切れただけのことが多い） */
+const LOAD_RETRY_MS = 60_000;
 /** テスト表示が流せなかった理由を出しておく時間 */
 const NOTICE_MS = 12_000;
 
 /** 流せなかった理由。テスト表示のときは画面に出す */
-type Failure = "load-error" | "no-video" | "broken-frames" | "blocked" | "not-started" | "play-error" | "stalled";
+type Failure = "load-error" | "load-slow" | "no-video" | "broken-frames" | "blocked" | "not-started" | "play-error" | "stalled";
 
 export const FAILURE_TEXT: Record<Failure, string> = {
   "load-error": "動画を読み込めませんでした。「動画・メディア」で形式を確認してください",
+  "load-slow": "動画の読み込みが 2 分で終わりませんでした。通信が遅いか、動画のビットレートが高すぎます（4Mbps 程度で書き出してください）",
   "no-video": "このブラウザでは、この動画の映像を再生できません（H.264 の動画にしてください）",
   "broken-frames":
     "映像が緑一色にしか描けません。Firefox の about:config で media.hardware-video-decoding.enabled を false にして、Firefox を再起動してください",
@@ -94,6 +101,56 @@ function waitFor(el: HTMLVideoElement, event: string, ms: number, signal: AbortS
     const onAbort = () => done("timeout");
     const timer = setTimeout(() => done("timeout"), ms);
     el.addEventListener(event, onOk);
+    el.addEventListener("error", onError);
+    signal.addEventListener("abort", onAbort);
+  });
+}
+
+/** 動画を丸ごと読み込む。進み具合（0〜1）を onProgress で知らせる。読み込めなければ例外 */
+async function downloadVideo(url: string, signal: AbortSignal, onProgress: (ratio: number) => void): Promise<Blob> {
+  const res = await fetch(url, { signal });
+  if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+  const total = Number(res.headers.get("content-length")) || 0;
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    received += value.length;
+    if (total > 0) onProgress(Math.min(1, received / total));
+  }
+  return new Blob(chunks as BlobPart[], { type: res.headers.get("content-type") ?? "video/mp4" });
+}
+
+/**
+ * 最後まで流れるのを待つ。再生位置が STALL_MS 進まなければ stalled（遅くても進んでいれば待つ）。
+ * 長さの 3 倍＋10 秒を過ぎても終わらなければ stalled
+ */
+function waitForEnd(el: HTMLVideoElement, durationSeconds: number, signal: AbortSignal): Promise<"ok" | "error" | "stalled"> {
+  return new Promise((resolve) => {
+    const deadline = Date.now() + (durationSeconds * 3 + 10) * 1000;
+    let lastTime = el.currentTime;
+    let lastProgressAt = Date.now();
+    const done = (result: "ok" | "error" | "stalled") => {
+      el.removeEventListener("ended", onEnded);
+      el.removeEventListener("error", onError);
+      signal.removeEventListener("abort", onAbort);
+      clearInterval(check);
+      resolve(result);
+    };
+    const onEnded = () => done("ok");
+    const onError = () => done("error");
+    const onAbort = () => done("stalled");
+    const check = setInterval(() => {
+      if (el.currentTime > lastTime + 0.01) {
+        lastTime = el.currentTime;
+        lastProgressAt = Date.now();
+      }
+      if (Date.now() - lastProgressAt >= STALL_MS || Date.now() >= deadline) done("stalled");
+    }, 1000);
+    el.addEventListener("ended", onEnded);
     el.addEventListener("error", onError);
     signal.addEventListener("abort", onAbort);
   });
@@ -217,8 +274,21 @@ export function VideoPlayer({
     let wasVisible = true; // 開いた時点は「開いた時刻」を起点にする（Pi の起動と同じ）
     let busy = false;
     let noticeTimer: ReturnType<typeof setTimeout> | null = null;
-    type Upcoming = { item: PlaylistItem; next: Pick<VideoMemory, "sequenceIndex" | "lastPlayedMediaId">; test: boolean };
+    type Upcoming = {
+      item: PlaylistItem;
+      next: Pick<VideoMemory, "sequenceIndex" | "lastPlayedMediaId">;
+      test: boolean;
+      /** 丸ごと読み込んだ動画（object URL）。読み込み中は null */
+      url: string | null;
+      /** 読み込みに失敗した */
+      failed: boolean;
+      /** 読み込みを始めた時刻（ミリ秒） */
+      requestedAt: number;
+    };
     let upcoming: Upcoming | null = null;
+    // 読み込んだ動画（mediaId → object URL）と読み込み中のもの。再生リストから外れたら手放す
+    const blobUrls = new Map<string, string>();
+    const loading = new Map<string, Promise<string>>();
 
     const remember = (next: VideoMemory) => {
       memory = next;
@@ -230,6 +300,81 @@ export function VideoPlayer({
       setNotice(text);
       noticeTimer = setTimeout(() => setNotice(null), NOTICE_MS);
     };
+    /** 消えない知らせ（テスト表示の読み込み中）。clearNotice で消す */
+    const holdNotice = (text: string) => {
+      if (noticeTimer) clearTimeout(noticeTimer);
+      noticeTimer = null;
+      setNotice(text);
+    };
+    const clearNotice = () => {
+      if (noticeTimer) clearTimeout(noticeTimer);
+      noticeTimer = null;
+      setNotice(null);
+    };
+
+    /** 動画を丸ごと読み込んで object URL にする（読み込み済み・読み込み中ならそれを使う） */
+    const load = (item: PlaylistItem, onProgress: (ratio: number) => void): Promise<string> => {
+      const cached = blobUrls.get(item.mediaId);
+      if (cached) return Promise.resolve(cached);
+      const running = loading.get(item.mediaId);
+      if (running) return running;
+      const job = downloadVideo(resolveRef.current(item), signal, onProgress).then((blob) => {
+        const url = URL.createObjectURL(blob);
+        blobUrls.set(item.mediaId, url);
+        return url;
+      });
+      loading.set(item.mediaId, job);
+      job.then(
+        () => loading.delete(item.mediaId),
+        () => loading.delete(item.mediaId),
+      );
+      return job;
+    };
+
+    /** 再生リストから外れた動画の object URL を手放す */
+    const releaseRemoved = (playlist: readonly PlaylistItem[]) => {
+      for (const [mediaId, url] of blobUrls) {
+        if (!playlist.some((p) => p.mediaId === mediaId)) {
+          URL.revokeObjectURL(url);
+          blobUrls.delete(mediaId);
+        }
+      }
+    };
+
+    /** 次に流す 1 本を決めて読み込みを始める。読み込めたら <video> に付ける */
+    const prepare = (pick: { item: PlaylistItem; memory: VideoMemory }, test: boolean) => {
+      const u: Upcoming = {
+        item: pick.item,
+        next: { sequenceIndex: pick.memory.sequenceIndex, lastPlayedMediaId: pick.memory.lastPlayedMediaId },
+        test,
+        url: blobUrls.get(pick.item.mediaId) ?? null,
+        failed: false,
+        requestedAt: Date.now(),
+      };
+      upcoming = u;
+      if (u.url) {
+        setSrc(u.url);
+        return;
+      }
+      if (test) holdNotice("動画を読み込んでいます…");
+      load(u.item, (ratio) => {
+        if (test && upcoming === u) holdNotice(`動画を読み込んでいます… ${Math.floor(ratio * 100)}%`);
+      }).then(
+        (url) => {
+          if (upcoming !== u) return;
+          u.url = url;
+          setSrc(url);
+        },
+        (e: unknown) => {
+          if (upcoming !== u || signal.aborted) return;
+          u.failed = true;
+          console.warn(`[signage-video] 動画 ${u.item.mediaId} を読み込めませんでした`, e);
+        },
+      );
+    };
+
+    /** 読み込んだ動画が <video> に付いたか（React が描き直したあと） */
+    const attached = (u: Upcoming) => u.url !== null && videoRef.current?.getAttribute("src") === u.url;
 
     /** 流せなかった。exclude ならその日は外す。テスト表示なら理由（detail があればそれも）を画面に出す */
     const fail = (item: PlaylistItem, test: boolean, reason: Failure, exclude = true, detail = "") => {
@@ -243,6 +388,7 @@ export function VideoPlayer({
       const el = videoRef.current;
       if (!el) return;
       busy = true;
+      if (test) clearNotice();
       try {
         // 前の読み込みに失敗したまま（error）の <video> は、同じ src でも読み直す（そのままでは canplaythrough が来ない）
         if (el.error) el.load();
@@ -253,8 +399,7 @@ export function VideoPlayer({
             fail(item, test, "load-error", true, mediaErrorDetail(el));
             return;
           }
-          // 間に合わないだけなら、定期動画は今回は見送り（次の間隔で再試行）。テスト表示はそのまま再生を試みる
-          // （ブラウザが読み込みを休めていて canplaythrough が来ないことがある。play() で読み込みが再開する）
+          // 手元（object URL）にある動画なので普通はすぐ来る。来なければテスト表示はそのまま再生を試みる
           if (ready === "timeout" && !test) {
             lastFinishedAt = nowSeconds();
             return;
@@ -294,7 +439,7 @@ export function VideoPlayer({
           return;
         }
 
-        const ended = await waitFor(el, "ended", (item.durationSeconds + OVERRUN_SECONDS) * 1000, signal);
+        const ended = await waitForEnd(el, item.durationSeconds, signal);
         if (signal.aborted) return;
         el.pause();
         setShown(false);
@@ -311,12 +456,10 @@ export function VideoPlayer({
       }
     };
 
-    const upcomingOf = (pick: { item: PlaylistItem; memory: VideoMemory } | null, test: boolean): Upcoming | null =>
-      pick
-        ? { item: pick.item, next: { sequenceIndex: pick.memory.sequenceIndex, lastPlayedMediaId: pick.memory.lastPlayedMediaId }, test }
-        : null;
-    // テスト表示で流す 1 本を <video> に付けた。次の周期で流す（src が付いてから）
-    let playTestNext = false;
+    // テスト表示の 1 本の読み込みを待っている（読み込めて <video> に付いたら流す）
+    let waitingTest = false;
+    // 定期動画の読み込みに失敗したとき、次に読み込み直してよい時刻（ミリ秒）
+    let retryLoadAt = 0;
 
     const tick = () => {
       if (busy) return;
@@ -327,10 +470,29 @@ export function VideoPlayer({
       wasVisible = visible;
       const playlist = cfg.playlist;
 
-      if (playTestNext) {
-        playTestNext = false;
-        if (upcoming) {
-          void playOnce(upcoming);
+      if (waitingTest) {
+        const u = upcoming;
+        if (!u || !u.test) {
+          waitingTest = false;
+        } else if (u.failed) {
+          // 通信の失敗のことが多いので動画は外さない
+          waitingTest = false;
+          upcoming = null;
+          clearNotice();
+          fail(u.item, true, "load-error", false);
+          return;
+        } else if (attached(u)) {
+          waitingTest = false;
+          void playOnce(u);
+          return;
+        } else if (Date.now() - u.requestedAt >= TEST_LOAD_TIMEOUT_MS) {
+          // 通信が遅いだけなので動画は外さない
+          waitingTest = false;
+          upcoming = null;
+          clearNotice();
+          fail(u.item, true, "load-slow", false);
+          return;
+        } else {
           return;
         }
       }
@@ -339,12 +501,12 @@ export function VideoPlayer({
       const commands = newerCommands(cfg.commands, commandsRef.current);
       const test = consumeTestPlay(commands.testPlayRequestedAt, memory.lastTestPlayProcessedAt, now);
       if (test.processedAt !== memory.lastTestPlayProcessedAt) remember({ ...memory, lastTestPlayProcessedAt: test.processedAt });
+      releaseRemoved(playlist);
       if (test.play && visible && playlist.length > 0) {
-        const pick = upcomingOf(pickTestVideo(playlist, commands.testPlayMediaId, cfg.video.mode, memory, now), true);
+        const pick = pickTestVideo(playlist, commands.testPlayMediaId, cfg.video.mode, memory, now);
         if (pick) {
-          upcoming = pick;
-          setSrc(resolveRef.current(pick.item));
-          playTestNext = true;
+          prepare(pick, true);
+          waitingTest = true;
           return;
         }
       }
@@ -356,15 +518,26 @@ export function VideoPlayer({
         return;
       }
 
-      // 次の 1 本を決めて先に読み込んでおく（プレイリストから外れたら選び直す）。
-      // 選び直した周期では流さない（<video> に新しい src が付いてから、次の周期で判断する）
+      // 次の 1 本を決めて先に丸ごと読み込んでおく（プレイリストから外れたら選び直す）。
+      // 読み込みが終わって <video> に付くまでは流さない
       const pending = upcoming;
-      if (!pending || !playlist.some((p) => p.mediaId === pending.item.mediaId)) {
+      if (!pending || pending.test || !playlist.some((p) => p.mediaId === pending.item.mediaId)) {
+        if (Date.now() < retryLoadAt) return;
         const pick = selectNextVideo(playlist, cfg.video.mode, memory, now);
-        upcoming = upcomingOf(pick, false);
-        setSrc(pick ? resolveRef.current(pick.item) : null);
+        if (pick) prepare(pick, false);
+        else {
+          upcoming = null;
+          setSrc(null);
+        }
         return;
       }
+      if (pending.failed) {
+        // 通信が一時的に切れただけのことが多いので外さず、少し待ってから読み込み直す
+        upcoming = null;
+        retryLoadAt = Date.now() + LOAD_RETRY_MS;
+        return;
+      }
+      if (!attached(pending)) return;
 
       const due = isVideoDue({
         video: cfg.video,
@@ -384,6 +557,8 @@ export function VideoPlayer({
       clearInterval(timer);
       if (noticeTimer) clearTimeout(noticeTimer);
       abort.abort();
+      for (const url of blobUrls.values()) URL.revokeObjectURL(url);
+      blobUrls.clear();
     };
   }, [deviceId]);
 

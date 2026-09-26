@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 /**
  * Web 公開のサイネージの定期動画（app/signage/video-player.tsx）。
- * どの待ちにも上限があり、流せなくても必ず表示に戻る。テスト表示が流せなかったときは理由を画面に出す。
- * jsdom の <video> は再生できないので、読み込み済み（readyState）・映像の幅（videoWidth）・play を差し替える。
+ * 動画は丸ごと読み込んでから流す。どの待ちにも上限があり、流せなくても必ず表示に戻る。
+ * テスト表示が流せなかったときは理由を画面に出す。
+ * jsdom の <video> は再生できないので、読み込み済み（readyState）・映像の幅（videoWidth）・再生位置・play を差し替える。
  */
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -31,6 +32,12 @@ let playImpl: () => Promise<void> = async () => {};
 let playCalls: boolean[] = [];
 /** <video> が前の読み込みに失敗したまま（error）か */
 let hasError = false;
+/** 再生位置（秒）。テストで進める */
+let playhead = 0;
+/** 動画の取得（/media/...）の応答。既定は 1000 バイトの中身 */
+let mediaResponse: () => Promise<Response> = async () =>
+  new Response(new Uint8Array(1000), { headers: { "content-type": "video/mp4", "content-length": "1000" } });
+let mediaFetches = 0;
 /** 読み込み済みの最初のコマの色（[R, G, B]。null なら canvas が使えない＝調べられない） */
 let framePixel: [number, number, number] | null = null;
 const stubbed: [object, string, PropertyDescriptor | undefined][] = [];
@@ -53,6 +60,10 @@ beforeEach(() => {
   playImpl = async () => {};
   playCalls = [];
   hasError = false;
+  playhead = 0;
+  mediaFetches = 0;
+  mediaResponse = async () => new Response(new Uint8Array(1000), { headers: { "content-type": "video/mp4", "content-length": "1000" } });
+  stub(HTMLMediaElement.prototype, "currentTime", { get: () => playhead, set: (v: number) => (playhead = v) });
   framePixel = null;
   stub(HTMLCanvasElement.prototype, "getContext", {
     value: function (this: HTMLCanvasElement) {
@@ -114,7 +125,13 @@ async function advance(ms: number) {
 function renderPlayer(config: SignageConfig) {
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () => Response.json(config.commands)),
+    vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).startsWith("/media/")) {
+        mediaFetches += 1;
+        return mediaResponse();
+      }
+      return Response.json(config.commands);
+    }),
   );
   const onFadingChange = vi.fn();
   render(
@@ -275,6 +292,95 @@ describe("VideoPlayer", () => {
     await advance(4000);
     expect(HTMLMediaElement.prototype.load).toHaveBeenCalledTimes(1);
     expect(shown()).toBe("true");
+  });
+
+  it("動画は丸ごと読み込んでから（object URL で）流し、同じ動画は読み込み直さない（2026-09-26 ユーザー報告）", async () => {
+    openedBefore();
+    renderPlayer(testPlayConfig());
+    await advance(4000);
+    const video = screen.getByTestId("signage-video");
+    expect(video.getAttribute("src")).toMatch(/^blob:/);
+    expect(shown()).toBe("true");
+    expect(mediaFetches).toBe(1);
+    await act(async () => {
+      fireEvent.ended(video);
+    });
+    expect(shown()).toBe("false");
+  });
+
+  it("テスト表示は読み込みの進み具合を画面に出し、読み込めたら流す", async () => {
+    openedBefore();
+    let release: () => void = () => {};
+    mediaResponse = () =>
+      new Promise<Response>((resolve) => {
+        release = () =>
+          resolve(new Response(new Uint8Array(1000), { headers: { "content-type": "video/mp4", "content-length": "1000" } }));
+      });
+    renderPlayer(testPlayConfig());
+    await advance(5000);
+    expect(notice()).toBe("動画を読み込んでいます…");
+    expect(shown()).toBe("false");
+    await act(async () => {
+      release();
+    });
+    await advance(3000);
+    expect(shown()).toBe("true");
+    expect(notice()).toBeNull();
+  });
+
+  it("テスト表示の動画を読み込めなければ理由を出し、通信の失敗なので動画は外さない", async () => {
+    openedBefore();
+    mediaResponse = async () => new Response("", { status: 500 });
+    renderPlayer(testPlayConfig());
+    await advance(4000);
+    expect(shown()).toBe("false");
+    expect(notice()).toBe(FAILURE_TEXT["load-error"]);
+    expect(excluded()).toEqual([]);
+  });
+
+  it("テスト表示の読み込みが 2 分で終わらなければ、あきらめて理由を出す（動画は外さない）", async () => {
+    openedBefore();
+    mediaResponse = () => new Promise<Response>(() => {});
+    renderPlayer(testPlayConfig());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(119_000);
+    });
+    expect(notice()).toBe("動画を読み込んでいます…");
+    await advance(3000);
+    expect(notice()).toBe(FAILURE_TEXT["load-slow"]);
+    expect(excluded()).toEqual([]);
+  });
+
+  it("再生が遅くても進んでいれば、長さ＋10 秒を過ぎても止めない", async () => {
+    openedBefore();
+    renderPlayer(testPlayConfig());
+    await advance(4000);
+    expect(shown()).toBe("true");
+    // 15 秒の動画が半分の速さで進む（30 秒かかる）
+    for (let i = 0; i < 30; i++) {
+      playhead += 0.5;
+      await advance(1000);
+    }
+    expect(shown()).toBe("true");
+    await act(async () => {
+      fireEvent.ended(screen.getByTestId("signage-video"));
+    });
+    expect(shown()).toBe("false");
+    expect(excluded()).toEqual([]);
+    expect(notice()).toBeNull();
+  });
+
+  it("再生位置が 10 秒進まなければ止まったとみなし、表示に戻して理由を出す", async () => {
+    openedBefore();
+    renderPlayer(testPlayConfig());
+    await advance(4000);
+    playhead = 3;
+    await advance(1000);
+    expect(shown()).toBe("true");
+    await advance(11_000);
+    expect(shown()).toBe("false");
+    expect(excluded()).toEqual(["med_hevc"]);
+    expect(notice()).toBe(FAILURE_TEXT.stalled);
   });
 
   it("初めて開いたときでも、1 分以内のテスト表示の要求は流す（古い要求は流さない）", async () => {
