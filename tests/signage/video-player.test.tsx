@@ -116,7 +116,8 @@ afterEach(() => {
 
 /**
  * 100ms ずつ進める（act ごとに描き直すので、周期の間に <video> が付く。まとめて進めると描き直しが最後になる）。
- * テスト表示は 1 秒後の周期で src が付き、2 秒後の周期で流し始める。黒へ溶かす 0.6 秒を経て 2.6 秒で見える
+ * テスト表示は 1 秒後の周期で src が付き、2 秒後の周期で流し始める。黒へ溶かす 0.6 秒と、裏の画面を隠して落ち着くまでの
+ * 0.25 秒を経て 2.85 秒で見える
  */
 async function advance(ms: number) {
   for (let t = 0; t < ms; t += 100) {
@@ -262,6 +263,19 @@ describe("VideoPlayer", () => {
     await advance(4000);
     expect(shown()).toBe("true");
     expect(excluded()).toEqual([]);
+  });
+
+  it("黒になってすぐは始めず、裏の画面を隠す描き直しが落ち着いてから（黒の 0.85 秒後に）動画を始める", async () => {
+    openedBefore();
+    const onFadingChange = renderPlayer(testPlayConfig());
+    await advance(2700);
+    // 黒へ溶かし始めているが、まだ動画は始めない
+    expect(onFadingChange).toHaveBeenLastCalledWith(true);
+    expect(playCalls).toEqual([]);
+    expect(shown()).toBe("false");
+    await advance(300);
+    expect(playCalls).toHaveLength(1);
+    expect(shown()).toBe("true");
   });
 
   it("videoFit: 画面と動画の形が近ければ画面いっぱい（cover）、大きく違えば全体を収める（contain）", () => {

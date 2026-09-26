@@ -47,6 +47,11 @@ const TICK_MS = 1000;
 /** テスト表示の要求を確かめる間隔（config 全体は 30 秒ごと） */
 const COMMANDS_POLL_MS = 3000;
 const FADE_MS = 600;
+/**
+ * 黒になったあと、動画を始めるまで待つ時間。裏のサイネージを隠す描き直し（黒の 0.65 秒後。signage.module.css）を
+ * 先に終わらせ、動画の解読の立ち上がりと重ならないようにする（重なると最初の 1 秒にコマが落ちる。2026-09-26）
+ */
+const SETTLE_MS = 250;
 const READY_TIMEOUT_MS = 20_000;
 /** play() を呼んでからこれだけ待っても再生が始まらなければ、あきらめて表示に戻す */
 const PLAY_TIMEOUT_MS = 10_000;
@@ -570,8 +575,9 @@ export function VideoPlayer({
         }
         remember({ ...memory, ...next });
 
+        // 黒へ溶かす → 裏のサイネージを隠す → 描き直しが落ち着いてから動画を始める
         fadingRef.current(true);
-        await sleep(FADE_MS, signal);
+        await sleep(FADE_MS + SETTLE_MS, signal);
         if (signal.aborted) return;
         const volume = configRef.current.device.volume;
         el.volume = volume / 100;
