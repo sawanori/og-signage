@@ -245,9 +245,17 @@ function Hero({
       {/* 文字の配置は見本（2026-09-26 ユーザー指示）どおり。カテゴリ・大きなタイトル・短い線・説明・日付／時間／場所／参加の一覧 */}
       <div className={`${styles.lHeroBody} ${fade}`}>
         {event.category ? <span className={styles.lPill}>{event.category.name}</span> : null}
-        <h1 className={styles.lTitle} data-size={titleSize} data-testid="main-title">
-          <span className={styles.lTitleText}>{event.title}</span>
-          {event.emoji ? <Emoji className={styles.lTitleEmoji}>{event.emoji}</Emoji> : null}
+        {/* 絵文字はタイトルの最後の文字に続けて置く（2 行に折れても離れないよう、間は改行しない文字でつなぐ） */}
+        <h1 className={styles.lTitle} data-size={titleSize} data-emoji={event.emoji ? "true" : undefined} data-testid="main-title">
+          <span className={styles.lTitleText}>
+            {event.title}
+            {event.emoji ? (
+              <>
+                {"\u2060"}
+                <Emoji className={styles.lTitleEmoji}>{event.emoji}</Emoji>
+              </>
+            ) : null}
+          </span>
         </h1>
         <span className={styles.lTitleRule} aria-hidden />
         {event.description ? <p className={styles.lDesc}>{event.description}</p> : null}

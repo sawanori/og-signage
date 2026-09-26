@@ -1185,8 +1185,6 @@
 .lTitle {
   margin-top: 17px;
   display: flex;
-  align-items: center;
-  gap: 16px;
   font-weight: 700;
   font-size: 94px;
   line-height: 98px;
@@ -1228,7 +1226,21 @@
   word-break: normal;
 }
 
+/* 絵文字のぶん（1 文字分）だけ枠を広げ、見本の折り返し（コーヒーの／淹れ方講座☕）を崩さない */
+.lTitle[data-emoji="true"] .lTitleText {
+  max-width: 574px;
+}
+
+.lTitle[data-emoji="true"][data-size="m"] .lTitleText {
+  max-width: 628px;
+}
+
+.lTitle[data-emoji="true"][data-size="s"] .lTitleText {
+  max-width: 640px;
+}
+
 .lTitleEmoji {
+  margin-left: 0.15em;
   font-size: 0.8em;
 }
 
