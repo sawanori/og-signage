@@ -8,6 +8,8 @@ import "@fontsource/line-seed-jp/400.css";
 import "@fontsource/line-seed-jp/700.css";
 import "@fontsource/kalam/300.css";
 import "@fontsource/kalam/400.css";
+// メンバー紹介のひとこと（写真の上の手書き風の文字。2026-09-27 ユーザー指示）。Kalam には日本語の字形が無いため
+import "@fontsource/yusei-magic/400.css";
 import type { SignageConfig } from "@/lib/config-schema";
 import { COPY } from "./copy";
 import { LandscapeLayout } from "./LandscapeLayout";

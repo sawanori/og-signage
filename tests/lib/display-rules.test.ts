@@ -14,6 +14,7 @@ import {
   selectThisWeek,
   selectUpcomingEvents,
   shouldShowWeather,
+  SPOTLIGHT_OFFSET_SECONDS,
   SPOTLIGHT_SLIDE_SECONDS,
   spotlightIndex,
 } from "../../lib/display-rules";
@@ -260,15 +261,17 @@ describe("大きな欄のスライドショー", () => {
   });
 
   it(`メンバー紹介は ${SPOTLIGHT_SLIDE_SECONDS} 秒ごとに次の人へ。大きな欄のスライドと同じ瞬間には切り替わらない（2026-09-26）`, () => {
+    expect(SPOTLIGHT_SLIDE_SECONDS).toBe(HERO_SLIDE_SECONDS);
     const t = 1_000_000_000 - (1_000_000_000 % HERO_SLIDE_SECONDS); // 大きな欄の切れ目
     // 大きな欄が切り替わる瞬間の前後で、メンバー紹介は同じ人のまま
     for (let k = 0; k < 20; k++) {
       const edge = t + k * HERO_SLIDE_SECONDS;
       expect(spotlightIndex(edge, 3)).toBe(spotlightIndex(edge - 1, 3));
     }
-    // 切り替わりは大きな欄の切れ目の 8 秒後（7 秒ずらしている）
-    expect(spotlightIndex(t + 8, 3)).toBe((spotlightIndex(t + 7, 3) + 1) % 3);
-    expect(spotlightIndex(t + 8 + 3 * SPOTLIGHT_SLIDE_SECONDS, 3)).toBe(spotlightIndex(t + 8, 3));
+    // 切り替わりは、大きな欄の切れ目からずらした秒数のぶん手前（= 切れ目の後の、1 枚の長さ − ずらし）
+    const switchAt = t + SPOTLIGHT_SLIDE_SECONDS - SPOTLIGHT_OFFSET_SECONDS;
+    expect(spotlightIndex(switchAt, 3)).toBe((spotlightIndex(switchAt - 1, 3) + 1) % 3);
+    expect(spotlightIndex(switchAt + 3 * SPOTLIGHT_SLIDE_SECONDS, 3)).toBe(spotlightIndex(switchAt, 3));
     expect(spotlightIndex(NOW, 0)).toBe(0);
     expect(spotlightIndex(NOW + 12345, 1)).toBe(0);
   });

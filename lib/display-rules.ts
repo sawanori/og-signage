@@ -71,8 +71,8 @@ export type MainEventSelection<E extends SignageEvent = SignageEvent> =
   /** 表示するイベントがない（ハウスのキャッチコピーを出す） */
   | { kind: "none" };
 
-/** 大きな欄のスライドショーで 1 枚を出す秒数（説明と日時・場所を読み切れる長さ。2026-09-25 ユーザー指示で 10→15 秒） */
-export const HERO_SLIDE_SECONDS = 15;
+/** 大きな欄のスライドショーで 1 枚を出す秒数（説明と日時・場所を読み切れる長さ。2026-09-25 ユーザー指示で 10→15 秒、2026-09-27 に 17 秒） */
+export const HERO_SLIDE_SECONDS = 17;
 
 export type HeroSlideState = Exclude<EventState, "ended">;
 export type HeroSlide<E extends SignageEvent = SignageEvent> = { event: E; state: HeroSlideState };
@@ -98,10 +98,10 @@ export function heroSlideIndex(now: number, count: number): number {
   return count <= 1 ? 0 : Math.floor(now / HERO_SLIDE_SECONDS) % count;
 }
 
-/** メンバー紹介（MEMBER SPOTLIGHT）で 1 人を出す秒数 */
-export const SPOTLIGHT_SLIDE_SECONDS = 15;
+/** メンバー紹介（MEMBER SPOTLIGHT）で 1 人を出す秒数。大きな欄と同じ長さにして、交互に切り替わるようにする */
+export const SPOTLIGHT_SLIDE_SECONDS = HERO_SLIDE_SECONDS;
 /** 大きな欄のスライドと同じ瞬間に切り替わらないよう、半分ほどずらす */
-const SPOTLIGHT_OFFSET_SECONDS = 7;
+export const SPOTLIGHT_OFFSET_SECONDS = Math.floor(SPOTLIGHT_SLIDE_SECONDS / 2);
 
 /** 今出すメンバー紹介の番号。大きな欄のスライドと同じく時刻だけで決める */
 export function spotlightIndex(now: number, count: number): number {

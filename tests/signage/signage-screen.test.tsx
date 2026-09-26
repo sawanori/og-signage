@@ -9,7 +9,13 @@ import { SignageScreen } from "@/components/signage/SignageScreen";
 import { WEWORK_LOGO_DARK_SRC } from "@/components/signage/wework-logo";
 import type { MediaRef, SignageConfig, SignageSpotlight } from "@/lib/config-schema";
 import { tokyoDateTime } from "@/lib/dates";
-import { HERO_SLIDE_SECONDS, heroSlideIndex, selectHeroSlides } from "@/lib/display-rules";
+import {
+  HERO_SLIDE_SECONDS,
+  heroSlideIndex,
+  selectHeroSlides,
+  SPOTLIGHT_OFFSET_SECONDS,
+  SPOTLIGHT_SLIDE_SECONDS,
+} from "@/lib/display-rules";
 import { NOW, makeConfig, movieNight, pizzaNight } from "../fixtures/config.fixture";
 
 const resolve = (ref: MediaRef) => `/media/${ref.sha256}`;
@@ -50,7 +56,9 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     renderScreen({}, orientation);
     expect(screen.getByTestId("state-badge").textContent).toContain("TODAY");
     expect(screen.getByTestId("main-title").textContent).toContain("Pizza Night");
-    expect(screen.getAllByText("17:42").length).toBeGreaterThan(0);
+    // 大きな欄の 1 枚目にそろえた分（最大で 1 枚の長さ × (枚数 − 1) 秒）だけ時計が進む
+    const aligned = atFirstSlide(makeConfig(), NOW);
+    expect(screen.getAllByText(aligned - NOW >= 60 ? "17:43" : "17:42").length).toBeGreaterThan(0);
     expect(screen.getByTestId("weather").textContent).toContain("横浜市");
     expect(screen.getByRole("img", { name: "イベント詳細の QR コード" })).toBeTruthy();
   });
@@ -332,7 +340,7 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     expect(srcs.length - media.length).toBe(orientation === "landscape" ? 1 : 0);
   });
 
-  it("大きな欄は 10 秒ごとに次のイベントへ切り替わる（今日の主イベントから順に）", () => {
+  it(`大きな欄は ${HERO_SLIDE_SECONDS} 秒ごとに次のイベントへ切り替わる（今日の主イベントから順に）`, () => {
     const config = makeConfig();
     const start = atFirstSlide(config, NOW);
     const slides = selectHeroSlides(config.events, start);
@@ -409,17 +417,20 @@ describe("メンバー紹介（横型の右上。2026-09-26 ユーザー指示�
     photo: null,
     logo: null,
   };
-  // 1 人目が出る時刻（切り替えは (時刻 + 7) ÷ 15 の切り捨てで決まる）
-  const first = NOW - ((NOW + 7) % 30);
+  // 1 人目が出る時刻（切り替えは (時刻 + ずらし) ÷ 1 人の秒数 の切り捨てで決まる。2 人なので 2 人分の周期で見る）
+  const first = NOW - ((NOW + SPOTLIGHT_OFFSET_SECONDS) % (2 * SPOTLIGHT_SLIDE_SECONDS));
   const config = { ...makeConfig(), spotlights: [yamada, sato] };
 
-  it("会社名・お名前「さん」・肩書き・「ひとこと」・紹介文・タグ・写真・ロゴを、省略せずに出す。左右の矢印と下の点は出さない", () => {
+  it("会社名・お名前「さん」・肩書き・紹介文・タグ・写真・ロゴを、省略せずに出す。左右の矢印と下の点は出さない", () => {
     renderScreen({ config, now: first, align: false }, "landscape");
     const card = screen.getByTestId("spotlight");
+    // ひとことは写真の上に重ねる（2026-09-27 ユーザー指示）ので、写真の欄が先
     expect(card.textContent).toBe(
-      "株式会社サンプル山田 陸さんプロダクトデザイナー「デザインの力で、事業の可能性を広げる」" +
-        "プロダクトのデザインを支援しています。UI/UXプロダクト開発デザイン組織",
+      "「デザインの力で、事業の可能性を広げる」" +
+        "株式会社サンプル山田 陸さんプロダクトデザイナープロダクトのデザインを支援しています。UI/UXプロダクト開発デザイン組織",
     );
+    const quote = screen.getByText("「デザインの力で、事業の可能性を広げる」");
+    expect(quote.parentElement?.querySelector("img")?.getAttribute("src")).toBe(`/media/${photo.sha256}`);
     expect([...card.querySelectorAll("img")].map((img) => img.getAttribute("src"))).toEqual([
       `/media/${photo.sha256}`,
       `/media/${logo.sha256}`,
@@ -428,8 +439,8 @@ describe("メンバー紹介（横型の右上。2026-09-26 ユーザー指示�
     expect(screen.queryByTestId("spotlight-dots")).toBeNull();
   });
 
-  it("15 秒ごとに次の人へ切り替わる。肩書き・ひとこと・紹介文・タグ・写真・ロゴが無い人は、その行を出さない", () => {
-    renderScreen({ config, now: first + 15, align: false }, "landscape");
+  it(`${SPOTLIGHT_SLIDE_SECONDS} 秒ごとに次の人へ切り替わる。肩書き・ひとこと・紹介文・タグ・写真・ロゴが無い人は、その行を出さない`, () => {
+    renderScreen({ config, now: first + SPOTLIGHT_SLIDE_SECONDS, align: false }, "landscape");
     const card = screen.getByTestId("spotlight");
     expect(card.textContent).toBe("合同会社サンプル佐藤 花さん");
     expect(card.querySelectorAll("img")).toHaveLength(0);

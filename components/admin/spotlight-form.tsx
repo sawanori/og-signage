@@ -168,7 +168,7 @@ export function SpotlightForm({
 
         <CountedTextarea
           id="spotlight-quote"
-          label="ひとこと（任意。サイネージでは「」で囲んで出します）"
+          label="ひとこと（任意。サイネージでは写真の上に、手書き風の文字で「」で囲んで出します）"
           value={form.quote}
           max={SPOTLIGHT_QUOTE_MAX}
           onChange={(quote) => onChange({ quote })}

@@ -27,6 +27,8 @@
   /* 絵文字は端末の絵文字フォント（Pi は fonts-noto-color-emoji）で描く。fontsource 版は SVG 形式で Chromium が描けない */
   --font-emoji: "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
   --font-script: "Kalam", "LINE Seed JP", cursive;
+  /* 日本語の手書き風（メンバー紹介のひとこと）。Kalam と同じサインペン書きの系統 */
+  --font-hand: "Yusei Magic", "Kalam", "LINE Seed JP", cursive;
   position: relative;
   overflow: hidden;
   font-family: var(--font-sans);
@@ -1654,6 +1656,7 @@
   background: #8a94a3;
 }
 
+/* 右の文字の列。ひとことは写真の上に移した（2026-09-27 ユーザー指示）ので、残りを上下の中央に寄せる */
 .lSpotText {
   position: absolute;
   left: 218px;
@@ -1661,9 +1664,10 @@
   width: 285px;
   height: 100%;
   box-sizing: border-box;
-  padding-bottom: 14px;
+  padding: 14px 0;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   align-items: flex-start;
   overflow: hidden;
   color: #1b2530;
@@ -1678,7 +1682,6 @@
 
 .lSpotCompany {
   width: 100%;
-  margin-top: calc(24px * var(--fit, 1));
   font-weight: 700;
   font-size: calc(16px * var(--fit, 1));
   line-height: calc(22px * var(--fit, 1));
@@ -1718,18 +1721,33 @@
   letter-spacing: 0.04em;
 }
 
-/* ひとこと（「」で囲む）。見本の折り返し（「デザインの力で、／事業の可能性を広げる」）になる幅 */
+/*
+ * ひとこと（「」で囲む）。写真の下の方に、手書き風の書体で白く重ねる（2026-09-27 ユーザー指示）。
+ * どんな写真の上でも読めるよう、字の縁の濃い影と、広くにじむ影の 2 重のドロップシャドウ。
+ * 写真の高さの 6 割に入りきらないときは SpotlightCard.tsx が --fit で小さくする
+ */
 .lSpotQuote {
-  margin-top: calc(20px * var(--fit, 1));
-  max-width: 262px;
-  font-weight: 700;
-  font-size: calc(22px * var(--fit, 1));
-  line-height: calc(31.5px * var(--fit, 1));
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 14px;
+  max-height: 60%;
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--font-hand);
+  font-size: calc(23px * var(--fit, 1));
+  line-height: 1.42;
   letter-spacing: 0.02em;
+  color: #fff;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.6),
+    0 2px 10px rgba(0, 0, 0, 0.55);
+  word-break: auto-phrase;
+  overflow-wrap: anywhere;
 }
 
 .lSpotBio {
-  margin-top: calc(12px * var(--fit, 1));
+  margin-top: calc(14px * var(--fit, 1));
   font-size: calc(13px * var(--fit, 1));
   line-height: calc(21.4px * var(--fit, 1));
   letter-spacing: 0.04em;

@@ -23,7 +23,7 @@ import { uploadMedia } from "@/lib/client/upload";
 
 const SAVED = "保存しました。サイネージには 30 秒以内に反映されます。";
 const PERSON_LABEL = "お名前（サイネージでは「さん」を付けて出します）";
-const QUOTE_LABEL = "ひとこと（任意。サイネージでは「」で囲んで出します）";
+const QUOTE_LABEL = "ひとこと（任意。サイネージでは写真の上に、手書き風の文字で「」で囲んで出します）";
 const PHOTO_LABEL = "写真（任意。縦長の写真がきれいに出ます）";
 
 const yamada: SpotlightRow = {
