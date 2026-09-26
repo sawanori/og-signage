@@ -571,9 +571,12 @@
   color: #56657b;
 }
 
+/* 幅の狭い画面（1280px）でも縮めない（縮むと 1 文字ずつ縦に折れて行からはみ出す） */
 .unsaved {
   display: inline-grid;
+  flex: none;
   place-items: center;
+  white-space: nowrap;
   height: 17px;
   padding: 0 7px;
   border-radius: 4px;
@@ -601,6 +604,160 @@
 .removeButton:hover {
   background: #fdf3f5;
   color: #c62d4a;
+}
+
+/* ---------------------------------------------------------------- スライドショー（2026-09-27） */
+
+/* 行の高さは動画とそろえる（そろっていないとドラッグの並べ替えで行が行き来する）ので、枚数と秒数は 1 行に収める */
+.slideSummary {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 動画のサムネイルと同じ大きさに、写真を横に並べる（1 枚なら全幅、3 枚なら 3 等分） */
+.slideThumbs {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 2px;
+  width: 104px;
+  height: 47px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #eef1f6;
+  color: #8a97aa;
+}
+
+.slideThumbs[data-empty="true"] {
+  place-items: center;
+}
+
+.slideThumbs img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.slideEditor {
+  margin-top: 8px;
+  padding: 0 14px;
+  border: 1px solid #e9edf3;
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.slideEditorHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 42px;
+}
+
+/* 開け閉めのボタンは帯の幅いっぱいにして、押しやすくする */
+.slideToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0e1a33;
+  text-align: left;
+  cursor: pointer;
+}
+
+.slideToggle:hover {
+  color: #1d73ee;
+}
+
+.slideToggle:focus-visible {
+  outline: 2px solid rgba(47, 142, 253, 0.5);
+  outline-offset: 2px;
+}
+
+.slideEditorBody {
+  padding: 2px 0 14px;
+  border-top: 1px solid #edf0f5;
+}
+
+.slideEditorBody > .slideNote {
+  margin-top: 10px;
+}
+
+.slideTotal {
+  margin-left: auto;
+  flex: none;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1c3558;
+}
+
+.slideTotal[data-over="true"] {
+  color: #c62d4a;
+}
+
+.slideSlots {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.slideSlot {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e9edf3;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.slideSlotFoot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #f0f2f6;
+}
+
+.slideSlotFoot .removeButton {
+  margin-left: auto;
+}
+
+.slideSeconds {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0e1a33;
+}
+
+/* 見出しの「秒数」は太字、選んだ値は間隔の欄と同じ細さ */
+.slideSeconds select {
+  width: 96px;
+  height: 30px;
+  font-weight: 400;
+}
+
+.slideEditorFoot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 10px;
+}
+
+.slideNote {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #56657b;
 }
 
 .radios {
@@ -672,6 +829,13 @@
 .saveHint {
   font-size: 12px;
   color: #56657b;
+}
+
+/* 保存できない理由（スライドショーの写真が無い・合計が長すぎる） */
+.saveHint[data-tone="error"] {
+  font-weight: 700;
+  line-height: 1.5;
+  color: #c62d4a;
 }
 
 .saveNotice {
@@ -747,6 +911,14 @@
 
 /* ---------------------------------------------------------------- 動画を追加 */
 
+/* 右の列（スライドショーを追加・動画を追加）を縦に並べる */
+.sideColumn {
+  display: grid;
+  row-gap: 11px;
+  align-content: start;
+  min-width: 0;
+}
+
 .addCard {
   padding: 13px 17px 17px 19px;
 }
@@ -804,6 +976,23 @@
   background: #f4f6fa;
   color: #8792a4;
   cursor: default;
+}
+
+/* 文字の長いボタン（スライドショーを追加・写真を追加）は幅を文字に合わせる */
+.addWideButton {
+  width: auto;
+  padding: 0 12px;
+}
+
+.addSlideshowButton {
+  margin-top: 12px;
+}
+
+.addNote {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #56657b;
 }
 
 .addItem[data-disabled="true"] .thumb {

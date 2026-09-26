@@ -1,6 +1,6 @@
 /**
  * 定期動画の設定（/admin/videos。Staff 以上。計画 8.2 節、要件定義書 12〜14 節）。
- * 端末ごとの ON/OFF・間隔・再生順と、その端末の再生リスト（並べ替え・追加・外す）。
+ * 端末ごとの ON/OFF・間隔・再生順と、その端末の再生リスト（動画とスライドショー。並べ替え・追加・外す）。
  * 端末が複数あるときだけ端末を選ぶ欄を出す（?device=<id>。省略時は登録順で最初の端末）。
  */
 import { eq } from "drizzle-orm";
@@ -8,7 +8,7 @@ import { playlists } from "@/db/schema";
 import { DeviceSelect } from "@/components/admin/device-select";
 import admin from "@/components/admin/admin.module.css";
 import { MediaTabs } from "@/components/admin/media-tabs";
-import type { VideosPageData } from "@/components/admin/media-types";
+import type { PlaylistEntry, VideosPageData } from "@/components/admin/media-types";
 import styles from "@/components/admin/media.module.css";
 import { PlaylistEditor } from "@/components/admin/playlist-editor";
 import { getDb } from "@/lib/runtime";
@@ -93,13 +93,28 @@ export default async function VideosPage({
       ? {
           id: playlistRow.id,
           revision: playlistRow.revision,
-          items: items.map((item) => ({
-            itemId: item.id,
-            mediaId: item.mediaId,
-            name: item.media.name,
-            durationSeconds: item.media.durationSeconds,
-            thumbnailUrl: item.media.thumbnailR2Key ? thumbnailUrl(item.mediaId) : null,
-          })),
+          items: items.map(
+            (item): PlaylistEntry =>
+              item.kind === "slideshow"
+                ? {
+                    kind: "slideshow",
+                    itemId: item.id,
+                    slides: item.slides.map((slide) => ({
+                      mediaId: slide.mediaId,
+                      durationSeconds: slide.durationSeconds,
+                      // 写真はサムネイルが無くても本体を返す（worker/index.ts）ので、いつも URL を出せる
+                      thumbnailUrl: thumbnailUrl(slide.mediaId),
+                    })),
+                  }
+                : {
+                    kind: "video",
+                    itemId: item.id,
+                    mediaId: item.mediaId,
+                    name: item.media.name,
+                    durationSeconds: item.media.durationSeconds,
+                    thumbnailUrl: item.media.thumbnailR2Key ? thumbnailUrl(item.mediaId) : null,
+                  },
+          ),
         }
       : null,
     library: library

@@ -37,13 +37,27 @@ export type VideoLibraryItem = {
   playable: boolean;
 };
 
-export type PlaylistEntry = {
+/** 再生リストの動画 1 本 */
+export type PlaylistVideoEntry = {
+  kind: "video";
   itemId: string;
   mediaId: string;
   name: string;
   durationSeconds: number | null;
   thumbnailUrl: string | null;
 };
+
+/** スライドショーの写真 1 枚（並び順どおり）と、表示する秒数 */
+export type PlaylistSlide = { mediaId: string; durationSeconds: number; thumbnailUrl: string };
+
+/**
+ * 再生リストのスライドショー（2026-09-27 ユーザー指示。再生リストに 1 つまで・写真 1〜3 枚・合計 30 秒まで）。
+ * 項目の mediaId は 1 枚目の写真と同じなので、テスト表示には slides[0].mediaId を渡す
+ */
+export type PlaylistSlideshowEntry = { kind: "slideshow"; itemId: string; slides: PlaylistSlide[] };
+
+/** 再生リストの 1 項目（動画かスライドショー） */
+export type PlaylistEntry = PlaylistVideoEntry | PlaylistSlideshowEntry;
 
 export type VideoSettingsValues = {
   revision: number;
