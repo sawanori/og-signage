@@ -38,6 +38,8 @@ let playhead = 0;
 let mediaResponse: () => Promise<Response> = async () =>
   new Response(new Uint8Array(1000), { headers: { "content-type": "video/mp4", "content-length": "1000" } });
 let mediaFetches = 0;
+/** /api/signage/player-log に送った中身（テスト表示の再生の様子） */
+let playerLogs: { reason: string; events: string[]; samples: string[]; info: Record<string, unknown> }[] = [];
 /** 読み込み済みの最初のコマの色（[R, G, B]。null なら canvas が使えない＝調べられない） */
 let framePixel: [number, number, number] | null = null;
 const stubbed: [object, string, PropertyDescriptor | undefined][] = [];
@@ -62,6 +64,7 @@ beforeEach(() => {
   hasError = false;
   playhead = 0;
   mediaFetches = 0;
+  playerLogs = [];
   mediaResponse = async () => new Response(new Uint8Array(1000), { headers: { "content-type": "video/mp4", "content-length": "1000" } });
   stub(HTMLMediaElement.prototype, "currentTime", { get: () => playhead, set: (v: number) => (playhead = v) });
   framePixel = null;
@@ -125,10 +128,14 @@ async function advance(ms: number) {
 function renderPlayer(config: SignageConfig) {
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (input: RequestInfo | URL) => {
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       if (String(input).startsWith("/media/")) {
         mediaFetches += 1;
         return mediaResponse();
+      }
+      if (String(input).startsWith("/api/signage/player-log")) {
+        playerLogs.push(JSON.parse(JSON.parse(String(init?.body)).message));
+        return new Response(null, { status: 204 });
       }
       return Response.json(config.commands);
     }),
@@ -381,6 +388,41 @@ describe("VideoPlayer", () => {
     expect(shown()).toBe("false");
     expect(excluded()).toEqual(["med_hevc"]);
     expect(notice()).toBe(FAILURE_TEXT.stalled);
+  });
+
+  it("テスト表示の再生の様子（結果・イベント・1 秒ごとの様子）を player-log に送る。定期動画では送らない", async () => {
+    openedBefore();
+    renderPlayer(testPlayConfig());
+    await advance(4000);
+    playhead = 0.04;
+    await advance(12_000);
+    expect(notice()).toBe(FAILURE_TEXT.stalled);
+    expect(playerLogs).toHaveLength(1);
+    const [log] = playerLogs;
+    expect(log.reason).toBe("stalled");
+    expect(log.samples.some((line) => line.includes("play:ok"))).toBe(true);
+    expect(log.samples.some((line) => line.includes("tick ct=0.04"))).toBe(true);
+    expect(log.info).toMatchObject({ w: 1920 });
+    cleanup();
+    window.localStorage.clear();
+
+    playerLogs = [];
+    openedBefore();
+    renderPlayer(
+      testPlayConfig({
+        video: { enabled: true, intervalMinutes: 10, mode: "sequence" },
+        commands: { testPlayRequestedAt: null, testPlayMediaId: null },
+      }),
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(601_000);
+    });
+    await advance(3000);
+    expect(shown()).toBe("true");
+    await act(async () => {
+      fireEvent.ended(screen.getByTestId("signage-video"));
+    });
+    expect(playerLogs).toHaveLength(0);
   });
 
   it("初めて開いたときでも、1 分以内のテスト表示の要求は流す（古い要求は流さない）", async () => {

@@ -20,6 +20,8 @@
  * - 読み込み・再生のエラーはブラウザが返すコードとメッセージを理由に添える（原因の切り分けのため）。
  *   どの待ちにも上限があり、失敗しても必ず表示に戻る（ページが止まったままにならない）。
  * - テスト表示が流せなかったときは、画面の下に理由を数秒出す（押した人がその場で分かるように。定期動画は黙って飛ばす）。
+ * - テスト表示の再生の様子（再生位置・コマ数・音声の有無・イベントの順番）を /api/signage/player-log に送る
+ *   （端末のブラウザで動画が止まる原因を、現地に行かずに調べるため。2026-09-26 ユーザー報告）。
  * - 再生の位置・処理済みのテスト表示・その日外す動画は localStorage に端末 id ごとに覚える。
  */
 import { useEffect, useRef, useState } from "react";
@@ -154,6 +156,79 @@ function waitForEnd(el: HTMLVideoElement, durationSeconds: number, signal: Abort
     el.addEventListener("error", onError);
     signal.addEventListener("abort", onAbort);
   });
+}
+
+/** 再生の様子の 1 行（再生位置・readyState・networkState・一時停止・ミュート・コマ数） */
+function mediaSnapshot(el: HTMLVideoElement): string {
+  const quality = typeof el.getVideoPlaybackQuality === "function" ? el.getVideoPlaybackQuality() : null;
+  const frames = quality ? `${quality.totalVideoFrames}/${quality.droppedVideoFrames}` : "-";
+  return `ct=${el.currentTime.toFixed(2)} rs=${el.readyState} ns=${el.networkState} p=${el.paused ? 1 : 0} m=${el.muted ? 1 : 0} f=${frames}`;
+}
+
+/** 動画の情報（大きさ・長さ・音声の有無・ブラウザ独自のコマ数） */
+function mediaInfo(el: HTMLVideoElement): Record<string, unknown> {
+  const any = el as HTMLVideoElement & Record<string, unknown>;
+  const pick = (keys: string[]) => Object.fromEntries(keys.filter((k) => typeof any[k] !== "undefined").map((k) => [k, any[k]]));
+  return {
+    w: el.videoWidth,
+    h: el.videoHeight,
+    d: Number.isFinite(el.duration) ? Number(el.duration.toFixed(2)) : String(el.duration),
+    ...pick(["mozHasAudio", "mozParsedFrames", "mozDecodedFrames", "mozPresentedFrames", "mozPaintedFrames"]),
+    ...pick(["webkitDecodedFrameCount", "webkitDroppedFrameCount", "webkitAudioDecodedByteCount"]),
+  };
+}
+
+const TRACE_EVENTS = [
+  "loadedmetadata",
+  "loadeddata",
+  "canplay",
+  "canplaythrough",
+  "play",
+  "playing",
+  "waiting",
+  "stalled",
+  "suspend",
+  "pause",
+  "seeking",
+  "seeked",
+  "timeupdate",
+  "ended",
+  "error",
+  "emptied",
+];
+
+/**
+ * テスト表示の再生の様子を記録する。finish で /api/signage/player-log へ送る（失敗しても再生には影響させない）
+ */
+function startTrace(el: HTMLVideoElement, mediaId: string, deviceId: string) {
+  const t0 = Date.now();
+  const since = () => ((Date.now() - t0) / 1000).toFixed(1);
+  const events: string[] = [];
+  const samples: string[] = [];
+  let timeupdates = 0;
+  const onEvent = (e: Event) => {
+    if (e.type === "timeupdate" && ++timeupdates > 3) return; // 進み始めが分かれば十分
+    if (events.length < 40) events.push(`${since()} ${e.type} ct=${el.currentTime.toFixed(2)} rs=${el.readyState}`);
+  };
+  for (const type of TRACE_EVENTS) el.addEventListener(type, onEvent);
+  let finished = false;
+  return {
+    sample(label: string) {
+      if (samples.length < 24) samples.push(`${since()} ${label} ${mediaSnapshot(el)}`);
+    },
+    finish(reason: string) {
+      if (finished) return;
+      finished = true;
+      for (const type of TRACE_EVENTS) el.removeEventListener(type, onEvent);
+      const message = JSON.stringify({ mediaId, reason, ua: navigator.userAgent, info: mediaInfo(el), events, samples }).slice(0, 2000);
+      void fetch(`/api/signage/player-log?device=${encodeURIComponent(deviceId)}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ message }),
+        keepalive: true,
+      }).catch(() => {});
+    },
+  };
 }
 
 /** ms 待つ（止められたらすぐ戻る） */
@@ -389,6 +464,9 @@ export function VideoPlayer({
       if (!el) return;
       busy = true;
       if (test) clearNotice();
+      const trace = test ? startTrace(el, item.mediaId, deviceId) : null;
+      let outcome = "aborted";
+      let sampler: ReturnType<typeof setInterval> | null = null;
       try {
         // 前の読み込みに失敗したまま（error）の <video> は、同じ src でも読み直す（そのままでは canplaythrough が来ない）
         if (el.error) el.load();
@@ -396,6 +474,7 @@ export function VideoPlayer({
           const ready = await waitFor(el, "canplaythrough", READY_TIMEOUT_MS, signal);
           if (signal.aborted) return;
           if (ready === "error") {
+            outcome = "load-error";
             fail(item, test, "load-error", true, mediaErrorDetail(el));
             return;
           }
@@ -405,14 +484,17 @@ export function VideoPlayer({
             return;
           }
         }
+        trace?.sample("ready");
         // 映像を読めない動画（このブラウザが H.265 に対応していない等）もその日は外す。音声付きだと error は来ず、
         // 映像なし（videoWidth 0）のまま音だけ最後まで流れて、画面が黒くなる（2026-09-25 Chromium で確認）
         if (el.videoWidth === 0) {
+          outcome = "no-video";
           fail(item, test, "no-video");
           return;
         }
         // 流す前に、読み込み済みの最初のコマが描けているか調べる（一色の緑なら見せずに飛ばす）
         if (looksLikeBrokenFrames(el)) {
+          outcome = "broken-frames";
           fail(item, test, "broken-frames");
           return;
         }
@@ -428,29 +510,38 @@ export function VideoPlayer({
 
         const started = await startPlaying(el, signal);
         if (signal.aborted) return;
+        trace?.sample(`play:${started}`);
         if (started !== "ok") {
           el.pause();
           setShown(false);
           fadingRef.current(false);
           // 自動再生を止められたのは動画のせいではないので、その日外さない（許可されれば次は流れる）
+          outcome = started === "blocked" ? "blocked" : started === "timeout" ? "not-started" : "play-error";
           if (started === "blocked") fail(item, test, "blocked", false);
           else if (started === "timeout") fail(item, test, "not-started");
           else fail(item, test, "play-error", true, mediaErrorDetail(el));
           return;
         }
 
+        // 流れ始めてから 1 秒ごとの様子（テスト表示のとき）
+        if (trace) sampler = setInterval(() => trace.sample("tick"), 1000);
         const ended = await waitForEnd(el, item.durationSeconds, signal);
         if (signal.aborted) return;
         el.pause();
         setShown(false);
         fadingRef.current(false);
         if (ended !== "ok") {
+          outcome = ended === "error" ? "play-error" : "stalled";
           if (ended === "error") fail(item, test, "play-error", true, mediaErrorDetail(el));
           else fail(item, test, "stalled");
           return;
         }
+        outcome = "ok";
         lastFinishedAt = nowSeconds();
       } finally {
+        if (sampler) clearInterval(sampler);
+        trace?.sample("end");
+        trace?.finish(outcome);
         busy = false;
         upcoming = null;
       }

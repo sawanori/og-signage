@@ -5,7 +5,7 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "../../db/index";
-import { devices, displayBundles, events, media, playlistItems, videoPlaybackSettings } from "../../db/schema";
+import { deviceLogs, devices, displayBundles, events, media, playlistItems, videoPlaybackSettings } from "../../db/schema";
 import { SEED_PLAYLIST_ID, seed } from "../../db/seed";
 import { signageConfigSchema, type SignageConfig } from "../../lib/config-schema";
 import type { MediaBucket, R2ObjectWithBody } from "../../lib/r2";
@@ -19,6 +19,7 @@ vi.mock("../../lib/runtime", () => ({ getDb: () => state.db }));
 
 const { GET: getPublicConfig } = await import("../../app/api/signage/config/route");
 const { GET: getPublicCommands } = await import("../../app/api/signage/commands/route");
+const { POST: postPlayerLog } = await import("../../app/api/signage/player-log/route");
 
 class FakeBucket implements Pick<MediaBucket, "get" | "head"> {
   objects = new Map<string, Uint8Array>();
@@ -103,6 +104,42 @@ function relay(path: string): Promise<Response | null> {
   const request = new Request(`${BASE}${path}`);
   return handlePublicSignageMedia(request, new URL(request.url).pathname, { db, bucket: bucket as unknown as MediaBucket });
 }
+
+describe("POST /api/signage/player-log（ログイン不要。テスト表示の再生の様子を残す）", () => {
+  const post = (body: unknown, device: string | null) =>
+    postPlayerLog(
+      new Request(`${BASE}/api/signage/player-log${device ? `?device=${device}` : ""}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: typeof body === "string" ? body : JSON.stringify(body),
+      }),
+    );
+
+  it("端末の device_logs に type = web-video で残す（device を省けば最初に登録した端末）", async () => {
+    expect((await post({ message: '{"reason":"stalled"}' }, deviceB)).status).toBe(204);
+    expect((await post({ message: '{"reason":"ok"}' }, null)).status).toBe(204);
+    const rows = await db.select().from(deviceLogs);
+    expect(rows.map((r) => [r.deviceId, r.type, r.message])).toEqual([
+      [deviceB, "web-video", '{"reason":"stalled"}'],
+      [deviceA, "web-video", '{"reason":"ok"}'],
+    ]);
+  });
+
+  it("形が違う・長すぎるときは 400、端末が無ければ 404。何も残さない", async () => {
+    expect((await post("not json", deviceA)).status).toBe(400);
+    expect((await post({ message: "" }, deviceA)).status).toBe(400);
+    expect((await post({ message: "x".repeat(2001) }, deviceA)).status).toBe(400);
+    expect((await post({ message: "ok" }, "dev_none")).status).toBe(404);
+    expect(await db.select().from(deviceLogs)).toHaveLength(0);
+  });
+
+  it("端末ごとに 1 日 200 件まで。超えたら 429 で残さない", async () => {
+    await db.insert(deviceLogs).values(Array.from({ length: 200 }, () => ({ deviceId: deviceA, type: "web-video", message: "x" })));
+    expect((await post({ message: "over" }, deviceA)).status).toBe(429);
+    expect((await post({ message: "other device" }, deviceB)).status).toBe(204);
+    expect(await db.select().from(deviceLogs)).toHaveLength(201);
+  });
+});
 
 describe("GET /api/signage/config（ログイン不要）", () => {
   it("最初に登録した端末の表示データを返す。Web 版も定期動画を流すので、プレイリストとテスト表示の要求も含む", async () => {
