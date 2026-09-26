@@ -123,7 +123,7 @@ describe("今日の主イベントと Upcoming", () => {
     ]);
   });
 
-  it("Upcoming は最大 6 件（2026-09-25 ユーザー指示で 4 → 5 → 6）", () => {
+  it("Upcoming は開催の近い順に最大 5 件（2026-09-25 ユーザー指示で 4 → 5 → 6、2026-09-26 に 5）", () => {
     const fifth = makeEvent({ id: "fifth", startAt: tokyoDateTime(2025, 10, 10, 19, 0) });
     const sixth = makeEvent({ id: "sixth", startAt: tokyoDateTime(2025, 10, 11, 19, 0) });
     const seventh = makeEvent({ id: "seventh", startAt: tokyoDateTime(2025, 10, 12, 19, 0) });
@@ -135,7 +135,6 @@ describe("今日の主イベントと Upcoming", () => {
       englishMeetup.id,
       coffeeWorkshop.id,
       "fifth",
-      "sixth",
     ]);
   });
 

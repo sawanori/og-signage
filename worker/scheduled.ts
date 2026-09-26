@@ -4,7 +4,7 @@
  * - `*​/30 * * * *`: 天気の取得（lib/weather.ts）。
  * - `0 19 * * *`（日本時間 4:00）: 削除予約が過ぎた media を R2 と行から消す（purgeDeletedMedia）、
  *   24 時間以上 uploading のままの uploads を R2 の abortMultipartUpload と aborted に、
- *   30 日より古い device_logs の削除。
+ *   30 日より古い device_logs の削除、終わってから 1 週間を過ぎたイベントの削除（purgeEndedEvents）。
  *
  * DB・R2 は lib/runtime・lib/r2 の getDb・getMediaBucket（`cloudflare:workers` の env）から取る。
  * OPENWEATHER_API_KEY も同じ env から読む（Workers の Secret）。ログには出さない。
@@ -15,6 +15,7 @@ import type { Db } from "../db/index";
 import { deviceLogs, uploads } from "../db/schema";
 import { getMediaBucket, type MediaBucket } from "../lib/r2";
 import { getDb } from "../lib/runtime";
+import { purgeEndedEvents } from "../lib/services/events";
 import { purgeDeletedMedia } from "../lib/services/media";
 import { refreshWeather } from "../lib/weather";
 
@@ -64,9 +65,10 @@ async function runDailyCleanup(db: Db, bucket: MediaBucket, now: number): Promis
   if (media.failed.length > 0) console.warn("[scheduled] media purge に失敗したものがあります。次回再試行します", media.failed);
   const stale = await abortStaleUploads(db, bucket, now);
   const deletedLogCount = await purgeOldDeviceLogs(db, now);
+  const endedEvents = await purgeEndedEvents(db, now);
   console.log(
     `[scheduled] daily cleanup: media purged=${media.purged.length} failed=${media.failed.length} ` +
-      `uploads aborted=${stale.abortedIds.length} device_logs deleted=${deletedLogCount}`,
+      `uploads aborted=${stale.abortedIds.length} device_logs deleted=${deletedLogCount} ended events deleted=${endedEvents.length}`,
   );
 }
 

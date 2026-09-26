@@ -4,7 +4,7 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "../../db/index";
-import { deviceLogs, devices, media, uploads, users } from "../../db/schema";
+import { deviceLogs, devices, events, media, uploads, users } from "../../db/schema";
 import type { MediaBucket, R2Multipart, R2Part } from "../../lib/r2";
 import { openTempDb } from "../helpers/temp-db";
 
@@ -204,7 +204,7 @@ describe("scheduled", () => {
     expect(refreshWeather).toHaveBeenCalledTimes(1);
   });
 
-  it(`${DAILY_CRON} は削除予約・停滞アップロード・古いログの掃除をまとめて行う`, async () => {
+  it(`${DAILY_CRON} は削除予約・停滞アップロード・古いログ・終わって 1 週間を過ぎたイベントの掃除をまとめて行う`, async () => {
     const userId = await addUser();
     const deviceId = await addDevice();
     const now = Math.floor(Date.now() / 1000);
@@ -223,6 +223,10 @@ describe("scheduled", () => {
     // 古い device_logs
     await db.insert(deviceLogs).values({ deviceId, type: "info", message: "old", createdAt: now - 30 * DAY - 60 });
 
+    // 終わって 8 日たったイベントは消え、2 日前に終わったイベントは「終了」で残る
+    await db.insert(events).values({ title: "先々週の会", startAt: now - 8 * DAY - 3600, endAt: now - 8 * DAY });
+    await db.insert(events).values({ title: "おとといの会", startAt: now - 2 * DAY - 3600, endAt: now - 2 * DAY });
+
     await scheduled(DAILY_CRON);
 
     expect(refreshWeather).not.toHaveBeenCalled();
@@ -236,6 +240,8 @@ describe("scheduled", () => {
 
     const logs = await db.select().from(deviceLogs);
     expect(logs).toHaveLength(0);
+
+    expect((await db.select().from(events)).map((e) => e.title)).toEqual(["おとといの会"]);
   });
 
   it("未登録の cron 式では何もしない", async () => {

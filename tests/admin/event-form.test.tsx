@@ -103,10 +103,10 @@ describe("EventForm（追加）", () => {
   });
 
   it("終わっていないイベントが上限に達していたら、先に知らせて保存できないようにする（2026-09-25 ユーザー指示）", () => {
-    render(<EventForm mode="create" now={NOW} categories={categories} limit={{ count: 7, max: 6 }} />);
+    render(<EventForm mode="create" now={NOW} categories={categories} limit={{ count: 10, max: 10 }} />);
     const notice = screen.getByTestId("event-limit");
-    expect(notice.textContent).toContain("終わっていないイベントが 7 件あります");
-    expect(notice.textContent).toContain("6 件まで");
+    expect(notice.textContent).toContain("終わっていないイベントが 10 件あります");
+    expect(notice.textContent).toContain("10 件まで");
     expect(screen.getByRole("link", { name: "イベント一覧へ" }).getAttribute("href")).toBe("/admin/events");
     expect((screen.getByRole("button", { name: "保存する" }) as HTMLButtonElement).disabled).toBe(true);
   });

@@ -1307,12 +1307,12 @@
 }
 
 /*
- * Upcoming（横）。最大 6 行（2026-09-25 ユーザー指示で 4 → 5 → 6）。
+ * Upcoming（横）。最大 5 行（2026-09-25 ユーザー指示で 4 → 5 → 6、2026-09-26 に 5）。
  * 右の列は上から メンバー情報（見出し 54px・カード 90〜158px）、Upcoming（見出し 186px・行 222〜834px）、
  * お知らせ（862〜982px）。欄と欄の間はどちらも 28px、見出しと中身の間は 12px（2026-09-25・26 ユーザー指示で釣り合いをとり、
- * 20px ずつ 2 回下げた）
+ * 20px ずつ 2 回下げた）。5 行で同じ高さを埋めるよう、行の間は 30.5px（98px × 5 + 30.5px × 4 = 612px）
  */
-/* 縦に伸ばしたときは、行の間隔を広げて下のお知らせとの間をそろえる（6 行で間は 5 つ） */
+/* 縦に伸ばしたときは、行の間隔を広げて下のお知らせとの間をそろえる（5 行で間は 4 つ） */
 .lUpcoming {
   position: absolute;
   left: calc(1368px + var(--canvas-extra-x, 0px));
@@ -1321,7 +1321,7 @@
   height: calc(612px + var(--canvas-extra, 0px));
   display: flex;
   flex-direction: column;
-  gap: calc(4.8px + var(--canvas-extra, 0px) / 5);
+  gap: calc(30.5px + var(--canvas-extra, 0px) / 4);
 }
 
 .lRow {

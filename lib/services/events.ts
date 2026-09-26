@@ -7,10 +7,12 @@
  *   参照の確認と書き込みは同じトランザクションで行い、確認後に削除予約へ変わる隙を作らない。
  * - カテゴリは event_categories にあるものだけ。
  * - 終わっていないイベント（下書きを含む）は MAX_ACTIVE_EVENTS 件まで。超える登録は削除してからにする
- *   （2026-09-25 ユーザー指示。サイネージの Upcoming に全部出せる数）。
+ *   （2026-09-25 ユーザー指示。2026-09-26 に 6 → 10 件。サイネージの Upcoming に出すのは開催の近い順に UPCOMING_LIMIT 件）。
+ * - 終わったイベントは「終了」のまま 1 週間残し、過ぎたら毎日の Cron（worker/scheduled.ts）が purgeEndedEvents で消す
+ *   （2026-09-26 ユーザー指示）。
  * - エラーの message は利用者向けの日本語。
  */
-import { and, asc, eq, gte, isNull, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import type { AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 import { z } from "zod";
 import type { Db } from "../../db/index";
@@ -37,8 +39,11 @@ const STATUS_BY_CODE: Record<EventErrorCode, 400 | 404 | 409> = {
   limit: 409,
 };
 
-/** 終わっていないイベント（下書きを含む）の上限。サイネージの Upcoming（横型は最大 6 件）に全部出せる数 */
-export const MAX_ACTIVE_EVENTS = 6;
+/** 終わっていないイベント（下書きを含む）の上限（2026-09-26 ユーザー指示で 6 → 10 件） */
+export const MAX_ACTIVE_EVENTS = 10;
+
+/** 終わったイベントを「終了」として残す期間（2026-09-26 ユーザー指示で 1 週間。過ぎたら purgeEndedEvents で消す） */
+export const ENDED_EVENT_RETENTION_SECONDS = 7 * SECONDS_PER_DAY;
 
 export class EventServiceError extends Error {
   readonly status: 400 | 404 | 409;
@@ -226,6 +231,22 @@ export async function updateEvent(db: Db, id: string, input: unknown, now = nowS
 export async function deleteEvent(db: Db, id: string): Promise<void> {
   const deleted = await db.delete(events).where(eq(events.id, id)).returning({ id: events.id });
   if (deleted.length === 0) throw notFound();
+}
+
+/**
+ * 終わってから ENDED_EVENT_RETENTION_SECONDS を過ぎたイベントを消す（下書きも）。毎日の Cron から呼ぶ。消した id を返す。
+ * 画像の media は消さない（動画・メディアの画面に残る）
+ */
+export async function purgeEndedEvents(db: Db, now = nowSeconds()): Promise<string[]> {
+  const cutoff = now - ENDED_EVENT_RETENTION_SECONDS;
+  // ここでは粗く絞り、正確な判定は effectiveEndAt で行う（終了なしは開始日の終わりまで）
+  const rows = await db
+    .select({ id: events.id, startAt: events.startAt, endAt: events.endAt })
+    .from(events)
+    .where(or(lt(events.endAt, cutoff), and(isNull(events.endAt), lt(events.startAt, cutoff)))!);
+  const ids = rows.filter((row) => effectiveEndAt(row) < cutoff).map((row) => row.id);
+  if (ids.length > 0) await db.delete(events).where(inArray(events.id, ids));
+  return ids;
 }
 
 // ---------------------------------------------------------------- Route Handler 用
