@@ -19,6 +19,7 @@ import {
   weatherCache,
   notices,
   memberSpotlights,
+  playlistItemSlides,
 } from "../../db/schema";
 import { SEED_PLAYLIST_ID, seed } from "../../db/seed";
 import { buildDeviceConfig, canonicalJson } from "../../lib/config-builder";
@@ -297,6 +298,37 @@ describe("GET /api/device/config", () => {
     ]);
     expect((await relay("/api/device/media/img_photo"))!.status).toBe(200);
     expect((await relay("/api/device/media/img_logo"))!.status).toBe(200);
+  });
+
+  it("定期再生の順番（routine）に動画とスライドショーを並びどおりに入れ、使えない写真は除く。playlist は動画だけのまま。写真は端末の中継からも取れる（2026-09-27 ユーザー指示）", async () => {
+    await insertMedia("img_s1", "image", IMAGE_BYTES, 21);
+    await insertMedia("img_s2", "image", IMAGE_BYTES, 22);
+    await insertMedia("img_gone", "image", IMAGE_BYTES, 23, { state: "deleting", deleteAfter: 1 });
+    // 端末 A の再生リスト（vid_a・vid_unplayable）の末尾にスライドショーを足す
+    const [item] = await db
+      .insert(playlistItems)
+      .values({ playlistId: SEED_PLAYLIST_ID, mediaId: "img_s1", kind: "slideshow", position: 2 })
+      .returning();
+    await db.insert(playlistItemSlides).values([
+      { playlistItemId: item.id, mediaId: "img_s1", durationSeconds: 10, position: 0 },
+      { playlistItemId: item.id, mediaId: "img_gone", durationSeconds: 5, position: 1 },
+      { playlistItemId: item.id, mediaId: "img_s2", durationSeconds: 7, position: 2 },
+    ]);
+    const config = await fetchConfig();
+    expect(config.routine).toEqual([
+      { kind: "video", mediaId: "vid_a", sha256: sha(2), size: VIDEO_BYTES.length, durationSeconds: 15 },
+      {
+        kind: "slideshow",
+        mediaId: "img_s1",
+        slides: [
+          { mediaId: "img_s1", sha256: sha(21), size: IMAGE_BYTES.length, durationSeconds: 10 },
+          { mediaId: "img_s2", sha256: sha(22), size: IMAGE_BYTES.length, durationSeconds: 7 },
+        ],
+      },
+    ]);
+    expect(config.playlist.map((p) => p.mediaId)).toEqual(["vid_a"]);
+    expect((await relay("/api/device/media/img_s2"))!.status).toBe(200);
+    expect((await relay("/api/device/media/img_gone"))!.status).toBe(404);
   });
 
   it("version は version を除いた本文をキー順固定にした JSON の SHA-256", async () => {

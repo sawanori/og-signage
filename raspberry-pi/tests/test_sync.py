@@ -249,6 +249,29 @@ def test_extract_media_references_reads_spotlight_photos_and_logos():
     assert media_ids == ["noticeimg1", "photo1", "logo2", "video1"]
 
 
+def test_extract_media_references_reads_routine_slideshow_photos():
+    """定期再生のスライドショーの写真（routine[].slides。2026-09-27 から）も、動画の前に集める。動画の routine 項目は playlist と重複するので 1 件"""
+    video = {"mediaId": "video1", "sha256": "5" * 64, "size": 500, "durationSeconds": 10}
+    config = {
+        "routine": [
+            {"kind": "video", **video},
+            {
+                "kind": "slideshow",
+                "mediaId": "slide1",
+                "slides": [
+                    {"mediaId": "slide1", "sha256": "8" * 64, "size": 800, "durationSeconds": 10},
+                    {"mediaId": "slide2", "sha256": "9" * 64, "size": 900, "durationSeconds": 5},
+                ],
+            },
+        ],
+        "playlist": [video],
+    }
+
+    media_ids = [r.media_id for r in sync_mod.extract_media_references(config)]
+
+    assert media_ids == ["slide1", "slide2", "video1"]
+
+
 def test_extract_media_references_handles_missing_playlist_and_bundle():
     assert sync_mod.extract_media_references({}) == []
     manifest = sync_mod.build_manifest("v1", {})

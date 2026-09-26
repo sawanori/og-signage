@@ -21,6 +21,7 @@ import {
   mediaFailures,
   memberSpotlights,
   notices,
+  playlistItemSlides,
   playlistItems,
   uploads,
 } from "../../db/schema";
@@ -418,6 +419,7 @@ export async function requestMediaDeletion(db: Db, id: string, now: number): Pro
         notExists(db.select({ x: one }).from(houseSettings).where(eq(houseSettings.logoMediaId, id))),
         notExists(db.select({ x: one }).from(houseSettings).where(eq(houseSettings.footerImageMediaId, id))),
         notExists(db.select({ x: one }).from(playlistItems).where(eq(playlistItems.mediaId, id))),
+        notExists(db.select({ x: one }).from(playlistItemSlides).where(eq(playlistItemSlides.mediaId, id))),
       ),
     )
     .returning({ id: media.id });

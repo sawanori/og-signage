@@ -8,7 +8,7 @@
 import { Blob as NodeBlob } from "node:buffer";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { FAILURE_TEXT, VideoPlayer, looksLikeBrokenFrames, videoCacheKey, videoFit } from "@/app/signage/video-player";
+import { FAILURE_TEXT, VideoPlayer, looksLikeBrokenFrames, routineOf, videoCacheKey, videoFit } from "@/app/signage/video-player";
 import type { SignageConfig } from "@/lib/config-schema";
 import { tokyoDateTime } from "@/lib/dates";
 import { makeConfig, mediaRef } from "../fixtures/config.fixture";
@@ -558,5 +558,88 @@ describe("VideoPlayer", () => {
     renderPlayer(testPlayConfig({ commands: { testPlayRequestedAt: NOW - 120, testPlayMediaId: null } }));
     await advance(4000);
     expect(shown()).toBe("false");
+  });
+});
+
+describe("VideoPlayer: スライドショー（2026-09-27 ユーザー指示）", () => {
+  const slideshow = {
+    kind: "slideshow" as const,
+    mediaId: "med_slide1",
+    slides: [
+      { ...mediaRef("med_slide1", 11), durationSeconds: 5 },
+      { ...mediaRef("med_slide2", 12), durationSeconds: 3 },
+    ],
+  };
+  const video = { kind: "video" as const, ...mediaRef("med_hevc", 1), durationSeconds: 15 };
+  const slideshowConfig = (overrides: Partial<SignageConfig> = {}) =>
+    testPlayConfig({ routine: [video, slideshow], commands: { testPlayRequestedAt: NOW - 5, testPlayMediaId: "med_slide1" }, ...overrides });
+  const slideshowShown = () => screen.queryByTestId("signage-slideshow")?.getAttribute("data-shown") ?? "none";
+  const activeSlide = () =>
+    [...(screen.queryByTestId("signage-slideshow")?.querySelectorAll("img") ?? [])].findIndex((img) => img.dataset.active === "true");
+
+  it("表示を黒へ溶かしてから 1 枚目を浮かび上がらせ、写真ごとの秒数で切り替え、最後は黒へ消して表示に戻す", async () => {
+    openedBefore();
+    const onFadingChange = renderPlayer(slideshowConfig());
+    await advance(3500);
+    expect(onFadingChange).toHaveBeenLastCalledWith(true);
+    expect(slideshowShown()).toBe("true");
+    expect(activeSlide()).toBe(0);
+    const images = screen.getByTestId("signage-slideshow").querySelectorAll("img");
+    expect(images).toHaveLength(2);
+    expect(images[0].getAttribute("src")).toMatch(/^blob:/);
+    // 動画は流さない
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+
+    // 2.9 秒で 1 枚目が見え、1 枚目は 5 秒（7.9 秒まで）、2 枚目は 3 秒（10.9 秒まで）
+    await advance(4000);
+    expect(activeSlide()).toBe(0);
+    await advance(1500);
+    expect(activeSlide()).toBe(1);
+    await advance(1500);
+    expect(slideshowShown()).toBe("true");
+    // 最後の 1 枚が終わると黒へ消え（0.6 秒）、表示に戻る
+    await advance(1500);
+    expect(slideshowShown()).toBe("none");
+    expect(onFadingChange).toHaveBeenLastCalledWith(false);
+    expect(notice()).toBeNull();
+  });
+
+  it("定期再生は動画とスライドショーを順に流す（順番の位置がスライドショーなら、間隔のあとにスライドショー）", async () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ sequenceIndex: 1, lastPlayedMediaId: null, lastTestPlayProcessedAt: null, excluded: { dateKey: "", mediaIds: [] } }),
+    );
+    renderPlayer(
+      slideshowConfig({
+        video: { enabled: true, intervalMinutes: 10, mode: "sequence" },
+        commands: { testPlayRequestedAt: null, testPlayMediaId: null },
+      }),
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(598_000);
+    });
+    expect(slideshowShown()).toBe("none");
+    await advance(4000);
+    expect(slideshowShown()).toBe("true");
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+    // 次の位置は先頭（動画）に戻る
+    expect(JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "{}").sequenceIndex).toBe(0);
+  });
+
+  it("テスト表示でスライドショーの写真を読み込めなければ、理由を出して表示のまま（外さない）", async () => {
+    openedBefore();
+    mediaResponse = async () => new Response("", { status: 500 });
+    const onFadingChange = renderPlayer(slideshowConfig());
+    await advance(4000);
+    expect(onFadingChange).not.toHaveBeenCalled();
+    expect(slideshowShown()).toBe("none");
+    expect(notice()).toBe(FAILURE_TEXT["slides-error"]);
+    expect(excluded()).toEqual([]);
+  });
+
+  it("routineOf: routine の無い古い config では playlist の動画だけを流す", () => {
+    const config = testPlayConfig();
+    expect(routineOf({ ...config, routine: undefined })).toEqual(config.playlist.map((item) => ({ kind: "video", ...item })));
+    expect(routineOf({ ...config, routine: [slideshow] })).toEqual([slideshow]);
   });
 });

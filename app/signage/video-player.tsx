@@ -28,9 +28,12 @@
  * - テスト表示の再生の様子（再生位置・コマ数・音声の有無・イベントの順番）を /api/signage/player-log に送る
  *   （端末のブラウザで動画が止まる原因を、現地に行かずに調べるため。2026-09-26 ユーザー報告）。
  * - 再生の位置・処理済みのテスト表示・その日外す動画は localStorage に端末 id ごとに覚える。
+ * - 再生リストには写真のスライドショー（1〜3 枚・写真ごとの秒数）も入る（2026-09-27 ユーザー指示。config.routine）。
+ *   動画と同じく表示を黒へ溶かしてから、1 枚目を黒から浮かび上がらせ、写真どうしは重ねて切り替え、最後は黒へ消して表示に戻す。
+ *   写真は流す前に全部読み込んでおく。routine が無い古い config では playlist の動画だけを流す。
  */
 import { useEffect, useRef, useState } from "react";
-import type { MediaRef, PlaylistItem, SignageConfig } from "@/lib/config-schema";
+import type { MediaRef, PlaylistItem, RoutineItem, RoutineSlide, SignageConfig } from "@/lib/config-schema";
 import { isWithinDisplaySchedule } from "@/lib/display-rules";
 import { VIDEO_EXPORT_MBPS } from "@/lib/file-sniff";
 import {
@@ -64,9 +67,20 @@ const TEST_LOAD_TIMEOUT_MS = 120_000;
 const LOAD_RETRY_MS = 60_000;
 /** テスト表示が流せなかった理由を出しておく時間 */
 const NOTICE_MS = 12_000;
+/** スライドショーの写真どうしを重ねて切り替える時間 */
+const CROSSFADE_MS = 800;
 
 /** 流せなかった理由。テスト表示のときは画面に出す */
-type Failure = "load-error" | "load-slow" | "no-video" | "broken-frames" | "blocked" | "not-started" | "play-error" | "stalled";
+type Failure =
+  | "load-error"
+  | "load-slow"
+  | "no-video"
+  | "broken-frames"
+  | "blocked"
+  | "not-started"
+  | "play-error"
+  | "stalled"
+  | "slides-error";
 
 export const FAILURE_TEXT: Record<Failure, string> = {
   "load-error": "動画を読み込めませんでした。「動画・メディア」で形式を確認してください",
@@ -78,7 +92,16 @@ export const FAILURE_TEXT: Record<Failure, string> = {
   "not-started": "動画の再生が始まりませんでした。ページを再読み込みして、もう一度お試しください",
   "play-error": "動画を再生できませんでした",
   stalled: "動画の再生が途中で止まりました",
+  "slides-error": "スライドショーの写真を読み込めませんでした。通信を確かめて、もう一度お試しください",
 };
+
+/** 定期再生で流すもの（動画とスライドショー）。routine が無い古い config では playlist の動画だけ */
+export function routineOf(config: Pick<SignageConfig, "playlist" | "routine">): RoutineItem[] {
+  return config.routine ?? config.playlist.map((item) => ({ kind: "video" as const, ...item }));
+}
+
+/** 読み込んだ写真（object URL と大きさ） */
+type LoadedSlide = { url: string; width: number; height: number };
 
 const nowSeconds = () => Math.floor(Date.now() / 1000);
 const storageKey = (deviceId: string) => `og-signage-video:${deviceId}`;
@@ -376,6 +399,10 @@ export function VideoPlayer({
   const [fit, setFit] = useState<"cover" | "contain">("cover");
   // テスト表示が流せなかった理由（数秒で消す）
   const [notice, setNotice] = useState<string | null>(null);
+  // 流しているスライドショーの写真（出し方つき）・今の 1 枚・見せているか
+  const [slides, setSlides] = useState<{ url: string; fit: "cover" | "contain" }[] | null>(null);
+  const [slideIndex, setSlideIndex] = useState(0);
+  const [slidesShown, setSlidesShown] = useState(false);
 
   useEffect(() => {
     configRef.current = config;
@@ -394,11 +421,13 @@ export function VideoPlayer({
     let busy = false;
     let noticeTimer: ReturnType<typeof setTimeout> | null = null;
     type Upcoming = {
-      item: PlaylistItem;
+      item: RoutineItem;
       next: Pick<VideoMemory, "sequenceIndex" | "lastPlayedMediaId">;
       test: boolean;
-      /** 丸ごと読み込んだ動画（object URL）。読み込み中は null */
+      /** 丸ごと読み込んだ動画（object URL）。スライドショーは 1 枚目の写真。読み込み中は null */
       url: string | null;
+      /** スライドショーの読み込んだ写真（全部そろったら入る） */
+      slides: LoadedSlide[] | null;
       /** 読み込みに失敗した */
       failed: boolean;
       /** 読み込みを始めた時刻（ミリ秒） */
@@ -408,6 +437,9 @@ export function VideoPlayer({
     // 読み込んだ動画（mediaId → object URL）と読み込み中のもの。再生リストから外れたら手放す
     const blobUrls = new Map<string, string>();
     const loading = new Map<string, Promise<string>>();
+    // 読み込んだ写真（mediaId → object URL と大きさ）。再生リストから外れたら手放す
+    const slideCache = new Map<string, LoadedSlide>();
+    const slideLoading = new Map<string, Promise<LoadedSlide>>();
 
     const remember = (next: VideoMemory) => {
       memory = next;
@@ -468,6 +500,49 @@ export function VideoPlayer({
       return job;
     };
 
+    /** 写真を読み込んで object URL にし、大きさを調べる（読み込み済み・読み込み中ならそれを使う）。読めなければ例外 */
+    const loadSlide = (slide: RoutineSlide): Promise<LoadedSlide> => {
+      const cached = slideCache.get(slide.mediaId);
+      if (cached) return Promise.resolve(cached);
+      const running = slideLoading.get(slide.mediaId);
+      if (running) return running;
+      const job = (async () => {
+        const res = await fetch(resolveRef.current(slide), { signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const url = URL.createObjectURL(await res.blob());
+        const img = new Image();
+        img.src = url;
+        if (typeof img.decode === "function") {
+          try {
+            await img.decode();
+          } catch (e) {
+            URL.revokeObjectURL(url);
+            throw e;
+          }
+        }
+        const loaded = { url, width: img.naturalWidth, height: img.naturalHeight };
+        slideCache.set(slide.mediaId, loaded);
+        return loaded;
+      })();
+      slideLoading.set(slide.mediaId, job);
+      job.then(
+        () => slideLoading.delete(slide.mediaId),
+        () => slideLoading.delete(slide.mediaId),
+      );
+      return job;
+    };
+
+    /** 再生リストから外れた写真の object URL を手放す */
+    const releaseRemovedSlides = (routine: readonly RoutineItem[]) => {
+      const inUse = new Set(routine.flatMap((item) => (item.kind === "slideshow" ? item.slides.map((s) => s.mediaId) : [])));
+      for (const [mediaId, loaded] of slideCache) {
+        if (!inUse.has(mediaId)) {
+          URL.revokeObjectURL(loaded.url);
+          slideCache.delete(mediaId);
+        }
+      }
+    };
+
     /** 再生リストから外れた動画の object URL を手放し、端末に保存した分も消す（再生リストが変わったときだけ） */
     let savedPlaylist = "";
     const releaseRemoved = (playlist: readonly PlaylistItem[]) => {
@@ -489,30 +564,59 @@ export function VideoPlayer({
       }).catch(() => undefined);
     };
 
-    /** 再生リストの動画を 1 本ずつ裏で読み込んでおく（読み込み中のものがあれば待つ） */
-    const preloadNext = (playlist: readonly PlaylistItem[]) => {
-      if (loading.size > 0) return;
-      const missing = playlist.find((p) => !blobUrls.has(p.mediaId));
-      if (missing) load(missing, () => {}).catch(() => undefined);
+    /** 再生リストの動画とスライドショーの写真を 1 つずつ裏で読み込んでおく（読み込み中のものがあれば待つ） */
+    const preloadNext = (routine: readonly RoutineItem[]) => {
+      if (loading.size > 0 || slideLoading.size > 0) return;
+      for (const item of routine) {
+        if (item.kind === "video") {
+          if (blobUrls.has(item.mediaId)) continue;
+          load(item, () => {}).catch(() => undefined);
+          return;
+        }
+        const missing = item.slides.find((slide) => !slideCache.has(slide.mediaId));
+        if (missing) {
+          loadSlide(missing).catch(() => undefined);
+          return;
+        }
+      }
     };
 
-    /** 次に流す 1 本を決めて読み込みを始める。読み込めたら <video> に付ける */
-    const prepare = (pick: { item: PlaylistItem; memory: VideoMemory }, test: boolean) => {
+    /** 次に流す 1 つを決めて読み込みを始める。動画は読み込めたら <video> に付ける。スライドショーは写真を全部読み込む */
+    const prepare = (pick: { item: RoutineItem; memory: VideoMemory }, test: boolean) => {
       const u: Upcoming = {
         item: pick.item,
         next: { sequenceIndex: pick.memory.sequenceIndex, lastPlayedMediaId: pick.memory.lastPlayedMediaId },
         test,
-        url: blobUrls.get(pick.item.mediaId) ?? null,
+        url: pick.item.kind === "video" ? (blobUrls.get(pick.item.mediaId) ?? null) : null,
+        slides: null,
         failed: false,
         requestedAt: Date.now(),
       };
       upcoming = u;
+      if (u.item.kind === "slideshow") {
+        setSrc(null);
+        if (test) holdNotice("スライドショーを読み込んでいます…");
+        Promise.all(u.item.slides.map(loadSlide)).then(
+          (loaded) => {
+            if (upcoming !== u) return;
+            u.slides = loaded;
+            u.url = loaded[0].url;
+          },
+          (e: unknown) => {
+            if (upcoming !== u || signal.aborted) return;
+            u.failed = true;
+            console.warn(`[signage-video] スライドショー ${u.item.mediaId} の写真を読み込めませんでした`, e);
+          },
+        );
+        return;
+      }
       if (u.url) {
         setSrc(u.url);
         return;
       }
+      const video = u.item;
       if (test) holdNotice("動画を読み込んでいます…");
-      load(u.item, (ratio) => {
+      load(video, (ratio) => {
         if (test && upcoming === u) holdNotice(`動画を読み込んでいます… ${Math.floor(ratio * 100)}%`);
       }).then(
         (url) => {
@@ -528,18 +632,60 @@ export function VideoPlayer({
       );
     };
 
-    /** 読み込んだ動画が <video> に付いたか（React が描き直したあと） */
-    const attached = (u: Upcoming) => u.url !== null && videoRef.current?.getAttribute("src") === u.url;
+    /** 流す用意ができたか。動画は読み込んだものが <video> に付いたか（React が描き直したあと）、スライドショーは写真が全部そろったか */
+    const attached = (u: Upcoming) =>
+      u.item.kind === "slideshow" ? u.slides !== null : u.url !== null && videoRef.current?.getAttribute("src") === u.url;
 
     /** 流せなかった。exclude ならその日は外す。テスト表示なら理由（detail があればそれも）を画面に出す */
-    const fail = (item: PlaylistItem, test: boolean, reason: Failure, exclude = true, detail = "") => {
+    const fail = (item: RoutineItem, test: boolean, reason: Failure, exclude = true, detail = "") => {
       console.warn(`[signage-video] 動画 ${item.mediaId} を流せませんでした: ${reason}${detail}`);
       if (exclude) remember(excludeForToday(memory, item.mediaId, nowSeconds()));
       lastFinishedAt = nowSeconds();
       if (test) showNotice(FAILURE_TEXT[reason] + detail);
     };
 
-    const playOnce = async ({ item, next, test }: Upcoming) => {
+    /**
+     * スライドショーを流す。表示を黒へ溶かし、1 枚目を黒から浮かび上がらせ、写真ごとの秒数で重ねて切り替え、
+     * 最後は黒へ消してから表示に戻す（動画と同じ前後のフェード）
+     */
+    const playSlideshow = async (u: Upcoming) => {
+      const { item, next, test } = u;
+      const loaded = u.slides;
+      if (item.kind !== "slideshow" || !loaded) return;
+      busy = true;
+      if (test) clearNotice();
+      try {
+        remember({ ...memory, ...next });
+        fadingRef.current(true);
+        await sleep(FADE_MS + SETTLE_MS, signal);
+        if (signal.aborted) return;
+        setSlides(loaded.map((s) => ({ url: s.url, fit: videoFit(s.width, s.height, window.innerWidth, window.innerHeight) })));
+        setSlideIndex(0);
+        // 透明なまま付けてから見せる（付けると同時に見せるとフェードにならない）
+        await sleep(50, signal);
+        if (signal.aborted) return;
+        setSlidesShown(true);
+        for (const [index, slide] of item.slides.entries()) {
+          if (index > 0) setSlideIndex(index);
+          await sleep(slide.durationSeconds * 1000, signal);
+          if (signal.aborted) return;
+        }
+        setSlidesShown(false);
+        await sleep(FADE_MS, signal);
+        if (signal.aborted) return;
+        setSlides(null);
+        fadingRef.current(false);
+        lastFinishedAt = nowSeconds();
+      } finally {
+        busy = false;
+        upcoming = null;
+      }
+    };
+
+    const playOnce = async (u: Upcoming) => {
+      if (u.item.kind === "slideshow") return playSlideshow(u);
+      const { next, test } = u;
+      const item = u.item;
       const el = videoRef.current;
       if (!el) return;
       busy = true;
@@ -642,6 +788,7 @@ export function VideoPlayer({
       if (visible && !wasVisible) windowStartedAt = now;
       wasVisible = visible;
       const playlist = cfg.playlist;
+      const routine = routineOf(cfg);
 
       if (waitingTest) {
         const u = upcoming;
@@ -652,7 +799,7 @@ export function VideoPlayer({
           waitingTest = false;
           upcoming = null;
           clearNotice();
-          fail(u.item, true, "load-error", false);
+          fail(u.item, true, u.item.kind === "slideshow" ? "slides-error" : "load-error", false);
           return;
         } else if (attached(u)) {
           waitingTest = false;
@@ -675,9 +822,10 @@ export function VideoPlayer({
       const test = consumeTestPlay(commands.testPlayRequestedAt, memory.lastTestPlayProcessedAt, now);
       if (test.processedAt !== memory.lastTestPlayProcessedAt) remember({ ...memory, lastTestPlayProcessedAt: test.processedAt });
       releaseRemoved(playlist);
-      if (visible) preloadNext(playlist);
-      if (test.play && visible && playlist.length > 0) {
-        const pick = pickTestVideo(playlist, commands.testPlayMediaId, cfg.video.mode, memory, now);
+      releaseRemovedSlides(routine);
+      if (visible) preloadNext(routine);
+      if (test.play && visible && routine.length > 0) {
+        const pick = pickTestVideo(routine, commands.testPlayMediaId, cfg.video.mode, memory, now);
         if (pick) {
           prepare(pick, true);
           waitingTest = true;
@@ -685,7 +833,7 @@ export function VideoPlayer({
         }
       }
 
-      const active = cfg.video.enabled && playlist.length > 0 && visible;
+      const active = cfg.video.enabled && routine.length > 0 && visible;
       if (!active) {
         upcoming = null;
         setSrc(null);
@@ -695,9 +843,9 @@ export function VideoPlayer({
       // 次の 1 本を決めて先に丸ごと読み込んでおく（プレイリストから外れたら選び直す）。
       // 読み込みが終わって <video> に付くまでは流さない
       const pending = upcoming;
-      if (!pending || pending.test || !playlist.some((p) => p.mediaId === pending.item.mediaId)) {
+      if (!pending || pending.test || !routine.some((p) => p.mediaId === pending.item.mediaId)) {
         if (Date.now() < retryLoadAt) return;
-        const pick = selectNextVideo(playlist, cfg.video.mode, memory, now);
+        const pick = selectNextVideo(routine, cfg.video.mode, memory, now);
         if (pick) prepare(pick, false);
         else {
           upcoming = null;
@@ -715,7 +863,7 @@ export function VideoPlayer({
 
       const due = isVideoDue({
         video: cfg.video,
-        playlistLength: playlist.length,
+        playlistLength: routine.length,
         visible,
         now,
         testPlay: false,
@@ -733,6 +881,8 @@ export function VideoPlayer({
       abort.abort();
       for (const url of blobUrls.values()) URL.revokeObjectURL(url);
       blobUrls.clear();
+      for (const loaded of slideCache.values()) URL.revokeObjectURL(loaded.url);
+      slideCache.clear();
     };
   }, [deviceId]);
 
@@ -763,6 +913,27 @@ export function VideoPlayer({
           className="pointer-events-none fixed inset-0 z-40 h-full w-full bg-black"
           style={{ opacity: shown ? 1 : 0, objectFit: fit }}
         />
+      ) : null}
+      {slides ? (
+        <div
+          aria-hidden
+          data-testid="signage-slideshow"
+          data-shown={slidesShown ? "true" : "false"}
+          className="pointer-events-none fixed inset-0 z-40 bg-black"
+          style={{ opacity: slidesShown ? 1 : 0, transition: `opacity ${FADE_MS}ms ease` }}
+        >
+          {slides.map((slide, index) => (
+            // eslint-disable-next-line @next/next/no-img-element -- 読み込み済みの写真（object URL）をそのまま出す
+            <img
+              key={index}
+              src={slide.url}
+              alt=""
+              data-active={index === slideIndex ? "true" : "false"}
+              className="absolute inset-0 h-full w-full"
+              style={{ objectFit: slide.fit, opacity: index === slideIndex ? 1 : 0, transition: `opacity ${CROSSFADE_MS}ms ease` }}
+            />
+          ))}
+        </div>
       ) : null}
       {notice ? (
         <div

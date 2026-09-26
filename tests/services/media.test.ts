@@ -14,6 +14,7 @@ import {
   mediaFailures,
   memberSpotlights,
   notices,
+  playlistItemSlides,
   playlistItems,
   playlists,
   uploads,
@@ -490,6 +491,15 @@ describe("削除予約と削除の実行", () => {
       async (id: string) => {
         const [p] = await db.insert(playlists).values({ name: "p" }).returning();
         await db.insert(playlistItems).values({ playlistId: p.id, mediaId: id, position: 0 });
+      },
+    ],
+    [
+      "スライドショーの 2 枚目以降の写真",
+      async (id: string) => {
+        const cover = await newMedia();
+        const [p] = await db.insert(playlists).values({ name: "p" }).returning();
+        const [item] = await db.insert(playlistItems).values({ playlistId: p.id, mediaId: cover.id, kind: "slideshow", position: 0 }).returning();
+        await db.insert(playlistItemSlides).values({ playlistItemId: item.id, mediaId: id, durationSeconds: 10, position: 1 });
       },
     ],
   ])("%s から参照中は 409 で、state は active のまま", async (_label, addRef) => {

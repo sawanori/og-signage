@@ -247,6 +247,12 @@ class LocalServer:
                 any(matches(e.get("image")) for e in config.get("events") or [])
                 or any(matches(n.get("image")) for n in config.get("notices") or [])
                 or any(matches(s.get("photo")) or matches(s.get("logo")) for s in config.get("spotlights") or [])
+                or any(
+                    matches(slide)
+                    for item in config.get("routine") or []
+                    if item.get("kind") == "slideshow"
+                    for slide in item.get("slides") or []
+                )
             )
 
         try:

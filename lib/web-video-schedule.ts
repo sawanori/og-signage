@@ -67,13 +67,13 @@ export function excludeForToday(memory: VideoMemory, mediaId: string, now: numbe
  * 次に流す 1 本。順番（sequence）は保存した位置から、ランダム（random）は直前と同じものを避けて選ぶ。
  * 今日外している動画は飛ばす。流せるものが無ければ null。返す memory は、この 1 本を流したあとの状態。
  */
-export function selectNextVideo(
-  playlist: readonly PlaylistItem[],
+export function selectNextVideo<T extends Pick<PlaylistItem, "mediaId">>(
+  playlist: readonly T[],
   mode: VideoSettings["mode"],
   memory: VideoMemory,
   now: number,
   random: () => number = Math.random,
-): { item: PlaylistItem; memory: VideoMemory } | null {
+): { item: T; memory: VideoMemory } | null {
   const excluded = excludedToday(memory, now);
   const candidates = playlist.filter((p) => !excluded.has(p.mediaId));
   if (candidates.length === 0) return null;
@@ -107,13 +107,13 @@ export function newerCommands(fromConfig: Commands, polled: Commands | null): Co
  * テスト表示で流す 1 本。管理画面で動画を選んで押したとき（mediaId がプレイリストにある）はその動画で、
  * 順番の位置は進めない。そうでなければ次の 1 本（順番の位置も進める。Pi と同じ）
  */
-export function pickTestVideo(
-  playlist: readonly PlaylistItem[],
+export function pickTestVideo<T extends Pick<PlaylistItem, "mediaId">>(
+  playlist: readonly T[],
   mediaId: string | null | undefined,
   mode: VideoSettings["mode"],
   memory: VideoMemory,
   now: number,
-): { item: PlaylistItem; memory: VideoMemory } | null {
+): { item: T; memory: VideoMemory } | null {
   const chosen = mediaId ? playlist.find((p) => p.mediaId === mediaId) : undefined;
   if (chosen) return { item: chosen, memory: { ...memory, lastPlayedMediaId: chosen.mediaId } };
   return selectNextVideo(playlist, mode, memory, now);

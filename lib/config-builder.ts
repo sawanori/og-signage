@@ -24,6 +24,7 @@ import {
   media,
   memberSpotlights,
   notices,
+  playlistItemSlides,
   playlistItems,
   videoPlaybackSettings,
   weatherCache,
@@ -36,6 +37,7 @@ import {
   signageConfigSchema,
   type DailyForecast,
   type MediaRef,
+  type RoutineItem,
   type SignageConfig,
   type VideoIntervalMinutes,
 } from "./config-schema";
@@ -171,6 +173,45 @@ async function readConfigBody(tx: Db, deviceId: string, now: number): Promise<Om
         .orderBy(asc(playlistItems.position), asc(playlistItems.id))
     : [];
 
+  // ---- 定期再生の順番（動画とスライドショー。2026-09-27 から）。動画は playlist と同じ条件、スライドショーは使える写真だけ
+  const itemRows = settings.playlistId
+    ? await tx
+        .select({ id: playlistItems.id, kind: playlistItems.kind, mediaId: playlistItems.mediaId })
+        .from(playlistItems)
+        .where(eq(playlistItems.playlistId, settings.playlistId))
+        .orderBy(asc(playlistItems.position), asc(playlistItems.id))
+    : [];
+  const slideshowIds = itemRows.filter((row) => row.kind === "slideshow").map((row) => row.id);
+  const slideRows =
+    slideshowIds.length > 0
+      ? await tx
+          .select({
+            itemId: playlistItemSlides.playlistItemId,
+            durationSeconds: playlistItemSlides.durationSeconds,
+            id: media.id,
+            sha256: media.sha256,
+            fileSize: media.fileSize,
+          })
+          .from(playlistItemSlides)
+          .innerJoin(media, eq(playlistItemSlides.mediaId, media.id))
+          .where(and(inArray(playlistItemSlides.playlistItemId, slideshowIds), eq(media.type, "image"), eq(media.state, "active")))
+          .orderBy(asc(playlistItemSlides.position), asc(playlistItemSlides.id))
+      : [];
+  const routine = itemRows.flatMap((row): RoutineItem[] => {
+    if (row.kind === "video") {
+      const video = playlistRows.find((v) => v.id === row.mediaId);
+      const ref = video ? toMediaRef(video) : null;
+      return ref && video?.durationSeconds != null ? [{ kind: "video", ...ref, durationSeconds: video.durationSeconds }] : [];
+    }
+    const slides = slideRows
+      .filter((slide) => slide.itemId === row.id)
+      .flatMap((slide) => {
+        const ref = toMediaRef(slide);
+        return ref ? [{ ...ref, durationSeconds: slide.durationSeconds }] : [];
+      });
+    return slides.length > 0 ? [{ kind: "slideshow", mediaId: row.mediaId, slides }] : [];
+  });
+
   return {
     schemaVersion: SCHEMA_VERSION,
     events: eventRows
@@ -246,6 +287,7 @@ async function readConfigBody(tx: Db, deviceId: string, now: number): Promise<Om
       intervalMinutes: settings.intervalMinutes as VideoIntervalMinutes,
       mode: settings.playbackMode,
     },
+    routine,
     playlist: playlistRows.flatMap((row) => {
       const ref = toMediaRef(row);
       return ref && row.durationSeconds !== null ? [{ ...ref, durationSeconds: row.durationSeconds }] : [];

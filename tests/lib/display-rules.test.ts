@@ -66,6 +66,14 @@ describe("fixture と config スキーマ", () => {
     expect(collectMediaRefs({ ...config, spotlights: undefined }).map((r) => r.mediaId)).not.toContain("med_spot_photo");
   });
 
+  it("collectMediaRefs は定期再生のスライドショーの写真も、動画の前に集める（2026-09-27）", () => {
+    const slide = (mediaId: string, hex: string) => ({ mediaId, sha256: hex.repeat(64), size: 10, durationSeconds: 5 });
+    const config = makeConfig({
+      routine: [{ kind: "slideshow", mediaId: "med_s1", slides: [slide("med_s1", "a"), slide("med_s2", "b")] }],
+    });
+    expect(collectMediaRefs(config).map((r) => r.mediaId).slice(-4)).toEqual(["med_s1", "med_s2", "med_welcome", "med_rules_movie"]);
+  });
+
   it("collectMediaRefs は画像と動画を重複なく列挙する", () => {
     const config = makeConfig({
       notices: [{ ...cleaningNotice, image: pizzaNight.image }],

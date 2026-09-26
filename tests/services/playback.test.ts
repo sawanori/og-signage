@@ -6,7 +6,7 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "../../db/index";
-import { devices, media, playlistItems, playlists, users, videoPlaybackSettings } from "../../db/schema";
+import { devices, media, playlistItemSlides, playlistItems, playlists, users, videoPlaybackSettings } from "../../db/schema";
 import {
   addPlaylistItem,
   getDevicePlaybackSettings,
@@ -562,5 +562,97 @@ describe("Server Actions", () => {
     await addDevice("d1");
     await addSettings("d1");
     expect((await actions.requestTestPlayAction("d1")).ok).toBe(true);
+  });
+});
+
+describe("スライドショー（2026-09-27 ユーザー指示）", () => {
+  async function fixture() {
+    await addPlaylist("pl1");
+    await addDevice("d1");
+    await addSettings("d1", { playlistId: "pl1" });
+    const photo = () => addMedia({ name: "photo.jpg", type: "image", playable: false });
+    return { v1: await addMedia({ name: "v1.mp4" }), p1: await photo(), p2: await photo(), p3: await photo() };
+  }
+  const settings = { revision: 0, enabled: true, intervalMinutes: 10, mode: "sequence" as const, volume: 0 };
+  const save = (items: unknown[], playlistRevision = 0, settingsRevision = 0) =>
+    saveDevicePlayback(db, "d1", { settings: { ...settings, revision: settingsRevision }, playlist: { revision: playlistRevision, items } });
+  const shape = (items: Awaited<ReturnType<typeof getPlaylistItems>>) =>
+    items.map((i) => [i.kind, i.mediaId, i.position, i.slides.map((s) => [s.mediaId, s.durationSeconds, s.position])]);
+
+  it("動画とスライドショー（写真と写真ごとの秒数）を並びどおりに保存する。スライドショーの media_id は 1 枚目の写真", async () => {
+    const { v1, p1, p2 } = await fixture();
+    const result = await save([
+      { kind: "slideshow", slides: [{ mediaId: p1, durationSeconds: 10 }, { mediaId: p2, durationSeconds: 5 }] },
+      { kind: "video", mediaId: v1 },
+    ]);
+    expect(shape(result.playlist!.items)).toEqual([
+      ["slideshow", p1, 0, [[p1, 10, 0], [p2, 5, 1]]],
+      ["video", v1, 1, []],
+    ]);
+    expect(shape(await getPlaylistItems(db, "pl1"))).toEqual(shape(result.playlist!.items));
+  });
+
+  it("保存し直すと、前のスライドショーの写真の行は残らない", async () => {
+    const { v1, p1, p2, p3 } = await fixture();
+    const first = await save([{ kind: "slideshow", slides: [{ mediaId: p1, durationSeconds: 10 }] }]);
+    await save(
+      [{ kind: "video", mediaId: v1 }, { kind: "slideshow", slides: [{ mediaId: p3, durationSeconds: 10 }, { mediaId: p2, durationSeconds: 10 }] }],
+      first.playlist!.playlist.revision,
+      first.settings.revision,
+    );
+    expect((await db.select().from(playlistItemSlides)).map((r) => r.mediaId).sort()).toEqual([p2, p3].sort());
+  });
+
+  it("写真は 1〜3 枚・合計 30 秒まで、スライドショーは 1 つまで、写真は active な画像だけ（どれも 400 で何も書かない）", async () => {
+    const { v1, p1, p2, p3 } = await fixture();
+    const p4 = await addMedia({ type: "image", playable: false });
+    const deleting = await addMedia({ type: "image", playable: false, state: "deleting", deleteAfter: 1 });
+    const slide = (mediaId: string, durationSeconds = 5) => ({ mediaId, durationSeconds });
+    const cases: [unknown[], string, string][] = [
+      [[{ kind: "slideshow", slides: [] }], "invalid_input", "スライドショーの写真を 1 枚以上選んでください"],
+      [[{ kind: "slideshow", slides: [p1, p2, p3, p4].map((id) => slide(id)) }], "invalid_input", "スライドショーの写真は 3 枚までです"],
+      [[{ kind: "slideshow", slides: [slide(p1, 20), slide(p2, 11)] }], "invalid_input", "スライドショーは合計 30 秒までです"],
+      [
+        [{ kind: "slideshow", slides: [slide(p1)] }, { kind: "slideshow", slides: [slide(p2)] }],
+        "invalid_input",
+        "スライドショーは再生リストに 1 つまでです",
+      ],
+      [[{ kind: "slideshow", slides: [slide(v1)] }], "invalid_media", "スライドショーには写真（画像）を選んでください"],
+      [[{ kind: "slideshow", slides: [slide(deleting)] }], "invalid_media", "この写真は削除予定のため使えません"],
+    ];
+    for (const [items, code, message] of cases) {
+      const error = await expectServiceError(save(items), code, 400);
+      expect(error.message).toBe(message);
+    }
+    expect(await getPlaylistItems(db, "pl1")).toEqual([]);
+  });
+
+  it("動画の上限（3 本）にスライドショーは数えない。以前の画面の mediaIds（動画の並び）もそのまま保存できる", async () => {
+    const { v1, p1 } = await fixture();
+    const v2 = await addMedia();
+    const v3 = await addMedia();
+    const result = await save([
+      { kind: "video", mediaId: v1 },
+      { kind: "video", mediaId: v2 },
+      { kind: "slideshow", slides: [{ mediaId: p1, durationSeconds: 30 }] },
+      { kind: "video", mediaId: v3 },
+    ]);
+    expect(result.playlist!.items.map((i) => i.kind)).toEqual(["video", "video", "slideshow", "video"]);
+
+    const legacy = await saveDevicePlayback(db, "d1", {
+      settings: { ...settings, revision: result.settings.revision },
+      playlist: { revision: result.playlist!.playlist.revision, mediaIds: [v3, v1] },
+    });
+    expect(shape(legacy.playlist!.items)).toEqual([
+      ["video", v3, 0, []],
+      ["video", v1, 1, []],
+    ]);
+  });
+
+  it("テスト表示は、スライドショーの 1 枚目の写真の mediaId で要求できる", async () => {
+    const { p1, p2 } = await fixture();
+    await save([{ kind: "slideshow", slides: [{ mediaId: p1, durationSeconds: 10 }, { mediaId: p2, durationSeconds: 10 }] }]);
+    await expect(requestTestPlay(db, "d1", p1)).resolves.toMatchObject({ testPlayMediaId: p1 });
+    await expectServiceError(requestTestPlay(db, "d1", p2), "invalid_media", 400);
   });
 });

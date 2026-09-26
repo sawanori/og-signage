@@ -228,13 +228,33 @@ export const playlistItems = sqliteTable(
     playlistId: text("playlist_id")
       .notNull()
       .references(() => playlists.id, { onDelete: "cascade" }),
+    /** video は動画。slideshow は 1 枚目の写真（写真の並びと秒数は playlist_item_slides） */
     mediaId: text("media_id")
       .notNull()
       .references(() => media.id, { onDelete: "restrict" }),
+    /** video = 動画 1 本、slideshow = 写真 1〜3 枚のスライドショー（2026-09-27 ユーザー指示。再生リストに 1 つまで） */
+    kind: text("kind", { enum: ["video", "slideshow"] }).notNull().default("video"),
     position: integer("position").notNull(),
     createdAt: createdAt(),
   },
   (t) => [index("playlist_items_playlist_id_position_idx").on(t.playlistId, t.position)],
+);
+
+/** スライドショー（playlist_items.kind = slideshow）の写真。並び順に position 0..n-1、写真ごとの表示秒数 */
+export const playlistItemSlides = sqliteTable(
+  "playlist_item_slides",
+  {
+    id: id(),
+    playlistItemId: text("playlist_item_id")
+      .notNull()
+      .references(() => playlistItems.id, { onDelete: "cascade" }),
+    mediaId: text("media_id")
+      .notNull()
+      .references(() => media.id, { onDelete: "restrict" }),
+    durationSeconds: integer("duration_seconds").notNull(),
+    position: integer("position").notNull(),
+  },
+  (t) => [index("playlist_item_slides_item_id_position_idx").on(t.playlistItemId, t.position)],
 );
 
 export const videoPlaybackSettings = sqliteTable("video_playback_settings", {

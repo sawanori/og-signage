@@ -13,6 +13,14 @@ export const SCHEMA_VERSION = 1 as const;
 
 export const VIDEO_INTERVAL_MINUTES = [5, 10, 15, 20, 30, 60] as const;
 
+/**
+ * 定期再生（再生リスト）に入れるスライドショー（2026-09-27 ユーザー指示）。再生リストに 1 つまで、写真は 3 枚まで、
+ * 写真ごとに秒数を選び、合計 30 秒まで
+ */
+export const MAX_SLIDES = 3;
+export const MAX_SLIDESHOW_SECONDS = 30;
+export const SLIDE_SECONDS_OPTIONS = [3, 5, 7, 10, 15, 20, 25, 30] as const;
+
 const unixSeconds = z.int().nonnegative();
 const sha256Hex = z.string().regex(/^[0-9a-f]{64}$/, "sha256 は小文字16進64桁");
 const hhmm = z.string().refine(isHHMM, "HH:MM 形式");
@@ -145,6 +153,20 @@ export const playlistItemSchema = mediaRefSchema.extend({
   durationSeconds: z.number().positive(),
 });
 
+/** スライドショーの 1 枚（写真と表示する秒数） */
+export const routineSlideSchema = mediaRefSchema.extend({
+  durationSeconds: z.number().positive(),
+});
+
+/**
+ * 定期再生で順に（またはランダムに）流す 1 つ。動画か、写真のスライドショー。
+ * スライドショーの mediaId は 1 枚目の写真（順番の記録・テスト表示の指定に使う）
+ */
+export const routineItemSchema = z.discriminatedUnion("kind", [
+  playlistItemSchema.extend({ kind: z.literal("video") }),
+  z.object({ kind: z.literal("slideshow"), mediaId: z.string().min(1), slides: z.array(routineSlideSchema).min(1) }),
+]);
+
 export const videoIntervalSchema = z.literal([...VIDEO_INTERVAL_MINUTES]);
 
 export const videoSettingsSchema = z.object({
@@ -186,7 +208,10 @@ export const signageConfigSchema = z.object({
   schedule: z.array(scheduleEntrySchema),
   weather: weatherSchema.nullable(),
   video: videoSettingsSchema,
+  /** 定期再生する動画（再生リストの順）。スライドショーは入らない（Pi の Agent と古い表示バンドルが読むため） */
   playlist: z.array(playlistItemSchema),
+  /** 定期再生の順番（動画とスライドショー。2026-09-27 から）。古い Worker の config には無い（そのときは playlist の動画だけ） */
+  routine: z.array(routineItemSchema).optional(),
   displayBundle: displayBundleSchema,
   device: deviceSettingsSchema,
   commands: commandsSchema,
@@ -203,6 +228,8 @@ export type House = z.infer<typeof houseSchema>;
 export type ScheduleEntry = z.infer<typeof scheduleEntrySchema>;
 export type Weather = z.infer<typeof weatherSchema>;
 export type PlaylistItem = z.infer<typeof playlistItemSchema>;
+export type RoutineItem = z.infer<typeof routineItemSchema>;
+export type RoutineSlide = z.infer<typeof routineSlideSchema>;
 export type VideoSettings = z.infer<typeof videoSettingsSchema>;
 export type VideoIntervalMinutes = z.infer<typeof videoIntervalSchema>;
 export type DisplayBundle = z.infer<typeof displayBundleSchema>;
@@ -230,6 +257,9 @@ export function collectMediaRefs(config: SignageConfig): MediaRefEntry[] {
   for (const spotlight of config.spotlights ?? []) {
     add(spotlight.photo, "image");
     add(spotlight.logo, "image");
+  }
+  for (const item of config.routine ?? []) {
+    if (item.kind === "slideshow") for (const slide of item.slides) add(slide, "image");
   }
   for (const item of config.playlist) add(item, "video");
 

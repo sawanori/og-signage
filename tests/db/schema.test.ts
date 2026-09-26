@@ -38,6 +38,7 @@ const TABLES = [
   "media_failures",
   "member_spotlights",
   "notices",
+  "playlist_item_slides",
   "playlist_items",
   "playlists",
   "uploads",

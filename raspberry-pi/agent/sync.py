@@ -53,7 +53,8 @@ def extract_media_references(config: dict[str, Any]) -> list[MediaReference]:
 
     lib/config-schema.ts の `collectMediaRefs` と同じ規則:
     house.logo / house.footerImage / events[].image / notices[].image /
-    spotlights[].photo・logo（メンバー紹介。2026-09-26 から） / playlist[] を集める。
+    spotlights[].photo・logo（メンバー紹介。2026-09-26 から） /
+    routine[].slides[]（定期再生のスライドショーの写真。2026-09-27 から） / playlist[] を集める。
     表示バンドルは対象外（build_manifest が別枠で追加する）。
     """
     refs: list[MediaReference] = []
@@ -72,6 +73,11 @@ def extract_media_references(config: dict[str, Any]) -> list[MediaReference]:
     for spotlight in config.get("spotlights") or []:
         _add_media_ref(refs, seen, spotlight.get("photo"))
         _add_media_ref(refs, seen, spotlight.get("logo"))
+
+    for item in config.get("routine") or []:
+        if item.get("kind") == "slideshow":
+            for slide in item.get("slides") or []:
+                _add_media_ref(refs, seen, slide)
 
     for item in config.get("playlist") or []:
         _add_media_ref(refs, seen, item)

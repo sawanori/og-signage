@@ -57,6 +57,13 @@
       "when": 1790413682954,
       "tag": "0007_member_spotlights",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1790458411456,
+      "tag": "0008_playlist_slideshow",
+      "breakpoints": true
     }
   ]
 }
