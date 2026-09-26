@@ -374,18 +374,20 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     expect(screen.getByTestId("main-title").textContent).toContain("Movie Night");
   });
 
-  it("Upcoming は主イベントを除いて、横型は最大 5 件・縦型は最大 3 件", () => {
+  it("Upcoming は今日の主イベントも含めて日付順に、横型は最大 5 件・縦型は最大 3 件（2026-09-27 ユーザー指示）", () => {
     const config = makeConfig();
     const extra = (id: string, day: number) => ({ ...movieNight, id, title: `追加イベント${day}`, startAt: tokyoDateTime(2025, 10, day, 19, 0) });
     const events = [...config.events, extra("ev_fifth", 10), extra("ev_sixth", 11), extra("ev_seventh", 12)];
     renderScreen({ config: { ...config, events } }, orientation);
     const upcoming = screen.getByTestId("upcoming");
-    expect(upcoming.textContent).not.toContain("Pizza Night");
+    // 先頭は今日の Pizza Night（大きな欄にも出ている今日の主イベント）
+    expect(upcoming.firstElementChild?.textContent).toContain("Pizza Night");
     expect(upcoming.textContent).toContain("Movie Night");
-    // 4・5 件目（コーヒーの淹れ方講座・追加イベント10）は横型だけ。縦型は大きな枠を広げるため 3 行。6 件目からはどちらにも出ない
+    // 4・5 件目（English Meetup・コーヒーの淹れ方講座）は横型だけ。縦型は大きな枠を広げるため 3 行。6 件目からはどちらにも出ない
     expect(upcoming.children).toHaveLength(orientation === "landscape" ? 5 : 3);
-    if (orientation === "landscape") expect(upcoming.textContent).toContain("追加イベント10");
+    if (orientation === "landscape") expect(upcoming.textContent).toContain("コーヒーの淹れ方講座");
     else expect(upcoming.textContent).not.toContain("コーヒーの淹れ方講座");
+    expect(upcoming.textContent).not.toContain("追加イベント10");
     expect(upcoming.textContent).not.toContain("追加イベント11");
     expect(upcoming.textContent).not.toContain("追加イベント12");
   });
@@ -462,7 +464,9 @@ describe("メンバー紹介（横型の右上。2026-09-26 ユーザー指示�
     const base = makeConfig();
     const events = base.events.map((e) => (e.id === movieNight.id ? { ...e, description: "話題の作品を\nみんなで楽しもう" } : e));
     renderScreen({ config: { ...base, events } }, "landscape");
-    const [movie, next] = [...screen.getByTestId("upcoming").children] as HTMLElement[];
+    const rows = [...screen.getByTestId("upcoming").children] as HTMLElement[];
+    const movie = rows.find((row) => row.textContent?.includes("Movie Night"))!;
+    const next = rows[rows.indexOf(movie) + 1];
     expect(movie.textContent).toContain("Movie Night");
     expect(movie.textContent).toContain("話題の作品を");
     expect(movie.textContent).not.toContain(movieNight.category!.name);

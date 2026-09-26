@@ -74,9 +74,8 @@ export function buildView(config: SignageConfig, now: number, timeSynced: boolea
     visible: isWithinDisplaySchedule(config.schedule, now, timeSynced),
     main,
     hero: slides.length > 0 ? { slide: slides[index], index, count: slides.length } : null,
-    // Upcoming から外すのは今日の主イベントだけ。今日のイベントが無い日は、次のイベント（明日など）も先頭に出す
-    // （次のイベントを出していた NEXT EVENT の欄は外したため）
-    upcoming: selectUpcomingEvents(config.events, now, main.kind === "today" ? main : { kind: "none" }),
+    // Upcoming は今日の分（開催中を含む）から日付順。大きな欄に出ている今日の主イベントも外さない（2026-09-27 ユーザー指示）
+    upcoming: selectUpcomingEvents(config.events, now),
     spotlight:
       spotlights.length > 0 ? { item: spotlights[spotlightAt], index: spotlightAt, count: spotlights.length } : null,
     week: selectThisWeek(config.events, now),

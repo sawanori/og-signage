@@ -138,10 +138,11 @@ describe("イベントの状態", () => {
 });
 
 describe("今日の主イベントと Upcoming", () => {
-  it("モックの状態: 主イベントは Pizza Night、Upcoming は 4 件", () => {
+  it("モックの状態: 主イベントは Pizza Night。Upcoming は今日の Pizza Night から日付順に 5 件（2026-09-27 ユーザー指示）", () => {
     const main = selectMainEvent(mockEvents, NOW);
     expect(main).toEqual({ kind: "today", event: pizzaNight, state: "today" });
-    expect(selectUpcomingEvents(mockEvents, NOW, main).map((e) => e.id)).toEqual([
+    expect(selectUpcomingEvents(mockEvents, NOW).map((e) => e.id)).toEqual([
+      pizzaNight.id,
       movieNight.id,
       bbqParty.id,
       englishMeetup.id,
@@ -154,13 +155,12 @@ describe("今日の主イベントと Upcoming", () => {
     const sixth = makeEvent({ id: "sixth", startAt: tokyoDateTime(2025, 10, 11, 19, 0) });
     const seventh = makeEvent({ id: "seventh", startAt: tokyoDateTime(2025, 10, 12, 19, 0) });
     const events = [...mockEvents, seventh, sixth, fifth];
-    const main = selectMainEvent(events, NOW);
-    expect(selectUpcomingEvents(events, NOW, main).map((e) => e.id)).toEqual([
+    expect(selectUpcomingEvents(events, NOW).map((e) => e.id)).toEqual([
+      pizzaNight.id,
       movieNight.id,
       bbqParty.id,
       englishMeetup.id,
       coffeeWorkshop.id,
-      "fifth",
     ]);
   });
 
@@ -170,7 +170,9 @@ describe("今日の主イベントと Upcoming", () => {
     const events = [draftToday, draftLater, ...mockEvents];
     const main = selectMainEvent(events, NOW);
     expect(main.kind === "today" && main.event.id).toBe(pizzaNight.id);
-    expect(selectUpcomingEvents(events, NOW, main).map((e) => e.id)).not.toContain("draft_later");
+    const upcoming = selectUpcomingEvents(events, NOW).map((e) => e.id);
+    expect(upcoming).not.toContain("draft_today");
+    expect(upcoming).not.toContain("draft_later");
     const week = selectThisWeek(events, NOW).flatMap((d) => d.events.map((e) => e.id));
     expect(week).not.toContain("draft_today");
     expect(week).not.toContain("draft_later");
@@ -180,27 +182,28 @@ describe("今日の主イベントと Upcoming", () => {
     const happening = makeEvent({ id: "happening", startAt: at(17, 0), endAt: at(18, 0) });
     const main = selectMainEvent([pizzaNight, happening], NOW);
     expect(main).toEqual({ kind: "today", event: happening, state: "now_happening" });
-    // 今日のうち主イベントより後のものは Upcoming に入る
-    expect(selectUpcomingEvents([pizzaNight, happening], NOW, main).map((e) => e.id)).toEqual([pizzaNight.id]);
+    // 今日のイベントは、開催中の主イベントも含めて Upcoming に開始順で入る
+    expect(selectUpcomingEvents([pizzaNight, happening], NOW).map((e) => e.id)).toEqual([happening.id, pizzaNight.id]);
   });
 
-  it("同時刻の 2 件は作成が早い方が主イベント、もう一方は Upcoming の先頭", () => {
+  it("同時刻の 2 件は作成が早い方が主イベント。Upcoming には作成が早い順に両方入る", () => {
     const early = makeEvent({ id: "b_early", startAt: at(19, 30), createdAt: at(9, 0) });
     const late = makeEvent({ id: "a_late", startAt: at(19, 30), createdAt: at(10, 0) });
     const main = selectMainEvent([late, early, movieNight], NOW);
     expect(main.kind === "today" && main.event.id).toBe("b_early");
-    expect(selectUpcomingEvents([late, early, movieNight], NOW, main).map((e) => e.id)).toEqual([
+    expect(selectUpcomingEvents([late, early, movieNight], NOW).map((e) => e.id)).toEqual([
+      "b_early",
       "a_late",
       movieNight.id,
     ]);
   });
 
-  it("同時刻に開催中の 2 件も、主でない方は Upcoming に残る", () => {
+  it("同時刻に開催中の 2 件は、どちらも Upcoming に入る（作成が早い順）", () => {
     const a = makeEvent({ id: "a", startAt: at(17, 0), endAt: at(19, 0), createdAt: at(8, 0) });
     const b = makeEvent({ id: "b", startAt: at(17, 0), endAt: at(19, 0), createdAt: at(9, 0) });
     const main = selectMainEvent([b, a], NOW);
     expect(main.kind === "today" && main.event.id).toBe("a");
-    expect(selectUpcomingEvents([b, a], NOW, main).map((e) => e.id)).toEqual(["b"]);
+    expect(selectUpcomingEvents([b, a], NOW).map((e) => e.id)).toEqual(["a", "b"]);
   });
 
   it("前日 23:00〜翌 1:00 の日またぎイベントは翌 0:30 に今日の主イベント", () => {
@@ -217,7 +220,9 @@ describe("今日の主イベントと Upcoming", () => {
   it("終了後は今日のイベントがなくなり、次のイベントを出す", () => {
     const main = selectMainEvent(mockEvents, at(21, 30, 1));
     expect(main).toEqual({ kind: "next", event: movieNight });
-    expect(selectUpcomingEvents(mockEvents, at(21, 30, 1), main).map((e) => e.id)).toEqual([
+    // 今日の Pizza Night は終わったので出さず、次のイベント（明日の Movie Night）から
+    expect(selectUpcomingEvents(mockEvents, at(21, 30, 1)).map((e) => e.id)).toEqual([
+      movieNight.id,
       bbqParty.id,
       englishMeetup.id,
       coffeeWorkshop.id,
@@ -227,7 +232,7 @@ describe("今日の主イベントと Upcoming", () => {
   it("イベント 0 件なら none（ハウスのキャッチコピーを出す）で Upcoming も空", () => {
     const main = selectMainEvent([], NOW);
     expect(main).toEqual({ kind: "none" });
-    expect(selectUpcomingEvents([], NOW, main)).toEqual([]);
+    expect(selectUpcomingEvents([], NOW)).toEqual([]);
   });
 
   it("公開イベントがすべて終わっていれば none", () => {

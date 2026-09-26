@@ -131,19 +131,13 @@ export function selectMainEvent<E extends SignageEvent>(events: readonly E[], no
 }
 
 /**
- * Upcoming。主イベントを除く、終わっていない公開イベントのうち主イベントより後の順番のものを
- * 開始順に最大 UPCOMING_LIMIT 件。今日のうち主イベントより後のもの（同時刻で作成が遅いものを含む）も入る。
+ * Upcoming（今後のイベント）。終わっていない公開イベントを開始順に最大 UPCOMING_LIMIT 件。
+ * 今日のイベント（開催中を含む）も、大きな欄に出ている今日の主イベントも外さず、今日の分から日付順に並べる
+ * （2026-09-27 ユーザー指示。それまでは今日の主イベントを外していて、今日のイベントが一覧に出なかった）。
  */
-export function selectUpcomingEvents<E extends SignageEvent>(
-  events: readonly E[],
-  now: number,
-  main: MainEventSelection<E>,
-  limit = UPCOMING_LIMIT,
-): E[] {
-  const mainEvent = main.kind === "none" ? null : main.event;
+export function selectUpcomingEvents<E extends SignageEvent>(events: readonly E[], now: number, limit = UPCOMING_LIMIT): E[] {
   return events
     .filter((e) => isPublished(e) && getEventState(e, now) !== "ended")
-    .filter((e) => (mainEvent ? e.id !== mainEvent.id && compareEventOrder(e, mainEvent) > 0 : true))
     .sort(compareEventOrder)
     .slice(0, limit);
 }
