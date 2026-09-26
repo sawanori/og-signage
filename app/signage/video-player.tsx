@@ -145,9 +145,13 @@ async function openVideoCache(): Promise<Cache | null> {
   }
 }
 
-/** 動画を丸ごと読み込む。進み具合（0〜1）を onProgress で知らせる。読み込めなければ例外 */
+/**
+ * 動画を丸ごと読み込む。進み具合（0〜1）を onProgress で知らせる。読み込めなければ例外。
+ * ブラウザの通常のキャッシュには入れない（no-store）。写しは Cache Storage の 1 つだけにして、
+ * 端末のストレージに同じ動画を二重に持たないため（2026-09-26 ユーザー指示）
+ */
 async function downloadVideo(url: string, signal: AbortSignal, onProgress: (ratio: number) => void): Promise<Blob> {
-  const res = await fetch(url, { signal });
+  const res = await fetch(url, { signal, cache: "no-store" });
   if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
   const total = Number(res.headers.get("content-length")) || 0;
   const reader = res.body.getReader();

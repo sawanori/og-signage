@@ -39,6 +39,8 @@ let playhead = 0;
 let mediaResponse: () => Promise<Response> = async () =>
   new Response(new Uint8Array(1000), { headers: { "content-type": "video/mp4", "content-length": "1000" } });
 let mediaFetches = 0;
+/** 動画を取りに行ったときの cache の指定（呼ばれた順） */
+let mediaCacheModes: (RequestCache | undefined)[] = [];
 /** /api/signage/player-log に送った中身（テスト表示の再生の様子） */
 let playerLogs: { reason: string; events: string[]; samples: string[]; info: Record<string, unknown> }[] = [];
 /** 読み込み済みの最初のコマの色（[R, G, B]。null なら canvas が使えない＝調べられない） */
@@ -65,6 +67,7 @@ beforeEach(() => {
   hasError = false;
   playhead = 0;
   mediaFetches = 0;
+  mediaCacheModes = [];
   playerLogs = [];
   mediaResponse = async () => new Response(new Uint8Array(1000), { headers: { "content-type": "video/mp4", "content-length": "1000" } });
   stub(HTMLMediaElement.prototype, "currentTime", { get: () => playhead, set: (v: number) => (playhead = v) });
@@ -133,6 +136,7 @@ function renderPlayer(config: SignageConfig) {
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       if (String(input).startsWith("/media/")) {
         mediaFetches += 1;
+        mediaCacheModes.push(init?.cache);
         return mediaResponse();
       }
       if (String(input).startsWith("/api/signage/player-log")) {
@@ -346,6 +350,8 @@ describe("VideoPlayer", () => {
     expect(video.getAttribute("src")).toMatch(/^blob:/);
     expect(shown()).toBe("true");
     expect(mediaFetches).toBe(1);
+    // ブラウザの通常のキャッシュには入れない（写しは Cache Storage の 1 つだけ）
+    expect(mediaCacheModes).toEqual(["no-store"]);
     await act(async () => {
       fireEvent.ended(video);
     });
