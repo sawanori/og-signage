@@ -1299,17 +1299,17 @@
 
 /*
  * Upcoming（横）。最大 6 行（2026-09-25 ユーザー指示で 4 → 5 → 6）。
- * 右の列は上から メンバー情報（見出し 34px・カード 70〜138px）、Upcoming（見出し 166px・行 202〜826px）、
- * お知らせ（854〜982px）。欄と欄の間はどちらも 28px、見出しと中身の間は 12px（2026-09-25 ユーザー指示で釣り合いをとり、
- * さらに 20px 下げた）
+ * 右の列は上から メンバー情報（見出し 54px・カード 90〜158px）、Upcoming（見出し 186px・行 222〜834px）、
+ * お知らせ（862〜982px）。欄と欄の間はどちらも 28px、見出しと中身の間は 12px（2026-09-25・26 ユーザー指示で釣り合いをとり、
+ * 20px ずつ 2 回下げた）
  */
 /* 縦に伸ばしたときは、行の間隔を広げて下のお知らせとの間をそろえる（6 行で間は 5 つ） */
 .lUpcoming {
   position: absolute;
   left: calc(1368px + var(--canvas-extra-x, 0px));
-  top: 202px;
+  top: 222px;
   width: 516px;
-  height: calc(624px + var(--canvas-extra, 0px));
+  height: calc(612px + var(--canvas-extra, 0px));
   display: flex;
   flex-direction: column;
   gap: calc(4.8px + var(--canvas-extra, 0px) / 5);
@@ -1317,7 +1317,7 @@
 
 .lRow {
   position: relative;
-  height: 100px;
+  height: 98px;
   flex: none;
   border-radius: 14px;
   background: #f5f5f5;
@@ -1336,7 +1336,7 @@
 }
 
 .lRowDay {
-  margin-top: 20px;
+  margin-top: 19px;
   font-weight: 700;
   font-size: 28px;
   line-height: 1;
@@ -1352,8 +1352,8 @@
 .lRowDivider {
   position: absolute;
   left: 120px;
-  top: 14px;
-  bottom: 14px;
+  top: 13px;
+  bottom: 13px;
   width: 2px;
   background: #e6e6e6;
 }
@@ -1409,7 +1409,7 @@
 .lRowImage {
   position: absolute;
   left: 384px;
-  top: 12px;
+  top: 11px;
   width: 118px;
   height: 76px;
   border-radius: 10px;
@@ -1426,13 +1426,13 @@
   height: 1080px;
 }
 
-/* お知らせ（横）。右の列の一番下（854〜982px）。白いカードで、縁は線ではなくドロップシャドウ（2026-09-25 ユーザー指示） */
+/* お知らせ（横）。右の列の一番下（862〜982px）。白いカードで、縁は線ではなくドロップシャドウ（2026-09-25 ユーザー指示） */
 .lNews {
   position: absolute;
   left: calc(1368px + var(--canvas-extra-x, 0px));
-  top: 854px;
+  top: 862px;
   width: 516px;
-  height: 128px;
+  height: 120px;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -1534,11 +1534,11 @@
   color: var(--ink-mute);
 }
 
-/* メンバー情報（横）。右の列の一番上で、UPCOMING と同じ左端・幅（見出しは 34px、カードは 70〜138px。2026-09-25 ユーザー指示） */
+/* メンバー情報（横）。右の列の一番上で、UPCOMING と同じ左端・幅（見出しは 54px、カードは 90〜158px。2026-09-25・26 ユーザー指示） */
 .lRules {
   position: absolute;
   left: calc(1368px + var(--canvas-extra-x, 0px));
-  top: 70px;
+  top: 90px;
   width: 516px;
   height: 68px;
   display: flex;

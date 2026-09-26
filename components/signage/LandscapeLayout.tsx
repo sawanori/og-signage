@@ -61,7 +61,7 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
         <path d="M2 13 C 34 8, 70 5, 108 4" fill="none" stroke="#1B2530" strokeWidth="2" strokeLinecap="round" />
       </svg>
       {/* メンバー情報。右の列の一番上で、UPCOMING と同じ左端・幅・見出しの並び（2026-09-25 ユーザー指示） */}
-      <div className={styles.lSectionTitle} style={{ left: stretchX(1372, 1), top: 34 }}>
+      <div className={styles.lSectionTitle} style={{ left: stretchX(1372, 1), top: 54 }}>
         <span className={styles.lSectionEn}>{COPY.rules.en}</span>
         <span className={styles.lSectionJa}>{COPY.rules.ja}</span>
       </div>
@@ -78,7 +78,7 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
       <Hero hero={view.hero} config={config} resolveMediaUrl={resolveMediaUrl} />
 
       {/* Upcoming */}
-      <div className={styles.lSectionTitle} style={{ left: stretchX(1372, 1), top: 166 }}>
+      <div className={styles.lSectionTitle} style={{ left: stretchX(1372, 1), top: 186 }}>
         <span className={styles.lSectionEn}>{COPY.upcoming.en}</span>
         <span className={styles.lSectionJa}>{COPY.upcoming.ja}</span>
       </div>
