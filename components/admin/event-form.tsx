@@ -7,8 +7,8 @@
  * - 保存中・保存失敗を表示する。失敗しても入力はそのまま残す。
  * - 他の人が先に更新していたら（revision 不一致）入力を保ったまま知らせ、最新の版で保存し直せるようにする。
  * - 保存・削除のあとは一覧へ戻り、一覧で結果を知らせる。
- * - 終わっていないイベントが上限（lib/services/events.ts の MAX_ACTIVE_EVENTS）に達していたら、追加の画面で先に知らせ、
- *   保存できないようにする（2026-09-25 ユーザー指示「消さないと登録できないように」）。
+ * - イベント（下書き・終了を含む）が上限（lib/services/events.ts の MAX_EVENTS）に達していたら、追加の画面で先に知らせ、
+ *   保存できないようにする（2026-09-25 ユーザー指示「消さないと登録できないように」。2026-09-26 から終わったイベントも数える）。
  */
 import { ChevronLeft, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -166,7 +166,7 @@ export function EventForm(props: EventFormProps) {
       {limit ? (
         <div className={styles.bannerWarn} role="alert" data-testid="event-limit">
           <p>
-            {`終わっていないイベントが ${limit.count} 件あります。登録できるのは ${limit.max} 件まで（下書きを含む。終わったイベントは数えません）です。新しく登録するには、イベント一覧でどれかを削除してください。`}
+            {`イベントが ${limit.count} 件登録されています。登録できるのは ${limit.max} 件まで（下書きと終了したイベントを含む）です。新しく登録するには、イベント一覧でどれかを削除してください（終了したイベントは、終了から 1 週間で自動で削除されます）。`}
           </p>
           <Link href="/admin/events" className={styles.textButton}>
             イベント一覧へ
