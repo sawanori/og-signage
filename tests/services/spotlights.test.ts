@@ -19,6 +19,7 @@ const staff: AuthUser = { id: "u_staff", email: "staff@example.com", name: "Staf
 type SpotlightFormInput = {
   companyName: string;
   personName: string;
+  personNameKana: string | null;
   role: string | null;
   quote: string | null;
   bio: string | null;
@@ -32,6 +33,7 @@ function spotlightInput(overrides: Partial<SpotlightFormInput> = {}): SpotlightF
   return {
     companyName: "株式会社サンプル",
     personName: "山田 太郎",
+    personNameKana: null,
     role: null,
     quote: null,
     bio: null,
@@ -217,5 +219,57 @@ describe("member spotlights（Staff 以上）", () => {
       spotlightInput({ quote: "あ".repeat(30), bio: "あ".repeat(60) }),
     );
     expect(ok.revision).toBe(0);
+  });
+
+  it("ふりがな（任意）を保存できる。ひらがな・カタカナ（半角も）・ー・・・空白を受け付け、前後の空白は除き、空欄は null", async () => {
+    const created = await spotlightsService.createSpotlight(db, staff, spotlightInput({ personNameKana: " やまだ たろう " }));
+    expect(created.personNameKana).toBe("やまだ たろう");
+    expect((await spotlightsService.listSpotlights(db))[0].personNameKana).toBe("やまだ たろう");
+
+    for (const kana of ["ヤマダ・タロー", "ヴィクトール　ユーゴー", "ﾔﾏﾀﾞ ﾀﾛｳ"]) {
+      const row = await spotlightsService.createSpotlight(db, staff, spotlightInput({ personNameKana: kana }));
+      expect(row.personNameKana).toBe(kana);
+    }
+
+    const updated = await spotlightsService.updateSpotlight(db, staff, created.id, {
+      ...spotlightInput({ personNameKana: "サトウ ジロウ" }),
+      revision: created.revision,
+    });
+    expect(updated.personNameKana).toBe("サトウ ジロウ");
+    const cleared = await spotlightsService.updateSpotlight(db, staff, created.id, {
+      ...spotlightInput({ personNameKana: "  " }),
+      revision: updated.revision,
+    });
+    expect(cleared.personNameKana).toBeNull();
+  });
+
+  it("ふりがなに ひらがな・カタカナ以外（漢字・英数字・記号）が入っていれば入力不正。40 文字まで", async () => {
+    for (const bad of ["山田", "yamada", "やまだ1", "やまだ!"]) {
+      const error = await expectServiceError(
+        spotlightsService.createSpotlight(db, staff, spotlightInput({ personNameKana: bad })),
+        400,
+        "invalid_input",
+      );
+      expect(error.message).toBe("ふりがなはひらがなかカタカナで入力してください");
+    }
+    const tooLong = await expectServiceError(
+      spotlightsService.createSpotlight(db, staff, spotlightInput({ personNameKana: "あ".repeat(41) })),
+      400,
+      "invalid_input",
+    );
+    expect(tooLong.message).toBe("ふりがなは40文字以内で入力してください");
+    expect(await spotlightsService.listSpotlights(db)).toHaveLength(0);
+
+    const created = await spotlightsService.createSpotlight(db, staff, spotlightInput({ personNameKana: "あ".repeat(40) }));
+    const error = await expectServiceError(
+      spotlightsService.updateSpotlight(db, staff, created.id, {
+        ...spotlightInput({ personNameKana: "Yamada" }),
+        revision: created.revision,
+      }),
+      400,
+      "invalid_input",
+    );
+    expect(error.message).toBe("ふりがなはひらがなかカタカナで入力してください");
+    expect((await spotlightsService.getSpotlight(db, created.id)).personNameKana).toBe("あ".repeat(40));
   });
 });

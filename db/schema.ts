@@ -301,6 +301,11 @@ export const memberSpotlights = sqliteTable("member_spotlights", {
   id: id(),
   companyName: text("company_name").notNull(),
   personName: text("person_name").notNull(),
+  /**
+   * ふりがな（任意。ひらがな・カタカナ）。漢字の名前は読みが分からないので、管理画面の一覧の あ行・か行… の絞り込みと
+   * 名前順にだけ使う。サイネージには出さない（2026-09-27 ユーザー指示）
+   */
+  personNameKana: text("person_name_kana"),
   /** 肩書き（任意） */
   role: text("role"),
   /** ひとこと（任意。サイネージでは「」で囲んで出す） */

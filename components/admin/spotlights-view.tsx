@@ -4,12 +4,17 @@
  * メンバー紹介（Staff 以上）。一覧・追加・編集・削除。サイネージの MEMBER SPOTLIGHT には「サイネージに出す」が ON の人だけを、
  * 登録順に 1 人ずつ切り替えて出す（lib/config-builder.ts・lib/display-rules.ts）。
  * 一覧と保存の流れ（revision 競合のときは知らせて読み込み直す）はお知らせ（notices-view.tsx）にそろえる。
+ * 一覧は検索・あ行・か行… の絞り込み・名前順ができる（2026-09-27 ユーザー指示。行の決め方は kana-row.ts）。
+ * 絞り込みの見た目はイベント管理（events-manager.tsx）の状態の絞り込みと検索欄にそろえる。
  */
-import { Pencil, Plus, Trash2, UserRound } from "lucide-react";
+import { Pencil, Plus, Search, Trash2, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { createSpotlightAction, deleteSpotlightAction, updateSpotlightAction } from "@/app/admin/_actions/spotlights";
 import type { SpotlightRow } from "@/lib/services/spotlights";
+import admin from "./admin.module.css";
+import events from "./events.module.css";
+import { KANA_ROWS, kanaRowOf, normalizeForSearch, sortByReading, type KanaRow } from "./kana-row";
 import { mediaThumbnailUrl } from "./media-upload-field";
 import styles from "./settings.module.css";
 import {
@@ -23,12 +28,30 @@ import {
 
 const SAVED_MESSAGE = "保存しました。サイネージには 30 秒以内に反映されます。";
 
+type Sort = "registered" | "kana";
+
+/** お名前・ふりがな・会社名・肩書き・タグのどれかに含まれるか。needle は normalizeForSearch 済み */
+function matches(s: SpotlightRow, needle: string): boolean {
+  return [s.personName, s.personNameKana, s.companyName, s.role, ...s.tags].some(
+    (v) => v !== null && normalizeForSearch(v).includes(needle),
+  );
+}
+
 export function SpotlightsView({ spotlights }: { spotlights: SpotlightRow[] }) {
   const [form, setForm] = useState<SpotlightFormState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [query, setQuery] = useState("");
+  const [row, setRow] = useState<KanaRow | "all">("all");
+  const [sort, setSort] = useState<Sort>("registered");
   const router = useRouter();
+
+  // 行ごとの人数は検索に当たった人で数える（どの行に当たりがあるか分かるように）
+  const needle = normalizeForSearch(query).trim();
+  const searched = needle === "" ? spotlights : spotlights.filter((s) => matches(s, needle));
+  const inRow = row === "all" ? searched : searched.filter((s) => kanaRowOf(s) === row);
+  const shown = sort === "kana" ? sortByReading(inRow) : inRow;
 
   const openNew = () => {
     setForm(emptySpotlightForm());
@@ -120,14 +143,62 @@ export function SpotlightsView({ spotlights }: { spotlights: SpotlightRow[] }) {
       {success ? <p className={styles.formSuccess}>{SAVED_MESSAGE}</p> : null}
 
       <section className={styles.panel} aria-label="メンバー紹介一覧">
-        <h2 className={styles.panelTitle}>メンバー紹介一覧</h2>
+        <div className={styles.listTools}>
+          <h2 className={styles.panelTitle}>メンバー紹介一覧</h2>
+          <label className={events.search}>
+            <Search size={17} strokeWidth={2.2} aria-hidden />
+            <input
+              type="search"
+              placeholder="お名前・会社名・タグで探す"
+              aria-label="メンバーを検索"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>
+          <select
+            className={styles.select}
+            aria-label="並び順"
+            value={sort}
+            onChange={(e) => setSort(e.target.value === "kana" ? "kana" : "registered")}
+          >
+            <option value="registered">登録順</option>
+            <option value="kana">名前順（あいうえお）</option>
+          </select>
+        </div>
+        <div className={`${admin.chips} ${styles.kanaChips}`} role="group" aria-label="名前の行で絞り込む">
+          <button type="button" className={admin.chip} aria-pressed={row === "all"} onClick={() => setRow("all")}>
+            すべて
+          </button>
+          {KANA_ROWS.map((r) => {
+            const count = searched.filter((s) => kanaRowOf(s) === r).length;
+            return (
+              <button
+                key={r}
+                type="button"
+                className={admin.chip}
+                aria-pressed={row === r}
+                disabled={count === 0}
+                onClick={() => setRow(r)}
+              >
+                {r === "その他" ? r : `${r}行`} {count}
+              </button>
+            );
+          })}
+        </div>
+        <p className={styles.hint} style={{ marginTop: 8 }}>
+          登録順は、サイネージに出す順番と同じです。
+        </p>
         {spotlights.length === 0 ? (
           <div className={styles.empty}>
             <p>メンバー紹介はまだありません。</p>
           </div>
+        ) : shown.length === 0 ? (
+          <div className={styles.empty}>
+            <p>該当するメンバーはいません</p>
+          </div>
         ) : (
           <ul className={styles.list}>
-            {spotlights.map((s) => (
+            {shown.map((s) => (
               <li key={s.id} className={styles.listRow}>
                 {s.photoMediaId ? (
                   // 縦長の写真は顔が上の方にあるので、横長の枠では上寄りを見せる

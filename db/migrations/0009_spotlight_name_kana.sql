@@ -1,0 +1,1 @@
+ALTER TABLE `member_spotlights` ADD `person_name_kana` text;

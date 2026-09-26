@@ -128,9 +128,17 @@ export const SPOTLIGHT_TAG_MAX = 10;
 export const SPOTLIGHT_QUOTE_MAX = 30;
 export const SPOTLIGHT_BIO_MAX = 60;
 
+/** ふりがなに使える字（全角・半角をそろえてから確かめるので、半角カナと全角の空白も通る）。ひらがな・カタカナ・ー・・・空白 */
+const KANA_READING = /^[ぁ-ゖァ-ヺー・ ]+$/;
+
 const spotlightFields = z.object({
   companyName: requiredText("会社名", 30),
   personName: requiredText("お名前", 20),
+  /** ふりがな（任意）。管理画面の一覧の あ行・か行… の絞り込みと名前順に使う */
+  personNameKana: optionalText("ふりがな", 40).refine(
+    (v) => v === null || KANA_READING.test(v.normalize("NFKC")),
+    "ふりがなはひらがなかカタカナで入力してください",
+  ),
   role: optionalText("肩書き", 30),
   /** ひとこと（サイネージでは「」で囲んで 2 行まで） */
   quote: optionalText("ひとこと", SPOTLIGHT_QUOTE_MAX),

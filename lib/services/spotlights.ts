@@ -6,6 +6,7 @@
  * - 更新は revision による条件付き更新。不一致は conflict エラー（409）。
  * - 写真・ロゴは media が state=active かつ type=image のものだけ許す。
  * - 並びは登録順（古いものから）。サイネージには enabled のものだけを出す（lib/config-builder.ts）。
+ * - ふりがな（任意）は管理画面の一覧の絞り込みと名前順にだけ使い、サイネージの config には入れない。
  */
 import { and, asc, eq, sql } from "drizzle-orm";
 import type { Db } from "../../db/index";
@@ -30,6 +31,7 @@ function toColumns(data: SpotlightInput) {
   return {
     companyName: data.companyName,
     personName: data.personName,
+    personNameKana: data.personNameKana,
     role: data.role,
     quote: data.quote,
     bio: data.bio,

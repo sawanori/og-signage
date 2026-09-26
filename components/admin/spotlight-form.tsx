@@ -17,6 +17,7 @@ export type SpotlightFormState = {
   id: string | null;
   companyName: string;
   personName: string;
+  personNameKana: string;
   role: string;
   quote: string;
   bio: string;
@@ -40,6 +41,7 @@ export function emptySpotlightForm(): SpotlightFormState {
     id: null,
     companyName: "",
     personName: "",
+    personNameKana: "",
     role: "",
     quote: "",
     bio: "",
@@ -58,6 +60,7 @@ export function toSpotlightForm(s: SpotlightRow): SpotlightFormState {
     id: s.id,
     companyName: s.companyName,
     personName: s.personName,
+    personNameKana: s.personNameKana ?? "",
     role: s.role ?? "",
     quote: s.quote ?? "",
     bio: s.bio ?? "",
@@ -78,6 +81,7 @@ export function toSpotlightInput(form: SpotlightFormState) {
   return {
     companyName: form.companyName,
     personName: form.personName,
+    personNameKana: blankToNull(form.personNameKana),
     role: blankToNull(form.role),
     quote: blankToNull(form.quote),
     bio: blankToNull(form.bio),
@@ -145,6 +149,15 @@ export function SpotlightForm({
           value={form.personName}
           maxLength={20}
           onChange={(personName) => onChange({ personName })}
+        />
+        {/* 説明が長いので 1 行を使う（肩書きとタグは今までどおり横に並べる） */}
+        <TextField
+          id="spotlight-kana"
+          label="ふりがな（任意。一覧の あ行・か行… の絞り込みと名前順に使います）"
+          value={form.personNameKana}
+          maxLength={40}
+          full
+          onChange={(personNameKana) => onChange({ personNameKana })}
         />
         <TextField id="spotlight-role" label="肩書き（任意）" value={form.role} maxLength={30} onChange={(role) => onChange({ role })} />
 
@@ -249,16 +262,19 @@ function TextField({
   label,
   value,
   maxLength,
+  full = false,
   onChange,
 }: {
   id: string;
   label: string;
   value: string;
   maxLength: number;
+  /** 2 列の欄を 1 行使う */
+  full?: boolean;
   onChange: (value: string) => void;
 }) {
   return (
-    <div className={styles.field}>
+    <div className={full ? `${styles.field} ${styles.fieldFull}` : styles.field}>
       <label className={styles.label} htmlFor={id}>
         {label}
       </label>

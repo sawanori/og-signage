@@ -475,6 +475,33 @@
   gap: 8px;
 }
 
+/* ---------------------------------------------------------------- メンバー紹介一覧の検索・絞り込み（spotlights-view.tsx） */
+
+/* 見出し・検索欄・並び順を 1 行に。検索欄は events.module.css の .search（margin-left: auto で右へ寄る） */
+.listTools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* admin.module.css の .chips / .chip を使う。12 個を 1 行に収めるため、幅は固定をやめて字数に合わせる */
+.kanaChips {
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.kanaChips > button {
+  width: auto;
+  min-width: 48px;
+  padding: 0 12px;
+}
+
+/* 該当する人がいない行 */
+.kanaChips > button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 /* ---------------------------------------------------------------- 画像アップロード */
 
 .imageField {
