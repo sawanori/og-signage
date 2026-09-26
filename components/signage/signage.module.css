@@ -1746,6 +1746,11 @@
   overflow-wrap: anywhere;
 }
 
+/* 短いひとことは 1 行で（SpotlightCard.tsx の fitQuote が付ける） */
+.lSpotQuote[data-one-line="true"] {
+  white-space: nowrap;
+}
+
 .lSpotBio {
   margin-top: calc(14px * var(--fit, 1));
   font-size: calc(13px * var(--fit, 1));

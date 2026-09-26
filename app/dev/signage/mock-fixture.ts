@@ -123,7 +123,8 @@ const mockSpotlights: SignageSpotlight[] = [
     companyName: "株式会社みなとテック",
     personName: "鈴木 健太",
     role: "エンジニア",
-    quote: null,
+    // 1 行にわずかに入らない短いひとこと（少し小さくして 1 行で出す例）
+    quote: "鈴木ケンタです。",
     bio: null,
     tags: [],
     photo: null,

@@ -16,6 +16,8 @@ import styles from "./signage.module.css";
 
 const MIN_FIT = 0.6;
 const FIT_STEP = 0.05;
+/** ひとことを 1 行に収めるために小さくしてよい下限（23px → 17px） */
+const MIN_ONE_LINE_FIT = 0.74;
 
 /** 中身がはみ出さなくなるまで --fit を小さくする（はみ出さなければ 1 のまま） */
 function fitToBox(el: HTMLElement) {
@@ -25,6 +27,20 @@ function fitToBox(el: HTMLElement) {
     fit = Math.max(MIN_FIT, Math.round((fit - FIT_STEP) * 100) / 100);
     el.style.setProperty("--fit", String(fit));
   }
+}
+
+/**
+ * ひとこと。短いものは少し小さくしてでも 1 行で出す（「ザビエルで／す。」のように 1〜2 文字だけ次の行に落とさない）。
+ * 1 行に入らなければ言葉の区切りで折り返し、写真の高さの 6 割に入るよう小さくする
+ */
+function fitQuote(el: HTMLElement) {
+  el.dataset.oneLine = "true";
+  for (let fit = 1; fit >= MIN_ONE_LINE_FIT; fit = Math.round((fit - 0.02) * 100) / 100) {
+    el.style.setProperty("--fit", String(fit));
+    if (el.scrollWidth <= el.clientWidth) return;
+  }
+  delete el.dataset.oneLine;
+  fitToBox(el);
 }
 
 export function SpotlightCard({
@@ -41,13 +57,17 @@ export function SpotlightCard({
   const quoteRef = useRef<HTMLParagraphElement>(null);
   const item = spotlight?.item ?? null;
   useLayoutEffect(() => {
-    const boxes = [textRef.current, quoteRef.current].filter((el): el is HTMLDivElement | HTMLParagraphElement => el !== null);
-    if (boxes.length === 0) return;
-    boxes.forEach(fitToBox);
+    const text = textRef.current;
+    const quote = quoteRef.current;
+    const fit = () => {
+      if (text) fitToBox(text);
+      if (quote) fitQuote(quote);
+    };
+    fit();
     // 書体が読み込まれると文字の幅が変わるので、読み込み後にもう一度
     let alive = true;
     void document.fonts?.ready.then(() => {
-      if (alive) boxes.forEach(fitToBox);
+      if (alive) fit();
     });
     return () => {
       alive = false;
