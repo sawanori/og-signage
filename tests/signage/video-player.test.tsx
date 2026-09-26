@@ -8,7 +8,7 @@
 import { Blob as NodeBlob } from "node:buffer";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { FAILURE_TEXT, VideoPlayer, looksLikeBrokenFrames, videoCacheKey } from "@/app/signage/video-player";
+import { FAILURE_TEXT, VideoPlayer, looksLikeBrokenFrames, videoCacheKey, videoFit } from "@/app/signage/video-player";
 import type { SignageConfig } from "@/lib/config-schema";
 import { tokyoDateTime } from "@/lib/dates";
 import { makeConfig, mediaRef } from "../fixtures/config.fixture";
@@ -262,6 +262,28 @@ describe("VideoPlayer", () => {
     await advance(4000);
     expect(shown()).toBe("true");
     expect(excluded()).toEqual([]);
+  });
+
+  it("videoFit: 画面と動画の形が近ければ画面いっぱい（cover）、大きく違えば全体を収める（contain）", () => {
+    // ブラウザを最大化した横長の画面（1920×968）に 16:9 の動画: 上下を 1 割ほど切って余白なし
+    expect(videoFit(1920, 1080, 1920, 968)).toBe("cover");
+    expect(videoFit(1920, 1080, 1920, 1080)).toBe("cover");
+    expect(videoFit(1920, 1080, 1440, 900)).toBe("cover");
+    // 縦の画面に横の動画: 7 割近く切れてしまうので全体を収める
+    expect(videoFit(1920, 1080, 1080, 1920)).toBe("contain");
+    // 大きさが分からないときは画面いっぱい
+    expect(videoFit(0, 0, 1920, 1080)).toBe("cover");
+  });
+
+  it("流すときは画面の形に合わせて出し方を決める（横長の画面では余白なし）", async () => {
+    openedBefore();
+    const size = { w: window.innerWidth, h: window.innerHeight };
+    Object.assign(window, { innerWidth: 1920, innerHeight: 968 });
+    renderPlayer(testPlayConfig());
+    await advance(4000);
+    expect(shown()).toBe("true");
+    expect((screen.getByTestId("signage-video") as HTMLVideoElement).style.objectFit).toBe("cover");
+    Object.assign(window, { innerWidth: size.w, innerHeight: size.h });
   });
 
   it("looksLikeBrokenFrames: 一色の緑だけを壊れた映像とみなす", () => {

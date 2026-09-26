@@ -11,6 +11,8 @@
  *   （中身が変わったら別の鍵になるよう sha256 を鍵に入れる。再生リストから外れたら消す）。ページを開いたら、再生リストの
  *   動画を 1 本ずつ裏で読み込んでおき、テスト表示もすぐ流せるようにする（2026-09-26 ユーザー指示「キャッシュでスムーズに」）。
  * - 表示を 600ms で黒へ溶かしてから（SignageScreen の fading）動画を画面いっぱいに出し、終わったら表示に戻す。
+ *   画面と動画の形が近ければ、余白を出さずに画面いっぱいに広げ、はみ出した分は切る（2026-09-26 ユーザー指示。
+ *   ブラウザを最大化した横長の画面で左右に黒い余白が出ていた）。形が大きく違う（縦の画面に横の動画など）ときは全体を収める。
  * - テスト表示（管理画面のボタン）は、数秒ごとに /api/signage/commands を確かめてすぐ流す。動画を選んで押したときは
  *   その動画を読み込んでから流す（順番の位置は進めない）。定期動画が OFF でも表示時間内なら流す（試せるように）。
  * - 音量は端末の設定（device.volume）。自動再生を断られたらミュートで流し直す（Pi の Chromium は
@@ -109,6 +111,17 @@ function waitFor(el: HTMLVideoElement, event: string, ms: number, signal: AbortS
     el.addEventListener("error", onError);
     signal.addEventListener("abort", onAbort);
   });
+}
+
+/**
+ * 動画の出し方。画面いっぱいに広げたとき（cover）に見える割合が 75% 以上なら cover（余白なし・はみ出した分は切る）、
+ * それより切れてしまうなら contain（全体を収めて余白を出す）
+ */
+export function videoFit(videoWidth: number, videoHeight: number, screenWidth: number, screenHeight: number): "cover" | "contain" {
+  if (!videoWidth || !videoHeight || !screenWidth || !screenHeight) return "cover";
+  const video = videoWidth / videoHeight;
+  const screen = screenWidth / screenHeight;
+  return Math.min(video, screen) / Math.max(video, screen) >= 0.75 ? "cover" : "contain";
 }
 
 /** 端末のブラウザの中に動画を保存しておく場所（Cache Storage）の名前 */
@@ -349,6 +362,8 @@ export function VideoPlayer({
   const commandsRef = useRef<SignageConfig["commands"] | null>(null);
   const [src, setSrc] = useState<string | null>(null);
   const [shown, setShown] = useState(false);
+  // 動画の出し方（videoFit。流すたびに画面と動画の形から決める）
+  const [fit, setFit] = useState<"cover" | "contain">("cover");
   // テスト表示が流せなかった理由（数秒で消す）
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -561,6 +576,7 @@ export function VideoPlayer({
         const volume = configRef.current.device.volume;
         el.volume = volume / 100;
         el.muted = volume === 0;
+        setFit(videoFit(el.videoWidth, el.videoHeight, window.innerWidth, window.innerHeight));
         setShown(true);
 
         const started = await startPlaying(el, signal);
@@ -733,8 +749,8 @@ export function VideoPlayer({
           aria-hidden
           data-testid="signage-video"
           data-shown={shown ? "true" : "false"}
-          className="pointer-events-none fixed inset-0 z-40 h-full w-full bg-black object-contain"
-          style={{ opacity: shown ? 1 : 0 }}
+          className="pointer-events-none fixed inset-0 z-40 h-full w-full bg-black"
+          style={{ opacity: shown ? 1 : 0, objectFit: fit }}
         />
       ) : null}
       {notice ? (
