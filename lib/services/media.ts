@@ -21,6 +21,7 @@ import {
   MEDIA_MAX_BYTES,
   SNIFF_BYTES,
   UPLOAD_PART_SIZE,
+  VIDEO_EXPORT_MBPS,
   kindOfMime,
   sniffMime,
   type MediaKind,
@@ -111,7 +112,7 @@ export function isPlayable(mimeType: string, info: VideoCodecInfo | null | undef
 
 function sizeLimitMessage(kind: MediaKind): string {
   return kind === "video"
-    ? `動画は ${MAX_VIDEO_MB}MB 以下にしてください（${MAX_VIDEO_SECONDS} 秒の 1920×1080 なら、書き出しのビットレートを 4Mbps 程度に）`
+    ? `動画は ${MAX_VIDEO_MB}MB 以下にしてください（${MAX_VIDEO_SECONDS} 秒の 1920×1080 なら ${VIDEO_EXPORT_MBPS}Mbps 以下で書き出してください）`
     : "画像は 20MB 以下にしてください";
 }
 

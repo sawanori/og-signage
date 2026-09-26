@@ -18,10 +18,10 @@ const H264_1080P: VideoCodecInfo = {
   chromaFormat: "4:2:0",
   bitDepth: 8,
 };
-const OK = { fileSize: 18 * MB, durationSeconds: 30.4, codecInfo: H264_1080P };
+const OK = { fileSize: 40 * MB, durationSeconds: 30.4, codecInfo: H264_1080P };
 
 describe("videoRequirementViolations", () => {
-  it("規格どおり（18MB ちょうど・30 秒と書き出しの端数・1080p・30fps・4:2:0・8bit）なら何も出ない", () => {
+  it("規格どおり（40MB ちょうど・30 秒と書き出しの端数・1080p・30fps・4:2:0・8bit）なら何も出ない", () => {
     expect(videoRequirementViolations(OK)).toEqual([]);
     expect(videoRequirementViolations({ ...OK, durationSeconds: 30.5 })).toEqual([]);
   });
@@ -34,12 +34,12 @@ describe("videoRequirementViolations", () => {
 
   it("足りない点をすべて、1 点ずつ並べる", () => {
     const problems = videoRequirementViolations({
-      fileSize: 25_300_000,
+      fileSize: 52_400_000,
       durationSeconds: 32.5,
       codecInfo: { ...H264_1080P, width: 3840, height: 2160, fps: 59.94, chromaFormat: "4:2:2", bitDepth: 10 },
     });
     expect(problems).toEqual([
-      "ファイルの大きさ: 25.3MB（18MB 以下にしてください。30 秒の 1920×1080 なら書き出しのビットレートを 4Mbps 程度に）",
+      "ファイルの大きさ: 52.4MB（40MB 以下にしてください。30 秒の 1920×1080 なら 10Mbps 以下で書き出してください）",
       "長さ: 32.5 秒（30 秒以内にしてください）",
       "解像度: 3840×2160（1920×1080 以下、縦長なら 1080×1920 以下にしてください）",
       "フレームレート: 59.94fps（30fps 以下にしてください）",
@@ -48,9 +48,9 @@ describe("videoRequirementViolations", () => {
     ]);
   });
 
-  it("大きさは 18MB（18×1024×1024 バイト）を 1 バイトでも超えたら断る", () => {
-    expect(videoRequirementViolations({ ...OK, fileSize: 18 * MB + 1 })).toEqual([
-      "ファイルの大きさ: 18.9MB（18MB 以下にしてください。30 秒の 1920×1080 なら書き出しのビットレートを 4Mbps 程度に）",
+  it("大きさは 40MB（40×1024×1024 バイト）を 1 バイトでも超えたら断る", () => {
+    expect(videoRequirementViolations({ ...OK, fileSize: 40 * MB + 1 })).toEqual([
+      "ファイルの大きさ: 41.9MB（40MB 以下にしてください。30 秒の 1920×1080 なら 10Mbps 以下で書き出してください）",
     ]);
   });
 

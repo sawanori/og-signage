@@ -32,6 +32,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { MediaRef, PlaylistItem, SignageConfig } from "@/lib/config-schema";
 import { isWithinDisplaySchedule } from "@/lib/display-rules";
+import { VIDEO_EXPORT_MBPS } from "@/lib/file-sniff";
 import {
   consumeTestPlay,
   excludeForToday,
@@ -69,7 +70,7 @@ type Failure = "load-error" | "load-slow" | "no-video" | "broken-frames" | "bloc
 
 export const FAILURE_TEXT: Record<Failure, string> = {
   "load-error": "動画を読み込めませんでした。「動画・メディア」で形式を確認してください",
-  "load-slow": "動画の読み込みが 2 分で終わりませんでした。通信が遅いか、動画のビットレートが高すぎます（4Mbps 程度で書き出してください）",
+  "load-slow": `動画の読み込みが 2 分で終わりませんでした。通信が遅いか、動画のビットレートが高すぎます（${VIDEO_EXPORT_MBPS}Mbps 以下で書き出してください）`,
   "no-video": "このブラウザでは、この動画の映像を再生できません（H.264 の動画にしてください）",
   "broken-frames":
     "映像が緑一色にしか描けません。Firefox の about:config で media.hardware-video-decoding.enabled を false にして、Firefox を再起動してください",

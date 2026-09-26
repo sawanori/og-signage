@@ -3,9 +3,9 @@
  * ブラウザ（アップロードを始める前。lib/client/upload.ts）とサーバー（完了時。lib/services/media.ts）が同じ表で判定する。
  *
  * 要件: MP4・H.264（4:2:0・8bit）か H.265（4:2:0・8/10bit）・1920×1080 以下（縦は 1080×1920 以下）・30fps 以下・
- * 長さと大きさの上限（lib/file-sniff.ts の MAX_VIDEO_SECONDS・MAX_VIDEO_MB。2026-09-26 から 30 秒・18MB）。
+ * 長さと大きさの上限（lib/file-sniff.ts の MAX_VIDEO_SECONDS・MAX_VIDEO_MB。2026-09-26 から 30 秒・40MB）。
  */
-import { MAX_VIDEO_MB, MAX_VIDEO_SECONDS, MEDIA_MAX_BYTES, isVideoTooLong } from "./file-sniff";
+import { MAX_VIDEO_MB, MAX_VIDEO_SECONDS, MEDIA_MAX_BYTES, VIDEO_EXPORT_MBPS, isVideoTooLong } from "./file-sniff";
 import type { VideoCodecInfo } from "./services/media";
 
 /** 判定に使う動画の事実（ブラウザが MP4 から読んだもの） */
@@ -75,7 +75,7 @@ export function videoRequirementViolations(facts: VideoFacts): string[] {
   const problems: string[] = [];
   if (facts.fileSize > MEDIA_MAX_BYTES.video) {
     problems.push(
-      `ファイルの大きさ: ${(facts.fileSize / 1_000_000).toFixed(1)}MB（${MAX_VIDEO_MB}MB 以下にしてください。${MAX_VIDEO_SECONDS} 秒の 1920×1080 なら書き出しのビットレートを 4Mbps 程度に）`,
+      `ファイルの大きさ: ${(facts.fileSize / 1_000_000).toFixed(1)}MB（${MAX_VIDEO_MB}MB 以下にしてください。${MAX_VIDEO_SECONDS} 秒の 1920×1080 なら ${VIDEO_EXPORT_MBPS}Mbps 以下で書き出してください）`,
     );
   }
   if (facts.durationSeconds === null || facts.durationSeconds === undefined) {

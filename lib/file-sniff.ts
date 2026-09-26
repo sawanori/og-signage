@@ -9,15 +9,18 @@ export type MediaKind = "image" | "video";
 
 /**
  * 1 ファイルの上限（計画 6 節 7）。ブラウザとサーバーで共通。
- * 動画は 18MB（2026-09-26 ユーザー指示で長さを 30 秒に延ばしたのに合わせ、12MB から同じ割合で増やした。500MB → 60MB → 12MB → 18MB）。
- * 30 秒の 1920×1080 なら平均 約 4.8Mbps までなので、スマホで撮ったまま（約 26Mbps）や一般的な書き出し（8〜10Mbps）は超える。
- * 書き出しでビットレートを 4Mbps 程度に下げてもらう
+ * 動画は 40MB（2026-09-26 ユーザー指示。500MB → 60MB → 12MB → 18MB → 40MB）。30 秒の 1920×1080 なら平均 約 11Mbps までで、
+ * これまで本番に上がった動画（1920×1080 で平均 6〜10Mbps）はいつもの書き出しのまま入る。
+ * スマホで撮ったまま（約 26Mbps）は超えるので、書き出しで VIDEO_EXPORT_MBPS 以下にしてもらう
  */
-export const MAX_VIDEO_MB = 18;
+export const MAX_VIDEO_MB = 40;
 export const MEDIA_MAX_BYTES: Record<MediaKind, number> = {
   image: 20 * 1024 * 1024,
   video: MAX_VIDEO_MB * 1024 * 1024,
 };
+
+/** 案内に出す書き出しの目安（Mbps）。30 秒の 1920×1080 が、音声の分の余裕を見ても MAX_VIDEO_MB に収まる値 */
+export const VIDEO_EXPORT_MBPS = 10;
 
 /**
  * 再生リスト（定期動画）に入れられる動画の本数（2026-09-25 ユーザー指示「動画は最大 3 つまでしか設定できないように」）。

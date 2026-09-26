@@ -194,7 +194,7 @@ const meta = (parts: R2Part[], extra: Partial<CompleteUploadInput> = {}): Comple
   ...extra,
 });
 
-async function uploadVideo(size = 18 * MB) {
+async function uploadVideo(size = 12 * MB) {
   const data = file(MP4_HEAD, size);
   const { uploadId } = await startUpload(deps, staff, { kind: "video", size });
   const parts = await sendParts(uploadId, data);
@@ -214,15 +214,15 @@ async function expectMediaError(p: Promise<unknown>, status: number, code?: stri
 // ---------------------------------------------------------------- アップロード
 
 describe("アップロード", () => {
-  it("動画 18MB（上限ちょうど）を 2 パートで送り、完了すると media ができる（キーはサーバーが決める）", async () => {
-    const { uploadId, parts, data } = await uploadVideo();
-    expect(parts.map((p) => p.partNumber)).toEqual([1, 2]);
+  it("動画 40MB（上限ちょうど）を 4 パートで送り、完了すると media ができる（キーはサーバーが決める）", async () => {
+    const { uploadId, parts, data } = await uploadVideo(40 * MB);
+    expect(parts.map((p) => p.partNumber)).toEqual([1, 2, 3, 4]);
 
     const row = await completeUpload(deps, staff, uploadId, meta(parts), new Uint8Array([...WEBP_HEAD, 1, 2, 3]));
     expect(row).toMatchObject({
       type: "video",
       mimeType: "video/mp4",
-      fileSize: 18 * MB,
+      fileSize: 40 * MB,
       width: 1920,
       height: 1080,
       durationSeconds: 12.5,
@@ -238,16 +238,16 @@ describe("アップロード", () => {
     expect((await listMedia(db)).map((m) => m.id)).toEqual([row.id]);
   });
 
-  it("上限超過は開始時に 413（画像 20MB・動画 18MB）", async () => {
+  it("上限超過は開始時に 413（画像 20MB・動画 40MB）", async () => {
     await expectMediaError(startUpload(deps, staff, { kind: "image", size: 20 * MB + 1 }), 413, "too_large");
-    const tooLarge = await startUpload(deps, staff, { kind: "video", size: 18 * MB + 1 }).catch((err: unknown) => err);
+    const tooLarge = await startUpload(deps, staff, { kind: "video", size: 40 * MB + 1 }).catch((err: unknown) => err);
     expect(tooLarge).toMatchObject({
       status: 413,
       code: "too_large",
-      message: "動画は 18MB 以下にしてください（30 秒の 1920×1080 なら、書き出しのビットレートを 4Mbps 程度に）",
+      message: "動画は 40MB 以下にしてください（30 秒の 1920×1080 なら 10Mbps 以下で書き出してください）",
     });
     await expect(startUpload(deps, staff, { kind: "image", size: 20 * MB })).resolves.toBeTruthy();
-    await expect(startUpload(deps, staff, { kind: "video", size: 18 * MB })).resolves.toBeTruthy();
+    await expect(startUpload(deps, staff, { kind: "video", size: 40 * MB })).resolves.toBeTruthy();
     expect(bucket.pending.size).toBe(2);
   });
 
