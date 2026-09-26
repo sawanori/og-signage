@@ -6,6 +6,7 @@
  * - 縦横は ?layout で固定しなければ、見ている画面（ウィンドウ）の向きに合わせる。
  * - 画像は公開用の中継（/api/signage/media/<mediaId>）で読む。
  * - 全画面のボタンは置かない（2026-09-25 ユーザー指示で削除）。Pi では Chromium を --kiosk で起動して全画面にする。
+ *   横型の右下の WeWork のロゴを押すと全画面表示を入れ・解除できる（2026-09-26 ユーザー指示。fullscreen-toggle.ts）。
  * - 横型はウィンドウの形に合わせて縦（4:3 まで）にも横（21:9 まで）にも伸ばし、黒い帯を出さない（fillWindow）。
  * - 管理画面の「定期動画の設定」どおりに動画を流す（video-player.tsx。Pi のブラウザで開いて使うため）。
  * - 動画を流しているあいだ（fading）は時計を止める。毎秒の描き直しが Pi の描画の負担になり、動画のコマ落ちが増えるため
@@ -14,6 +15,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { SignageScreen } from "@/components/signage/SignageScreen";
 import type { MediaRef, SignageConfig } from "@/lib/config-schema";
+import { useFullscreenToggle } from "./fullscreen-toggle";
 import { VideoPlayer } from "./video-player";
 
 type Orientation = SignageConfig["device"]["orientation"];
@@ -39,6 +41,7 @@ export function PublicSignage({
   initialNow: number;
   layout: Orientation | null;
 }) {
+  useFullscreenToggle();
   const [config, setConfig] = useState(initialConfig);
   const [now, setNow] = useState(initialNow);
   // 動画へ切り替える前後に表示を黒へ溶かす（VideoPlayer が切り替える）

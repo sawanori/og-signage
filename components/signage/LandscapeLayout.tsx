@@ -165,8 +165,9 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
             ) : null}
             <FooterQr url={house.footerQrUrl} size={62} className={styles.lFooterQr} />
           </div>
+          {/* 公開のサイネージでは、このロゴを押すと全画面表示を入れ・解除する（app/signage/fullscreen-toggle.ts） */}
           {/* eslint-disable-next-line @next/next/no-img-element -- オフライン配信のため素の img */}
-          <img src={WEWORK_LOGO_SRC} alt="WeWork" className={styles.lFooterLogo} />
+          <img src={WEWORK_LOGO_SRC} alt="WeWork" className={styles.lFooterLogo} data-fullscreen-toggle="" />
         </div>
       </div>
     </div>

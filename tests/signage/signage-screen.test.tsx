@@ -71,6 +71,17 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     );
   });
 
+  it("横型の右下の WeWork のロゴには、全画面の切り替えの印を付ける（公開のページだけが使う）", () => {
+    renderScreen({}, orientation);
+    const marked = document.querySelectorAll("[data-fullscreen-toggle]");
+    if (orientation === "landscape") {
+      expect(marked).toHaveLength(1);
+      expect(marked[0].getAttribute("alt")).toBe("WeWork");
+    } else {
+      expect(marked).toHaveLength(0);
+    }
+  });
+
   it("動画を流しているあいだ（fading）は、サイネージの中身を隠す印を付ける（黒の上に出す部品は除く）", () => {
     renderScreen({ fading: true }, orientation);
     expect(screen.getByTestId("signage-canvas").dataset.fading).toBe("true");
