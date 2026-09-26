@@ -51,14 +51,10 @@ export async function deleteNoticeAction(id: string): Promise<ActionResult<null>
   });
 }
 
-// ---------------------------------------------------------- デザイン設定・ハウスルール・カテゴリ（Administrator）
+// ---------------------------------------------------------- デザイン設定・カテゴリ（Administrator）
 
 export async function updateDesignSettingsAction(input: unknown): Promise<ActionResult<house.HouseSettingsRow>> {
   return run("administrator", (user) => house.updateDesignSettings(getDb(), user, input));
-}
-
-export async function updateHouseRulesAction(input: unknown): Promise<ActionResult<house.HouseRuleRow[]>> {
-  return run("administrator", (user) => house.replaceHouseRules(getDb(), user, input));
 }
 
 export async function updateEventCategoriesAction(input: unknown): Promise<ActionResult<house.EventCategoryRow[]>> {

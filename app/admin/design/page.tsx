@@ -1,6 +1,6 @@
 /**
  * デザイン設定（/admin/design、Administrator）。ハウス名・ロゴ・キャッチコピー・フッター画像・フッターの QR・
- * 天気地域・カテゴリ色を設定する（計画 6 節の権限表）。メンバー情報は /admin/member-info。
+ * 天気地域・カテゴリ色を設定する（計画 6 節の権限表）。
  */
 import { DesignSettingsView } from "@/components/admin/design-settings-view";
 import { ForbiddenNotice } from "@/components/admin/forbidden-notice";

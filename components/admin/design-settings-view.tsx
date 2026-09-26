@@ -4,7 +4,7 @@
  * デザイン設定（Administrator）。ハウス基本情報・イベントカテゴリの 2 つを、それぞれ独立して保存する。
  * ハウス基本情報は house_settings の revision による条件付き更新（competing edits は conflict）。
  * カテゴリは revision を持たず、保存のたびに全件を置き換える（lib/services/house.ts）。
- * メンバー情報（旧ハウスルール）は専用の画面（/admin/member-info。member-info-view.tsx）で編集する。
+ * メンバー情報（旧ハウスルール）の画面は 2026-09-26 ユーザー指示で外した（横型の右上はメンバー紹介。/admin/spotlights）。
  */
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -27,7 +27,7 @@ export function DesignSettingsView({
       <div className={styles.pageHead}>
         <div>
           <h1 className={styles.pageTitle}>デザイン設定</h1>
-          <p className={styles.pageDesc}>サイネージに表示するハウスの情報とカテゴリの色を設定します。メンバー情報は左のメニューの「メンバー情報」で変えます。</p>
+          <p className={styles.pageDesc}>サイネージに表示するハウスの情報とカテゴリの色を設定します。</p>
         </div>
       </div>
       <HouseInfoSection settings={settings} />

@@ -19,10 +19,10 @@ describe("SidebarNav", () => {
     expect(currentLabels("/admin/videos/d1")).toEqual(["動画・メディア"]);
   });
 
-  it("メンバー情報は Administrator のメニューにだけあり、その画面で選択中になる", () => {
-    expect(visibleNavItems("administrator").map((i) => i.label)).toContain("メンバー情報");
-    expect(visibleNavItems("staff").map((i) => i.label)).not.toContain("メンバー情報");
-    expect(currentLabels("/admin/member-info")).toEqual(["メンバー情報"]);
+  it("メンバー紹介は Staff のメニューにもあり、その画面で選択中になる。メンバー情報はメニューから外した（2026-09-26 ユーザー指示）", () => {
+    expect(visibleNavItems("staff").map((i) => i.label)).toContain("メンバー紹介");
+    expect(currentLabels("/admin/spotlights")).toEqual(["メンバー紹介"]);
+    expect(visibleNavItems("administrator").map((i) => i.label)).not.toContain("メンバー情報");
   });
 
   it("ダッシュボードは /admin のときだけ選択中", () => {
