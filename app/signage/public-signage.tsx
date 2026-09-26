@@ -8,8 +8,10 @@
  * - 全画面のボタンは置かない（2026-09-25 ユーザー指示で削除）。Pi では Chromium を --kiosk で起動して全画面にする。
  * - 横型はウィンドウの形に合わせて縦（4:3 まで）にも横（21:9 まで）にも伸ばし、黒い帯を出さない（fillWindow）。
  * - 管理画面の「定期動画の設定」どおりに動画を流す（video-player.tsx。Pi のブラウザで開いて使うため）。
+ * - 動画を流しているあいだ（fading）は時計を止める。毎秒の描き直しが Pi の描画の負担になり、動画のコマ落ちが増えるため
+ *   （2026-09-26 ユーザー指示「もっとスムーズに」）。表示は黒で隠れているので見た目は変わらない。
  */
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { SignageScreen } from "@/components/signage/SignageScreen";
 import type { MediaRef, SignageConfig } from "@/lib/config-schema";
 import { VideoPlayer } from "./video-player";
@@ -44,8 +46,15 @@ export function PublicSignage({
   // サーバーでは画面の向きが分からないので、端末の向きで描いてから合わせる
   const viewport = useSyncExternalStore(subscribeViewport, viewportOrientation, () => null);
 
+  const fadingRef = useRef(fading);
   useEffect(() => {
-    const timer = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
+    fadingRef.current = fading;
+  }, [fading]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (!fadingRef.current) setNow(Math.floor(Date.now() / 1000));
+    }, 1000);
     return () => clearInterval(timer);
   }, []);
 

@@ -5,9 +5,10 @@
  * テスト表示が流せなかったときは理由を画面に出す。
  * jsdom の <video> は再生できないので、読み込み済み（readyState）・映像の幅（videoWidth）・再生位置・play を差し替える。
  */
+import { Blob as NodeBlob } from "node:buffer";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { FAILURE_TEXT, VideoPlayer, looksLikeBrokenFrames } from "@/app/signage/video-player";
+import { FAILURE_TEXT, VideoPlayer, looksLikeBrokenFrames, videoCacheKey } from "@/app/signage/video-player";
 import type { SignageConfig } from "@/lib/config-schema";
 import { tokyoDateTime } from "@/lib/dates";
 import { makeConfig, mediaRef } from "../fixtures/config.fixture";
@@ -423,6 +424,86 @@ describe("VideoPlayer", () => {
       fireEvent.ended(screen.getByTestId("signage-video"));
     });
     expect(playerLogs).toHaveLength(0);
+  });
+
+  describe("端末のブラウザの中への保存（Cache Storage。2026-09-26 ユーザー指示）", () => {
+    // jsdom の Blob は stream() が無く Response に入れられないので、ブラウザと同じく入れられる Node の Blob を使う
+    beforeEach(() => {
+      vi.stubGlobal("Blob", NodeBlob);
+    });
+
+    /** 最小限の Cache Storage（鍵は URL のパス） */
+    function fakeCaches() {
+      const entries = new Map<string, Blob>();
+      const store = {
+        match: vi.fn(async (key: string) => (entries.has(key) ? new Response(entries.get(key)) : undefined)),
+        put: vi.fn(async (key: string, res: Response) => {
+          entries.set(key, await res.blob());
+        }),
+        keys: vi.fn(async () => [...entries.keys()].map((key) => new Request(`http://localhost${key}`))),
+        delete: vi.fn(async (req: Request) => entries.delete(new URL(req.url).pathname)),
+      };
+      vi.stubGlobal("caches", { open: vi.fn(async () => store) });
+      return { entries, store };
+    }
+
+    it("ネットから読んだ動画を保存し、再読み込みのあとは保存した分を使って読み込み直さない", async () => {
+      const { entries } = fakeCaches();
+      const config = testPlayConfig();
+      openedBefore();
+      renderPlayer(config);
+      await advance(4000);
+      expect(shown()).toBe("true");
+      expect(mediaFetches).toBe(1);
+      expect([...entries.keys()]).toEqual([videoCacheKey(config.playlist[0])]);
+      cleanup();
+
+      // ページを開き直して、新しいテスト表示の要求
+      window.localStorage.clear();
+      openedBefore();
+      mediaFetches = 0;
+      fakeCachesKeep(entries);
+      renderPlayer(testPlayConfig({ commands: { testPlayRequestedAt: NOW - 1, testPlayMediaId: null } }));
+      await advance(4000);
+      expect(shown()).toBe("true");
+      expect(mediaFetches).toBe(0);
+    });
+
+    it("再生リストから外れた動画は保存から消す", async () => {
+      const { entries } = fakeCaches();
+      entries.set("/__signage-video-cache/med_old/" + "a".repeat(64), new Blob(["old"]));
+      renderPlayer(testPlayConfig({ commands: { testPlayRequestedAt: null, testPlayMediaId: null } }));
+      await advance(3000);
+      expect([...entries.keys()].some((key) => key.includes("med_old"))).toBe(false);
+    });
+
+    it("ページを開いたら、再生リストの動画を 1 本ずつ裏で読み込んでおく（定期動画が OFF でも、テスト表示に備えて）", async () => {
+      fakeCaches();
+      const config = testPlayConfig({
+        commands: { testPlayRequestedAt: null, testPlayMediaId: null },
+        playlist: [
+          { ...mediaRef("med_a", 1), durationSeconds: 15 },
+          { ...mediaRef("med_b", 2), durationSeconds: 15 },
+        ],
+      });
+      renderPlayer(config);
+      await advance(5000);
+      expect(mediaFetches).toBe(2);
+      expect(shown()).toBe("false");
+    });
+
+    /** 開き直したページでも同じ保存場所を使う */
+    function fakeCachesKeep(entries: Map<string, Blob>) {
+      const store = {
+        match: vi.fn(async (key: string) => (entries.has(key) ? new Response(entries.get(key)) : undefined)),
+        put: vi.fn(async (key: string, res: Response) => {
+          entries.set(key, await res.blob());
+        }),
+        keys: vi.fn(async () => [...entries.keys()].map((key) => new Request(`http://localhost${key}`))),
+        delete: vi.fn(async (req: Request) => entries.delete(new URL(req.url).pathname)),
+      };
+      vi.stubGlobal("caches", { open: vi.fn(async () => store) });
+    }
   });
 
   it("初めて開いたときでも、1 分以内のテスト表示の要求は流す（古い要求は流さない）", async () => {

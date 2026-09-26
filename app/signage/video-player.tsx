@@ -7,6 +7,9 @@
  * - 流す動画は丸ごと読み込んで（fetch → Blob → object URL）から流す。読み込みの途中から流すと、通信が再生に
  *   追いつかない動画（ビットレートが高い・Wi-Fi が遅い）が途中で止まるため（2026-09-26 ユーザー報告）。
  *   再生リストの動画は読み込んだものを覚えておき、次からは読み込み直さない。テスト表示は読み込みの進み具合を画面に出す。
+ * - 読み込んだ動画は端末のブラウザの中（Cache Storage）にも保存し、ページの再読み込み・再起動のあとも読み込み直さない
+ *   （中身が変わったら別の鍵になるよう sha256 を鍵に入れる。再生リストから外れたら消す）。ページを開いたら、再生リストの
+ *   動画を 1 本ずつ裏で読み込んでおき、テスト表示もすぐ流せるようにする（2026-09-26 ユーザー指示「キャッシュでスムーズに」）。
  * - 表示を 600ms で黒へ溶かしてから（SignageScreen の fading）動画を画面いっぱいに出し、終わったら表示に戻す。
  * - テスト表示（管理画面のボタン）は、数秒ごとに /api/signage/commands を確かめてすぐ流す。動画を選んで押したときは
  *   その動画を読み込んでから流す（順番の位置は進めない）。定期動画が OFF でも表示時間内なら流す（試せるように）。
@@ -106,6 +109,22 @@ function waitFor(el: HTMLVideoElement, event: string, ms: number, signal: AbortS
     el.addEventListener("error", onError);
     signal.addEventListener("abort", onAbort);
   });
+}
+
+/** 端末のブラウザの中に動画を保存しておく場所（Cache Storage）の名前 */
+const VIDEO_CACHE = "og-signage-videos-v1";
+
+/** 保存の鍵。動画の中身が変わったら別の鍵になるよう sha256 を入れる */
+export const videoCacheKey = (item: Pick<PlaylistItem, "mediaId" | "sha256">) =>
+  `/__signage-video-cache/${encodeURIComponent(item.mediaId)}/${item.sha256}`;
+
+/** Cache Storage を開く。使えない（http・古いブラウザ・容量不足など）ときは null（毎回ネットから読む） */
+async function openVideoCache(): Promise<Cache | null> {
+  try {
+    return typeof caches === "undefined" ? null : await caches.open(VIDEO_CACHE);
+  } catch {
+    return null;
+  }
 }
 
 /** 動画を丸ごと読み込む。進み具合（0〜1）を onProgress で知らせる。読み込めなければ例外 */
@@ -387,17 +406,35 @@ export function VideoPlayer({
       setNotice(null);
     };
 
-    /** 動画を丸ごと読み込んで object URL にする（読み込み済み・読み込み中ならそれを使う） */
+    /**
+     * 動画を丸ごと読み込んで object URL にする（読み込み済み・読み込み中ならそれを使う）。
+     * 端末に保存してあればそこから読み、無ければネットから読んで保存する
+     */
     const load = (item: PlaylistItem, onProgress: (ratio: number) => void): Promise<string> => {
       const cached = blobUrls.get(item.mediaId);
       if (cached) return Promise.resolve(cached);
       const running = loading.get(item.mediaId);
       if (running) return running;
-      const job = downloadVideo(resolveRef.current(item), signal, onProgress).then((blob) => {
+      const job = (async () => {
+        const store = await openVideoCache();
+        const saved = store ? await store.match(videoCacheKey(item)).catch(() => undefined) : undefined;
+        let blob: Blob;
+        if (saved) {
+          blob = await saved.blob();
+          onProgress(1);
+        } else {
+          blob = await downloadVideo(resolveRef.current(item), signal, onProgress);
+          // 保存に失敗しても再生は続ける（次もネットから読むだけ）
+          try {
+            await store?.put(videoCacheKey(item), new Response(blob, { headers: { "content-type": blob.type || "video/mp4" } }));
+          } catch {
+            // 容量不足・保存できないブラウザなど
+          }
+        }
         const url = URL.createObjectURL(blob);
         blobUrls.set(item.mediaId, url);
         return url;
-      });
+      })();
       loading.set(item.mediaId, job);
       job.then(
         () => loading.delete(item.mediaId),
@@ -406,7 +443,8 @@ export function VideoPlayer({
       return job;
     };
 
-    /** 再生リストから外れた動画の object URL を手放す */
+    /** 再生リストから外れた動画の object URL を手放し、端末に保存した分も消す（再生リストが変わったときだけ） */
+    let savedPlaylist = "";
     const releaseRemoved = (playlist: readonly PlaylistItem[]) => {
       for (const [mediaId, url] of blobUrls) {
         if (!playlist.some((p) => p.mediaId === mediaId)) {
@@ -414,6 +452,23 @@ export function VideoPlayer({
           blobUrls.delete(mediaId);
         }
       }
+      const keys = playlist.map(videoCacheKey);
+      const signature = keys.join("\n");
+      if (signature === savedPlaylist) return;
+      savedPlaylist = signature;
+      void openVideoCache().then(async (store) => {
+        if (!store) return;
+        for (const request of await store.keys()) {
+          if (!keys.includes(new URL(request.url).pathname)) await store.delete(request);
+        }
+      }).catch(() => undefined);
+    };
+
+    /** 再生リストの動画を 1 本ずつ裏で読み込んでおく（読み込み中のものがあれば待つ） */
+    const preloadNext = (playlist: readonly PlaylistItem[]) => {
+      if (loading.size > 0) return;
+      const missing = playlist.find((p) => !blobUrls.has(p.mediaId));
+      if (missing) load(missing, () => {}).catch(() => undefined);
     };
 
     /** 次に流す 1 本を決めて読み込みを始める。読み込めたら <video> に付ける */
@@ -593,6 +648,7 @@ export function VideoPlayer({
       const test = consumeTestPlay(commands.testPlayRequestedAt, memory.lastTestPlayProcessedAt, now);
       if (test.processedAt !== memory.lastTestPlayProcessedAt) remember({ ...memory, lastTestPlayProcessedAt: test.processedAt });
       releaseRemoved(playlist);
+      if (visible) preloadNext(playlist);
       if (test.play && visible && playlist.length > 0) {
         const pick = pickTestVideo(playlist, commands.testPlayMediaId, cfg.video.mode, memory, now);
         if (pick) {

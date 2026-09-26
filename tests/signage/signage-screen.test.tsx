@@ -71,6 +71,15 @@ describe.each(["portrait", "landscape"] as const)("SignageScreen（%s）", (orie
     );
   });
 
+  it("動画を流しているあいだ（fading）は、サイネージの中身を隠す印を付ける（黒の上に出す部品は除く）", () => {
+    renderScreen({ fading: true }, orientation);
+    expect(screen.getByTestId("signage-canvas").dataset.fading).toBe("true");
+    expect(screen.getByTestId("fade").dataset.active).toBe("true");
+    cleanup();
+    renderScreen({ fading: false }, orientation);
+    expect(screen.getByTestId("signage-canvas").dataset.fading).toBe("false");
+  });
+
   it("予報があれば、天気の横に明日・明後日を小さく出す（今日・3 日後は出さない）", () => {
     const config = makeConfig();
     const forecast = [

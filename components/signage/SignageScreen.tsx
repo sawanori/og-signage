@@ -70,6 +70,7 @@ export function SignageScreen({
   const content = view.visible ? (
     <div
       className={styles.canvas}
+      data-fading={fading ? "true" : "false"}
       style={{ width: canvasWidth, height: canvasHeight }}
       data-orientation={orientation}
       data-testid="signage-canvas"

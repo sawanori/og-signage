@@ -57,6 +57,15 @@
   background: #000;
 }
 
+/*
+ * 動画を流しているあいだ（黒へ溶かしたあと）は、サイネージの中身を描かない（Pi の描画の負担を減らして動画のコマ落ちを防ぐ。
+ * 2026-09-26）。黒が被り終わる 0.65 秒後に隠し、黒をやめたらすぐ戻す（戻すときは遅らせない）
+ */
+.canvas[data-fading="true"] > :not(.fade) {
+  visibility: hidden;
+  transition: visibility 0s linear 0.65s;
+}
+
 .fade {
   position: absolute;
   inset: 0;
