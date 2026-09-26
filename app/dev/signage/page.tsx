@@ -8,6 +8,7 @@
  * &member=sample でメンバー情報に見出しつきの見本（見出しの見た目の確認用）
  * &footerqr=sample でフッターの QR に見本の URL（未指定なら QR の場所は枠だけ）
  * &slide=<番号> で大きな枠のスライドを選ぶ（0 始まり。未指定は 1 枚目）
+ * &spot=<番号> でメンバー紹介に出す人を選ぶ（0 始まり。その 1 人だけにする）
  */
 import { SignageScreen } from "@/components/signage/SignageScreen";
 import type { Orientation } from "@/components/signage/model";
@@ -129,9 +130,13 @@ export default async function DevSignagePage({
       : withHouse;
   const withFooterQr =
     params.footerqr === "sample" ? { ...config, house: { ...config.house, footerQrUrl: "https://example.com/meeting-rooms" } } : config;
+  const spot = Number(params.spot);
+  const spotlights = withFooterQr.spotlights ?? [];
+  const withSpot =
+    Number.isInteger(spot) && spotlights[spot] ? { ...withFooterQr, spotlights: [spotlights[spot]] } : withFooterQr;
   return (
     <SignageScreen
-      config={withFooterQr}
+      config={withSpot}
       now={atFirstSlide(s.config.events, s.now) + (Number(params.slide) || 0) * HERO_SLIDE_SECONDS}
       resolveMediaUrl={mockMediaResolver(orientation)}
       orientation={orientation}

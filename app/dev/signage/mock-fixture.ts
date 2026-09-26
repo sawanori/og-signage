@@ -129,6 +129,30 @@ const mockSpotlights: SignageSpotlight[] = [
     photo: null,
     logo: null,
   },
+  // 長い会社名（ローマ字入り）でも省略しない例（2026-09-26 ユーザー指示「企業名が文字数で省略されるのはあり得ない」）
+  {
+    id: "spot_long_latin",
+    companyName: "Ocean Gate Creative合同会社",
+    personName: "高橋 誠",
+    role: "代表",
+    quote: "ものづくりで街を明るく",
+    bio: "映像とアプリの制作をしています。",
+    tags: ["映像制作", "アプリ開発"],
+    photo: mediaRef("med_spot_photo", 21),
+    logo: null,
+  },
+  // ロゴつきで、どの欄も上限いっぱいの例（入りきらなければ文字の組みを小さくして全文を出す）
+  {
+    id: "spot_full",
+    companyName: "株式会社みなとみらいクリエイティブラボラトリーズ",
+    personName: "アレクサンダー・マクミラン",
+    role: "チーフプロダクトオフィサー兼デザイン部門責任者",
+    quote: "デザインとテクノロジーの力で、街で働く人の毎日をもっと楽しく",
+    bio: "プロダクト・ブランド・組織のデザイン支援を通じて、企業の成長を伴走します。週末は写真を撮っています。",
+    tags: ["プロダクトデザイン", "ブランディング", "組織デザイン"],
+    photo: mediaRef("med_spot_photo", 21),
+    logo: mediaRef("med_spot_logo", 22),
+  },
 ];
 
 export function mockConfig(orientation: Orientation): SignageConfig {

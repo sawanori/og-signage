@@ -6,7 +6,7 @@
  * どれも同じ左端（1368px）・幅（516px）。キャッチコピー（ヘッダー用）は横型では出さない。
  */
 import { Fragment } from "react";
-import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import { ArrowRight, CalendarDays, Clock } from "lucide-react";
 import type { SignageConfig, SignageEvent } from "@/lib/config-schema";
 import { COPY } from "./copy";
 import {
@@ -23,6 +23,7 @@ import {
 } from "./model";
 import { Emoji, FooterQr, GroupIcon, HeroDots, isQrUrl, MediaImage, PersonIcon, PinIcon, QrCode, WeatherIcon } from "./parts";
 import styles from "./signage.module.css";
+import { SpotlightCard } from "./SpotlightCard";
 import { WEWORK_LOGO_DARK_SRC, WEWORK_LOGO_SRC } from "./wework-logo";
 
 type Props = { config: SignageConfig; view: SignageView; resolveMediaUrl: ResolveMediaUrl };
@@ -65,7 +66,11 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
         <span className={styles.lSectionEn}>{COPY.spotlight.en}</span>
         <span className={styles.lSectionJa}>{COPY.spotlight.ja}</span>
       </div>
-      <Spotlight spotlight={view.spotlight} resolveMediaUrl={resolveMediaUrl} />
+      <SpotlightCard
+        spotlight={view.spotlight}
+        photoUrl={view.spotlight?.item.photo ? resolveMediaUrl(view.spotlight.item.photo) : null}
+        logoUrl={view.spotlight?.item.logo ? resolveMediaUrl(view.spotlight.item.logo) : null}
+      />
 
       {/* 今日のイベント */}
       <Hero hero={view.hero} config={config} resolveMediaUrl={resolveMediaUrl} />
@@ -321,64 +326,5 @@ function UpcomingRow({ event, resolveMediaUrl }: { event: SignageEvent; resolveM
         </div>
       ) : null}
     </div>
-  );
-}
-
-/**
- * メンバー紹介（2026-09-26 ユーザー指示の見本どおり）。左に写真、右に会社名・ロゴ・お名前「さん」・肩書き・「ひとこと」・紹介文・タグ。
- * 1 人ずつ時刻で切り替える（spotlightIndex）。左右の矢印と下の点は、ほかにも紹介があることの目印（押す操作は無い）
- */
-function Spotlight({ spotlight, resolveMediaUrl }: { spotlight: SignageView["spotlight"]; resolveMediaUrl: ResolveMediaUrl }) {
-  if (!spotlight) {
-    return (
-      <div className={styles.lSpot} data-testid="spotlight">
-        <div className={styles.lSpotEmpty}>{COPY.noSpotlight}</div>
-      </div>
-    );
-  }
-  const { item, index, count } = spotlight;
-  const fade = count > 1 ? styles.heroFade : "";
-  return (
-    <>
-      <div className={styles.lSpot} data-testid="spotlight">
-        <div key={item.id} className={`${styles.lSpotBody} ${fade}`}>
-          <MediaImage media={item.photo} category={null} resolveMediaUrl={resolveMediaUrl} className={styles.lSpotPhoto} />
-          <div className={styles.lSpotText}>
-            <div className={styles.lSpotCompany}>{item.companyName}</div>
-            <div className={styles.lSpotName}>
-              {item.personName}
-              <span className={styles.lSpotSan}>{COPY.spotlightHonorific}</span>
-            </div>
-            {item.role ? <div className={styles.lSpotRole}>{item.role}</div> : null}
-            {item.quote ? <p className={styles.lSpotQuote}>「{item.quote}」</p> : null}
-            {item.bio ? <p className={styles.lSpotBio}>{item.bio}</p> : null}
-            {item.tags.length > 0 ? (
-              <div className={styles.lSpotTags}>
-                {item.tags.map((tag, i) => (
-                  <span key={i}>{tag}</span>
-                ))}
-              </div>
-            ) : null}
-          </div>
-          {item.logo ? (
-            // eslint-disable-next-line @next/next/no-img-element -- オフライン配信のため素の img
-            <img src={resolveMediaUrl(item.logo)} alt="" className={styles.lSpotLogo} />
-          ) : null}
-        </div>
-        {count > 1 ? (
-          <>
-            <ChevronLeft className={styles.lSpotPrev} size={28} strokeWidth={2} aria-hidden />
-            <ChevronRight className={styles.lSpotNext} size={28} strokeWidth={2} aria-hidden />
-          </>
-        ) : null}
-      </div>
-      {count > 1 ? (
-        <div className={styles.lSpotDots} data-testid="spotlight-dots" aria-hidden>
-          {Array.from({ length: count }, (_, i) => (
-            <span key={i} data-active={i === index ? "true" : undefined} />
-          ))}
-        </div>
-      ) : null}
-    </>
   );
 }

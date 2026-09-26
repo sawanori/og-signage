@@ -168,14 +168,14 @@ export function SpotlightForm({
 
         <CountedTextarea
           id="spotlight-quote"
-          label="ひとこと（任意。サイネージでは「」で囲み 2 行まで）"
+          label="ひとこと（任意。サイネージでは「」で囲んで出します）"
           value={form.quote}
           max={SPOTLIGHT_QUOTE_MAX}
           onChange={(quote) => onChange({ quote })}
         />
         <CountedTextarea
           id="spotlight-bio"
-          label="紹介文（任意。2 行まで）"
+          label="紹介文（任意）"
           value={form.bio}
           max={SPOTLIGHT_BIO_MAX}
           onChange={(bio) => onChange({ bio })}

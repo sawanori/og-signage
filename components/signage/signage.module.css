@@ -1612,14 +1612,16 @@
 
 /*
  * メンバー紹介（横。MEMBER SPOTLIGHT。2026-09-26 ユーザー指示の見本どおり）。右の列の一番上の白いカード。
- * 左に写真（縦長）、右に 会社名（右上にロゴ）・お名前「さん」・肩書き・「ひとこと」・紹介文・タグ。カードの下に何人目かの点
+ * 左に写真（縦長）、右に 会社名（右上にロゴ）・お名前「さん」・肩書き・「ひとこと」・紹介文・タグ。
+ * 左右の矢印と下の点は外した（2026-09-26 ユーザー指示）ので、そのぶんカードを 10px 高くした（73〜392px）。
+ * 文字は省略しない。長いものは折り返し、入りきらないときは SpotlightCard.tsx が --fit で文字の組み全体を小さくする
  */
 .lSpot {
   position: absolute;
   left: calc(1368px + var(--canvas-extra-x, 0px));
   top: 73px;
   width: 516px;
-  height: 309px;
+  height: 319px;
   border-radius: 14px;
   background: #fff;
   box-shadow: 0 2px 10px rgba(40, 30, 20, 0.1);
@@ -1640,14 +1642,16 @@
   color: var(--ink-mute);
 }
 
+/* 写真が無いときは灰色の面（大きな欄・Upcoming の写真の無いときと同じ色） */
 .lSpotPhoto {
   position: absolute;
   left: 7px;
   top: 10px;
   width: 193px;
-  height: 291px;
+  height: 301px;
   border-radius: 10px;
   overflow: hidden;
+  background: #8a94a3;
 }
 
 .lSpotText {
@@ -1656,157 +1660,101 @@
   top: 0;
   width: 285px;
   height: 100%;
+  box-sizing: border-box;
+  padding-bottom: 14px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  overflow: hidden;
   color: #1b2530;
 }
 
-.lSpotCompany {
-  margin-top: 24px;
-  max-width: 174px;
-  font-weight: 700;
-  font-size: 16px;
-  line-height: 22px;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.lSpotText > * {
+  flex: none;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: auto-phrase;
 }
 
-/* 会社のロゴ。右上に、切らずに収める */
+.lSpotCompany {
+  width: 100%;
+  margin-top: calc(24px * var(--fit, 1));
+  font-weight: 700;
+  font-size: calc(16px * var(--fit, 1));
+  line-height: calc(22px * var(--fit, 1));
+  letter-spacing: 0.02em;
+}
+
+/* 会社のロゴ。会社名の右上に浮かせ、切らずに収める（右端はカードの右から 19px） */
 .lSpotLogo {
-  position: absolute;
-  right: 19px;
-  top: 25px;
+  float: right;
   width: 100px;
-  height: 26px;
+  height: calc(22px * var(--fit, 1));
+  margin: 0 6px 0 10px;
   object-fit: contain;
   object-position: right center;
 }
 
 .lSpotName {
-  margin-top: 8px;
-  max-width: 100%;
+  margin-top: calc(8px * var(--fit, 1));
   font-weight: 700;
-  font-size: 29px;
-  line-height: 36px;
+  font-size: calc(29px * var(--fit, 1));
+  line-height: calc(36px * var(--fit, 1));
   letter-spacing: 0.06em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .lSpotSan {
   margin-left: 10px;
   font-weight: 500;
-  font-size: 17px;
+  font-size: calc(17px * var(--fit, 1));
   letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 .lSpotRole {
-  margin-top: 3px;
-  max-width: 100%;
-  font-size: 15px;
-  line-height: 20px;
+  margin-top: calc(3px * var(--fit, 1));
+  font-size: calc(15px * var(--fit, 1));
+  line-height: calc(20px * var(--fit, 1));
   letter-spacing: 0.04em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-/* ひとこと（「」で囲んで 2 行まで）。右の矢印と重ならないよう、紹介文より少し狭く */
+/* ひとこと（「」で囲む）。見本の折り返し（「デザインの力で、／事業の可能性を広げる」）になる幅 */
 .lSpotQuote {
-  margin-top: 20px;
+  margin-top: calc(20px * var(--fit, 1));
   max-width: 262px;
   font-weight: 700;
-  font-size: 22px;
-  line-height: 31.5px;
+  font-size: calc(22px * var(--fit, 1));
+  line-height: calc(31.5px * var(--fit, 1));
   letter-spacing: 0.02em;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-  word-break: auto-phrase;
 }
 
 .lSpotBio {
-  margin-top: 12px;
-  max-width: 100%;
-  font-size: 13px;
-  line-height: 21.4px;
+  margin-top: calc(12px * var(--fit, 1));
+  font-size: calc(13px * var(--fit, 1));
+  line-height: calc(21.4px * var(--fit, 1));
   letter-spacing: 0.04em;
   color: #4a525c;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-  word-break: auto-phrase;
 }
 
+/* タグ。1 行に入らなければ次の行へ（切らない） */
 .lSpotTags {
-  margin-top: 9px;
-  max-width: 100%;
+  margin-top: calc(9px * var(--fit, 1));
   display: flex;
-  gap: 9px;
-  overflow: hidden;
+  flex-wrap: wrap;
+  gap: calc(6px * var(--fit, 1)) 9px;
 }
 
 .lSpotTags > span {
   flex: none;
-  height: 29px;
+  height: calc(29px * var(--fit, 1));
   padding: 0 11px;
   border-radius: 15px;
   background: #e4ece7;
   color: #3e4a44;
-  font-size: 12.5px;
-  line-height: 29px;
+  font-size: calc(12.5px * var(--fit, 1));
+  line-height: calc(29px * var(--fit, 1));
   letter-spacing: 0;
   white-space: nowrap;
-}
-
-/* 左右の矢印（目印）。左は写真の上なので白く、右はカードの右端に濃く */
-.lSpotPrev,
-.lSpotNext {
-  position: absolute;
-  top: calc(50% - 14px);
-}
-
-.lSpotPrev {
-  left: 6px;
-  color: #fff;
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.45));
-}
-
-.lSpotNext {
-  right: 6px;
-  color: #1b2530;
-}
-
-/* 何人目か（点の並び）。カードの下の中央に、今の 1 人だけ大きく濃く */
-.lSpotDots {
-  position: absolute;
-  left: calc(1368px + var(--canvas-extra-x, 0px));
-  top: 391px;
-  width: 516px;
-  height: 15px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 13px;
-}
-
-.lSpotDots > span {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #cfd3d8;
-}
-
-.lSpotDots > span[data-active="true"] {
-  width: 15px;
-  height: 15px;
-  background: #1b2530;
 }
 
 

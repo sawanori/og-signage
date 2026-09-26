@@ -413,7 +413,7 @@ describe("メンバー紹介（横型の右上。2026-09-26 ユーザー指示�
   const first = NOW - ((NOW + 7) % 30);
   const config = { ...makeConfig(), spotlights: [yamada, sato] };
 
-  it("会社名・お名前「さん」・肩書き・「ひとこと」・紹介文・タグ・写真・ロゴを出し、何人目かの点と左右の矢印を付ける", () => {
+  it("会社名・お名前「さん」・肩書き・「ひとこと」・紹介文・タグ・写真・ロゴを、省略せずに出す。左右の矢印と下の点は出さない", () => {
     renderScreen({ config, now: first, align: false }, "landscape");
     const card = screen.getByTestId("spotlight");
     expect(card.textContent).toBe(
@@ -424,9 +424,8 @@ describe("メンバー紹介（横型の右上。2026-09-26 ユーザー指示�
       `/media/${photo.sha256}`,
       `/media/${logo.sha256}`,
     ]);
-    expect(card.querySelectorAll("svg")).toHaveLength(2);
-    const dots = [...screen.getByTestId("spotlight-dots").children];
-    expect(dots.map((d) => d.getAttribute("data-active"))).toEqual(["true", null]);
+    expect(card.querySelectorAll("svg")).toHaveLength(0);
+    expect(screen.queryByTestId("spotlight-dots")).toBeNull();
   });
 
   it("15 秒ごとに次の人へ切り替わる。肩書き・ひとこと・紹介文・タグ・写真・ロゴが無い人は、その行を出さない", () => {
@@ -434,15 +433,9 @@ describe("メンバー紹介（横型の右上。2026-09-26 ユーザー指示�
     const card = screen.getByTestId("spotlight");
     expect(card.textContent).toBe("合同会社サンプル佐藤 花さん");
     expect(card.querySelectorAll("img")).toHaveLength(0);
-    const dots = [...screen.getByTestId("spotlight-dots").children];
-    expect(dots.map((d) => d.getAttribute("data-active"))).toEqual([null, "true"]);
   });
 
-  it("1 人だけなら点と矢印を出さない。登録が無い（古い Worker の config を含む）ときは「準備中」とだけ出す", () => {
-    renderScreen({ config: { ...config, spotlights: [yamada] } }, "landscape");
-    expect(screen.queryByTestId("spotlight-dots")).toBeNull();
-    expect(screen.getByTestId("spotlight").querySelectorAll("svg")).toHaveLength(0);
-    cleanup();
+  it("登録が無い（古い Worker の config を含む）ときは「準備中」とだけ出す", () => {
     renderScreen({ config: makeConfig() }, "landscape");
     expect(screen.getByTestId("spotlight").textContent).toBe("メンバー紹介は準備中です");
     expect(screen.queryByTestId("spotlight-dots")).toBeNull();
