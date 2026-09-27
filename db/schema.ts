@@ -308,7 +308,7 @@ export const memberSpotlights = sqliteTable("member_spotlights", {
   personNameKana: text("person_name_kana"),
   /** 肩書き（任意） */
   role: text("role"),
-  /** ひとこと（任意。サイネージでは「」で囲んで出す） */
+  /** ひとこと（任意。サイネージでは写真の上に、手書き風の文字で出す） */
   quote: text("quote"),
   /** 紹介文（任意） */
   bio: text("bio"),

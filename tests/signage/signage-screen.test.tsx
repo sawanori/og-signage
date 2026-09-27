@@ -426,12 +426,12 @@ describe("メンバー紹介（横型の右上。2026-09-26 ユーザー指示�
   it("会社名・お名前「さん」・肩書き・紹介文・タグ・写真・ロゴを、省略せずに出す。左右の矢印と下の点は出さない", () => {
     renderScreen({ config, now: first, align: false }, "landscape");
     const card = screen.getByTestId("spotlight");
-    // ひとことは写真の上に重ねる（2026-09-27 ユーザー指示）ので、写真の欄が先
+    // ひとことは写真の上に重ねる（2026-09-27 ユーザー指示）ので、写真の欄が先。「」は付けない（同日ユーザー指示）
     expect(card.textContent).toBe(
-      "「デザインの力で、事業の可能性を広げる」" +
+      "デザインの力で、事業の可能性を広げる" +
         "株式会社サンプル山田 陸さんプロダクトデザイナープロダクトのデザインを支援しています。UI/UXプロダクト開発デザイン組織",
     );
-    const quote = screen.getByText("「デザインの力で、事業の可能性を広げる」");
+    const quote = screen.getByText("デザインの力で、事業の可能性を広げる");
     expect(quote.parentElement?.querySelector("img")?.getAttribute("src")).toBe(`/media/${photo.sha256}`);
     expect([...card.querySelectorAll("img")].map((img) => img.getAttribute("src"))).toEqual([
       `/media/${photo.sha256}`,

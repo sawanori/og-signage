@@ -140,7 +140,7 @@ const spotlightFields = z.object({
     "ふりがなはひらがなかカタカナで入力してください",
   ),
   role: optionalText("肩書き", 30),
-  /** ひとこと（サイネージでは「」で囲んで 2 行まで） */
+  /** ひとこと（サイネージでは写真の上に、手書き風の文字で出す） */
   quote: optionalText("ひとこと", SPOTLIGHT_QUOTE_MAX),
   bio: optionalText("紹介文", SPOTLIGHT_BIO_MAX),
   tags: z
