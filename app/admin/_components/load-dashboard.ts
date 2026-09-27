@@ -8,10 +8,11 @@ import { listDevices, type DeviceSummary } from "@/lib/services/devices";
 import { listEvents } from "@/lib/services/events";
 import { getDesignSettings } from "@/lib/services/house";
 import { listNotices } from "@/lib/services/notices";
-import { getDevicePlaybackSettings, getPlaylistItems } from "@/lib/services/playback";
+import { getDevicePlaybackSettings, getPlaylistItems, type PlaylistItemWithMedia } from "@/lib/services/playback";
 import type {
   DashboardData,
   DashboardEvent,
+  DashboardVideo,
   DashboardVideoSettings,
   ShellData,
 } from "@/components/admin/dashboard-types";
@@ -38,6 +39,30 @@ export async function loadShell(db: Db, user: AuthUser, now: number): Promise<Sh
   };
 }
 
+/**
+ * 再生リストの項目を、ダッシュボードの定期動画カードの形にする。
+ * スライドショー（2026-09-27）は 1 つの項目として、1 枚目の写真のサムネイルと写真の秒数の合計で出す。
+ * mediaId は 1 枚目の写真（再生リストの項目の media_id と同じ）なので、押すとサイネージでスライドショーを試せる
+ */
+export function toDashboardVideos(items: readonly PlaylistItemWithMedia[]): DashboardVideo[] {
+  return items.map((item) =>
+    item.kind === "slideshow"
+      ? {
+          mediaId: item.mediaId,
+          name: "スライドショー",
+          durationSeconds: item.slides.reduce((sum, slide) => sum + slide.durationSeconds, 0),
+          // 写真はサムネイルが無くても本体を返す（worker/index.ts）ので、いつも URL を出せる
+          thumbnailUrl: mediaThumbnailUrl(item.mediaId),
+        }
+      : {
+          mediaId: item.mediaId,
+          name: item.media.name,
+          durationSeconds: item.media.durationSeconds,
+          thumbnailUrl: item.media.thumbnailR2Key ? mediaThumbnailUrl(item.mediaId) : null,
+        },
+  );
+}
+
 async function loadVideo(db: Db, device: DeviceSummary): Promise<DashboardVideoSettings> {
   const settings = await getDevicePlaybackSettings(db, device.id);
   const items = settings.playlistId ? await getPlaylistItems(db, settings.playlistId) : [];
@@ -48,12 +73,7 @@ async function loadVideo(db: Db, device: DeviceSummary): Promise<DashboardVideoS
     intervalMinutes: settings.intervalMinutes,
     mode: settings.playbackMode,
     volume: settings.volume,
-    videos: items.map((item) => ({
-      mediaId: item.mediaId,
-      name: item.media.name,
-      durationSeconds: item.media.durationSeconds,
-      thumbnailUrl: item.media.thumbnailR2Key ? mediaThumbnailUrl(item.mediaId) : null,
-    })),
+    videos: toDashboardVideos(items),
     nextVideoAt: device.nextVideoAt,
     observedAt: device.lastSeenAt,
   };

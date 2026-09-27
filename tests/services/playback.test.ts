@@ -18,6 +18,7 @@ import {
   saveDevicePlayback,
   updateDevicePlaybackSettings,
 } from "../../lib/services/playback";
+import { toDashboardVideos } from "../../app/admin/_components/load-dashboard";
 import { openTempDb } from "../helpers/temp-db";
 
 const state = vi.hoisted(() => ({ db: null as unknown, session: null as unknown }));
@@ -590,6 +591,22 @@ describe("スライドショー（2026-09-27 ユーザー指示）", () => {
       ["video", v1, 1, []],
     ]);
     expect(shape(await getPlaylistItems(db, "pl1"))).toEqual(shape(result.playlist!.items));
+  });
+
+  it("ダッシュボードの定期動画カードでは、スライドショーを 1 つの項目（1 枚目の写真・写真の秒数の合計）として出す", async () => {
+    const { v1, p1, p2 } = await fixture();
+    await save([
+      { kind: "video", mediaId: v1 },
+      { kind: "slideshow", slides: [{ mediaId: p1, durationSeconds: 10 }, { mediaId: p2, durationSeconds: 5 }] },
+    ]);
+    const [videoTile, slideshowTile] = toDashboardVideos(await getPlaylistItems(db, "pl1"));
+    expect(videoTile).toMatchObject({ mediaId: v1, name: "v1.mp4" });
+    expect(slideshowTile).toEqual({
+      mediaId: p1,
+      name: "スライドショー",
+      durationSeconds: 15,
+      thumbnailUrl: `/api/media/${p1}/thumbnail`,
+    });
   });
 
   it("保存し直すと、前のスライドショーの写真の行は残らない", async () => {

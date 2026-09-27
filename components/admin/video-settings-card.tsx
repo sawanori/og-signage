@@ -17,6 +17,9 @@ import { formatDuration, formatHm } from "./format";
 const HELP =
   "イベント表示の合間に、設定した間隔で動画を 1 本ずつ全画面で再生します。間隔は前の動画が終わってから次の動画が始まるまでの時間です。";
 
+/** 並べる数。再生リストは動画 3 本とスライドショー 1 つまでなので、4 つ埋まったら「動画を追加」の枠は出さない */
+const STRIP_ITEMS = 4;
+
 export function VideoSettingsCard({ video }: { video: DashboardVideoSettings | null }) {
   return (
     <section className={`${styles.card} ${styles.videoCard}`} aria-label="定期動画の設定">
@@ -135,7 +138,7 @@ function VideoSettingsForm({ video }: { video: DashboardVideoSettings }) {
         {settings.videos.length === 0 ? (
           <p className={styles.videoEmpty}>動画が登録されていません</p>
         ) : (
-          settings.videos.slice(0, 3).map((v) => (
+          settings.videos.slice(0, STRIP_ITEMS).map((v) => (
             <div key={v.mediaId} className={styles.videoItem}>
               {/* 押すと、実際のサイネージでこの動画を画面いっぱいに流す（2026-09-25 ユーザー指示） */}
               <button
@@ -161,10 +164,12 @@ function VideoSettingsForm({ video }: { video: DashboardVideoSettings }) {
             </div>
           ))
         )}
-        <Link href="/admin/videos" className={styles.addVideo} style={{ gridColumn: 4 }}>
-          <Plus size={16} strokeWidth={1.6} color="#8a97aa" aria-hidden />
-          動画を追加
-        </Link>
+        {settings.videos.length < STRIP_ITEMS ? (
+          <Link href="/admin/videos" className={styles.addVideo} style={{ gridColumn: 4 }}>
+            <Plus size={16} strokeWidth={1.6} color="#8a97aa" aria-hidden />
+            動画を追加
+          </Link>
+        ) : null}
       </div>
       <div className={styles.videoFoot}>
         <label className={styles.checkbox}>
