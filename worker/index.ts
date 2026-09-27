@@ -27,6 +27,19 @@ type ScheduledController = { cron: string };
 
 const ADMIN_MEDIA_PATH = /^\/api\/media\/([^/]+)\/(file|thumbnail)$/;
 
+/**
+ * 検索に載せない（2026-09-27 ユーザー指示「検索に引っ掛からないように。URL 直打ちでのみ開く」）。
+ * サイネージ・イベントの詳細・ログイン・管理画面・確認用ページ・画像まで、この Worker が返すものすべてに付ける。
+ * robots.txt でクロールを止めると検索エンジンがこの指定を読めなくなるので、止めずにこの指定で外す
+ */
+const ROBOTS_TAG = "noindex, nofollow, noarchive";
+
+function withRobotsTag(res: Response): Response {
+  const headers = new Headers(res.headers);
+  headers.set("X-Robots-Tag", ROBOTS_TAG);
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+}
+
 function jsonError(status: number, code: string, message: string): Response {
   return Response.json({ error: { code, message } }, { status });
 }
@@ -55,27 +68,31 @@ async function serveAdminMedia(request: Request, env: Env, id: string, variant: 
   return serveObject(bucket, request, { key: row.r2Key, size: row.fileSize, contentType: row.mimeType });
 }
 
+async function route(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const { pathname } = new URL(request.url);
+
+  // ---- 大きな本文の中継（vinext より前）
+  if (request.method === "GET" || request.method === "HEAD") {
+    const adminMedia = ADMIN_MEDIA_PATH.exec(pathname);
+    if (adminMedia) return serveAdminMedia(request, env, decodeURIComponent(adminMedia[1]), adminMedia[2] as "file" | "thumbnail");
+    // task_012: 端末向けの中継（worker/device-relay.ts）
+    if (pathname.startsWith("/api/device/")) {
+      const deviceRelay = await handleDeviceRelay(request, pathname, { db: getDb(), bucket: getMediaBucket() });
+      if (deviceRelay) return deviceRelay;
+    }
+    // Web 公開のサイネージの画像（ログイン不要。公開中の config が参照している画像だけ）
+    if (pathname.startsWith("/api/signage/media/")) {
+      const publicMedia = await handlePublicSignageMedia(request, pathname, { db: getDb(), bucket: getMediaBucket() });
+      if (publicMedia) return publicMedia;
+    }
+  }
+
+  return handler.fetch(request, env, ctx);
+}
+
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const { pathname } = new URL(request.url);
-
-    // ---- 大きな本文の中継（vinext より前）
-    if (request.method === "GET" || request.method === "HEAD") {
-      const adminMedia = ADMIN_MEDIA_PATH.exec(pathname);
-      if (adminMedia) return serveAdminMedia(request, env, decodeURIComponent(adminMedia[1]), adminMedia[2] as "file" | "thumbnail");
-      // task_012: 端末向けの中継（worker/device-relay.ts）
-      if (pathname.startsWith("/api/device/")) {
-        const deviceRelay = await handleDeviceRelay(request, pathname, { db: getDb(), bucket: getMediaBucket() });
-        if (deviceRelay) return deviceRelay;
-      }
-      // Web 公開のサイネージの画像（ログイン不要。公開中の config が参照している画像だけ）
-      if (pathname.startsWith("/api/signage/media/")) {
-        const publicMedia = await handlePublicSignageMedia(request, pathname, { db: getDb(), bucket: getMediaBucket() });
-        if (publicMedia) return publicMedia;
-      }
-    }
-
-    return handler.fetch(request, env, ctx);
+    return withRobotsTag(await route(request, env, ctx));
   },
   // Cron Trigger（worker/scheduled.ts）。scheduled は早く戻る必要があるため、本体は ctx.waitUntil で待つ
   async scheduled(controller: ScheduledController, _env: Env, ctx: ExecutionContext): Promise<void> {
