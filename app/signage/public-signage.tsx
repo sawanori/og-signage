@@ -11,11 +11,15 @@
  * - 管理画面の「定期動画の設定」どおりに動画を流す（video-player.tsx。Pi のブラウザで開いて使うため）。
  * - 動画を流しているあいだ（fading）は時計を止める。毎秒の描き直しが Pi の描画の負担になり、動画のコマ落ちが増えるため
  *   （2026-09-26 ユーザー指示「もっとスムーズに」）。表示は黒で隠れているので見た目は変わらない。
+ * - 新しい版が出たら読み直す（2026-09-27 ユーザー指示。reload-on-new-build.ts）。動画やスライドショーの途中では読み直さず、
+ *   終わったあとの取り直しで読み直す。
  */
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { SignageScreen } from "@/components/signage/SignageScreen";
 import type { MediaRef, SignageConfig } from "@/lib/config-schema";
+import { BUILD_HEADER } from "@/lib/build-id";
 import { useFullscreenToggle } from "./fullscreen-toggle";
+import { reloadIfNewBuild } from "./reload-on-new-build";
 import { VideoPlayer } from "./video-player";
 
 type Orientation = SignageConfig["device"]["orientation"];
@@ -69,6 +73,7 @@ export function PublicSignage({
         if (!res.ok) return; // 一時的に取れないときは今の表示を続ける
         const next = (await res.json()) as SignageConfig;
         setConfig((prev) => (prev.version === next.version ? prev : next));
+        if (!fadingRef.current) reloadIfNewBuild(res.headers.get(BUILD_HEADER));
       } catch {
         // 通信できないときも今の表示を続ける
       }

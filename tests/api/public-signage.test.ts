@@ -16,6 +16,8 @@ import { openTempDb } from "../helpers/temp-db";
 
 const state = vi.hoisted(() => ({ db: null as unknown as Db }));
 vi.mock("../../lib/runtime", () => ({ getDb: () => state.db }));
+// 版の印はビルドのときに埋め込まれる（vite.config.ts）。テストでは決めた値にする
+vi.mock("../../lib/build-id", () => ({ BUILD_ID: "build-test", BUILD_HEADER: "X-Signage-Build" }));
 
 const { GET: getPublicConfig } = await import("../../app/api/signage/config/route");
 const { GET: getPublicCommands } = await import("../../app/api/signage/commands/route");
@@ -151,6 +153,8 @@ describe("GET /api/signage/config（ログイン不要）", () => {
     expect(config.playlist.map((p) => p.mediaId)).toEqual(["vid_a"]);
     expect(config.commands.testPlayRequestedAt).toBeNull();
     expect(res.headers.get("cache-control")).toBe("no-store");
+    // 表示中のページが新しい版に気づいて読み直せるよう、この版の印を付ける（2026-09-27 ユーザー指示）
+    expect(res.headers.get("x-signage-build")).toBe("build-test");
   });
 
   it("?device で端末を選べる", async () => {
