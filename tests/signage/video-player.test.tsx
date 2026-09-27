@@ -163,7 +163,7 @@ const shown = () => screen.queryByTestId("signage-video")?.getAttribute("data-sh
 const notice = () => screen.queryByTestId("video-notice")?.textContent ?? null;
 
 describe("VideoPlayer", () => {
-  it("映像を読める動画は、表示を黒へ溶かしてから画面いっぱいに出し、終わったら戻す", async () => {
+  it("映像を読める動画は、表示を黒へ溶かしてから画面いっぱいに出し、終わったら黒へ消して少し置いてから戻す", async () => {
     openedBefore();
     const onFadingChange = renderPlayer(testPlayConfig());
     await advance(4000);
@@ -174,7 +174,12 @@ describe("VideoPlayer", () => {
     await act(async () => {
       fireEvent.ended(screen.getByTestId("signage-video"));
     });
+    // 動画は黒へ消え（0.6 秒）、黒のまま 0.8 秒置いてから表示に戻す（2026-09-27 ユーザー指示「戻るのが少し早い」）
     expect(shown()).toBe("false");
+    expect(onFadingChange).toHaveBeenLastCalledWith(true);
+    await advance(1300);
+    expect(onFadingChange).toHaveBeenLastCalledWith(true);
+    await advance(200);
     expect(onFadingChange).toHaveBeenLastCalledWith(false);
     expect(notice()).toBeNull();
     expect(excluded()).toEqual([]);
@@ -328,6 +333,8 @@ describe("VideoPlayer", () => {
       fireEvent.error(screen.getByTestId("signage-video"));
     });
     expect(shown()).toBe("false");
+    // 黒へ消して少し置いてから表示に戻す
+    await advance(1500);
     expect(onFadingChange).toHaveBeenLastCalledWith(false);
     expect(excluded()).toEqual(["med_hevc"]);
     expect(notice()).toBe(`${FAILURE_TEXT["play-error"]}（エラー 3 デコード: NS_ERROR_DOM_MEDIA_DECODE_ERR (0x806e0004)）`);
@@ -429,6 +436,7 @@ describe("VideoPlayer", () => {
     expect(shown()).toBe("true");
     await advance(11_000);
     expect(shown()).toBe("false");
+    await advance(1500);
     expect(excluded()).toEqual(["med_hevc"]);
     expect(notice()).toBe(FAILURE_TEXT.stalled);
   });
@@ -438,7 +446,7 @@ describe("VideoPlayer", () => {
     renderPlayer(testPlayConfig());
     await advance(4000);
     playhead = 0.04;
-    await advance(12_000);
+    await advance(13_500);
     expect(notice()).toBe(FAILURE_TEXT.stalled);
     expect(playerLogs).toHaveLength(1);
     const [log] = playerLogs;
@@ -597,8 +605,11 @@ describe("VideoPlayer: スライドショー（2026-09-27 ユーザー指示）"
     expect(activeSlide()).toBe(1);
     await advance(1500);
     expect(slideshowShown()).toBe("true");
-    // 最後の 1 枚が終わると黒へ消え（0.6 秒）、表示に戻る
+    // 最後の 1 枚が終わると黒へ消え（0.6 秒）、黒のまま 0.8 秒置いてから（12.3 秒）表示に戻る
     await advance(1500);
+    expect(slideshowShown()).toBe("false");
+    expect(onFadingChange).toHaveBeenLastCalledWith(true);
+    await advance(500);
     expect(slideshowShown()).toBe("none");
     expect(onFadingChange).toHaveBeenLastCalledWith(false);
     expect(notice()).toBeNull();

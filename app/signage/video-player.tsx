@@ -69,6 +69,12 @@ const LOAD_RETRY_MS = 60_000;
 const NOTICE_MS = 12_000;
 /** スライドショーの写真どうしを重ねて切り替える時間 */
 const CROSSFADE_MS = 800;
+/**
+ * 動画・スライドショーが終わって黒へ消えたあと、サイネージを戻すまで黒のまま置く時間。
+ * 終わってすぐ戻ると慌ただしいため（2026-09-27 ユーザー指示「サイネージに戻るまでがちょっと早い」）。
+ * 終わってから戻り切るまでは、黒へ消える 0.6 秒＋この 0.8 秒＋サイネージが浮かぶ 0.6 秒
+ */
+const RETURN_HOLD_MS = 800;
 
 /** 流せなかった理由。テスト表示のときは画面に出す */
 type Failure =
@@ -671,7 +677,7 @@ export function VideoPlayer({
           if (signal.aborted) return;
         }
         setSlidesShown(false);
-        await sleep(FADE_MS, signal);
+        await sleep(FADE_MS + RETURN_HOLD_MS, signal);
         if (signal.aborted) return;
         setSlides(null);
         fadingRef.current(false);
@@ -756,7 +762,10 @@ export function VideoPlayer({
         const ended = await waitForEnd(el, item.durationSeconds, signal);
         if (signal.aborted) return;
         el.pause();
+        // 最後のコマのまま黒へ消し、少し黒のまま置いてからサイネージを戻す
         setShown(false);
+        await sleep(FADE_MS + RETURN_HOLD_MS, signal);
+        if (signal.aborted) return;
         fadingRef.current(false);
         if (ended !== "ok") {
           outcome = ended === "error" ? "play-error" : "stalled";
@@ -911,7 +920,8 @@ export function VideoPlayer({
           data-testid="signage-video"
           data-shown={shown ? "true" : "false"}
           className="pointer-events-none fixed inset-0 z-40 h-full w-full bg-black"
-          style={{ opacity: shown ? 1 : 0, objectFit: fit }}
+          // 消すときだけ黒へ溶かす。出すときは黒から切り替える（重ねて溶かすと Pi で最初のコマが落ちるため。SETTLE_MS）
+          style={{ opacity: shown ? 1 : 0, objectFit: fit, transition: shown ? "none" : `opacity ${FADE_MS}ms ease` }}
         />
       ) : null}
       {slides ? (
