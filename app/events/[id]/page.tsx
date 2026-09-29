@@ -44,7 +44,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               {event.category.name}
             </span>
           ) : null}
-          <h1 className="mt-3 text-2xl leading-snug font-bold">
+          <h1 className="mt-3 text-2xl leading-snug font-bold whitespace-pre-line">
             {event.title}
             {event.emoji ? ` ${event.emoji}` : ""}
           </h1>

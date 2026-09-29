@@ -186,7 +186,16 @@ export function EventForm(props: EventFormProps) {
               <label htmlFor="title" className={styles.label}>
                 イベント名<span className={styles.required}>必須</span>
               </label>
-              <input id="title" className={styles.input} placeholder="例: Pizza Night" {...register("title")} {...invalid("title")} />
+              {/* 改行を入れられる（2026-09-29 ユーザー指示）。サイネージでも改行した位置で折り返す */}
+              <textarea
+                id="title"
+                rows={2}
+                className={`${styles.input} ${styles.titleInput}`}
+                placeholder="例: Pizza Night"
+                {...register("title")}
+                {...invalid("title")}
+              />
+              <p className={styles.hint}>Enter で改行できます。サイネージでも、改行した位置で折り返して表示します。</p>
               {fieldError("title")}
             </div>
 

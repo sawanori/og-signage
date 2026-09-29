@@ -43,11 +43,11 @@ describe("FitText（今後のイベントの行）", () => {
       return { height: lines * 20 } as DOMRect;
     });
   }
-  const renderRow = (hasDesc: boolean) =>
+  const renderRow = (hasDesc: boolean, text = "タイトル") =>
     render(
       <div data-fit-row data-has-desc={hasDesc ? "true" : "false"} data-testid="row">
-        <FitText className="title" fitKey="タイトル" lines={2} minFit={0.72}>
-          タイトル
+        <FitText className="title" fitKey={text} lines={2} minFit={0.72}>
+          {text}
         </FitText>
       </div>,
     );
@@ -73,6 +73,13 @@ describe("FitText（今後のイベントの行）", () => {
     expect(getByTestId("row").dataset.wide).toBeUndefined();
     expect(Number(title(container).style.getPropertyValue("--fit"))).toBeLessThanOrEqual(0.8);
     expect(getByTestId("row").dataset.tall).toBeUndefined();
+  });
+
+  it("管理画面で改行を入れて 3 行にした名前は、字を小さくせずに行を縦に伸ばす（2026-09-29 ユーザー指示）", () => {
+    fakeLayout(3);
+    const { container, getByTestId } = renderRow(false, "一行目\n二行目\n三行目");
+    expect(title(container).style.getPropertyValue("--fit")).toBe("1");
+    expect(getByTestId("row").dataset.tall).toBe("true");
   });
 
   it("下限まで小さくしても入らなければ、切らずに行を縦に伸ばす", () => {

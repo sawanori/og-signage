@@ -5,7 +5,8 @@
  * メンバー紹介のカード（SpotlightCard.tsx）と同じ考え方で、収まらないときは字を少しずつ小さくする（CSS の --fit）。
  * どこまで小さくしても収まらなければ、切らずに全文を出す。
  * - lines を渡したとき（今後のイベントの行）: その行数に収める。行（data-fit-row）に説明の欄があれば、先に説明を外して
- *   その幅を使う（行に data-wide）。最小まで小さくしても収まらなければ、行を縦に伸ばす（行に data-tall）
+ *   その幅を使う（行に data-wide）。最小まで小さくしても収まらなければ、行を縦に伸ばす（行に data-tall）。
+ *   管理画面で改行を入れた名前（2026-09-29 ユーザー指示）は、改行の数だけは行を使い、行に入りきらなければ行を伸ばす
  * - lines が無いとき（大きな欄のタイトル）: 囲みの欄（data-fit-box）から はみ出さないよう小さくする
  * 画面をサーバーで組み立てるページ（/dev/signage・管理画面のプレビュー）からも使うので、受け取るのは文字と子要素だけ
  */
@@ -63,7 +64,9 @@ export function FitText({
       if (wide) row.dataset.wide = "true";
       else delete row.dataset.wide;
     };
-    const fits = () => (lines ? lineCount(el) <= lines : !box || box.scrollHeight <= box.clientHeight + 1);
+    // 改行で分けた行の数より少ない行には、どれだけ小さくしても収まらない
+    const target = lines ? Math.max(lines, fitKey.split("\n").length) : undefined;
+    const fits = () => (target ? lineCount(el) <= target : !box || box.scrollHeight <= box.clientHeight + 1);
     const run = () => {
       if (row) delete row.dataset.tall;
       const found = findFit(
@@ -74,8 +77,8 @@ export function FitText({
         { canWiden: row?.dataset.hasDesc === "true", minFit },
       );
       if (found) apply(found);
-      // 最小の字でも入らない。切らずに、行を縦に伸ばして全文を出す
-      else if (row) row.dataset.tall = "true";
+      // 最小の字でも入らない、または改行で行の高さに入らない。切らずに、行を縦に伸ばして全文を出す
+      if (row && lines && (!found || lineCount(el) > lines)) row.dataset.tall = "true";
     };
     run();
     // 書体が読み込まれると文字の幅が変わるので、読み込み後にもう一度

@@ -48,6 +48,12 @@ describe("イベント入力", () => {
     expect(eventInputSchema.safeParse({ ...validEvent, endAt: validEvent.startAt - 60 }).success).toBe(false);
   });
 
+  it("イベント名には改行を入れられる。改行は \\n にそろえ、改行の前後の空白と空の行は詰める（2026-09-29 ユーザー指示）", () => {
+    const parsed = eventInputSchema.parse({ ...validEvent, title: "  台風制御 Engineering  \r\n\r\n  本当にできるのか？\n\n制御オペレーション \n" });
+    expect(parsed.title).toBe("台風制御 Engineering\n本当にできるのか？\n制御オペレーション");
+    expect(eventInputSchema.safeParse({ ...validEvent, title: "\n \r\n" }).success).toBe(false);
+  });
+
   it("イベント名は必須", () => {
     expect(eventInputSchema.safeParse({ ...validEvent, title: "  " }).success).toBe(false);
   });

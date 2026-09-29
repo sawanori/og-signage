@@ -25,6 +25,17 @@ function requiredText(label: string, max: number) {
     .refine((v) => countChars(v) <= max, `${label}は${max}文字以内で入力してください`);
 }
 
+/**
+ * 改行を入れられる必須の文字列（イベント名。2026-09-29 ユーザー指示）。改行は \n にそろえ、
+ * 改行の前後の空白と空の行は詰める（Enter を 2 回押しても、サイネージに空の行が出ないように）
+ */
+function multilineText(label: string, max: number) {
+  return z.preprocess(
+    (v) => (typeof v === "string" ? v.replace(/\r\n?/g, "\n").replace(/[ \t]*\n\s*/g, "\n") : v),
+    requiredText(label, max),
+  );
+}
+
 /** 任意の文字列。空欄は null にする */
 function optionalText(label: string, max: number) {
   return z.preprocess(
@@ -58,7 +69,7 @@ const optionalHttpUrl = z.preprocess(
 // ---------------------------------------------------------------- イベント
 
 const eventFields = z.object({
-  title: requiredText("イベント名", 100),
+  title: multilineText("イベント名", 100),
   description: optionalText("説明", 1000),
   location: optionalText("場所", 100),
   startAt: unixSeconds,

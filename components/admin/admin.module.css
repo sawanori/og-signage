@@ -658,6 +658,8 @@
 
 /* イベント名は省略せず折り返す（2026-09-29 ユーザー指示）。絵文字は最後の行の続きに置く */
 .todayTitle {
+  /* イベント名の改行を守る（2026-09-29 ユーザー指示） */
+  white-space: pre-line;
   min-height: 30px;
   margin-top: 1px;
   font-size: 22px;
@@ -862,6 +864,8 @@
 
 /* イベント名は省略せず折り返す（2026-09-29 ユーザー指示）。絵文字は最後の行の続きに置く */
 .rowTitle {
+  /* イベント名の改行を守る（2026-09-29 ユーザー指示） */
+  white-space: pre-line;
   min-height: 24px;
   margin-top: 2px;
   font-size: 17px;

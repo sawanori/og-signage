@@ -469,6 +469,7 @@
 
 /* 省略はしない（2026-09-29 ユーザー指示）。欄に入りきらないときだけ FitText.tsx が --fit で字を小さくする */
 .pTitleText {
+  white-space: pre-line;
   transform: rotate(-6deg);
   transform-origin: left bottom;
   font-size: calc(1em * var(--fit, 1));
@@ -728,6 +729,7 @@
 
 /* イベント名は省略しない（2026-09-29 ユーザー指示）。1 行に入らなければ FitText.tsx が字を小さくし、最後は行を縦に伸ばす */
 .pRowTitle {
+  white-space: pre-line;
   margin-top: 4px;
   max-width: 100%;
   font-weight: 700;
@@ -1212,6 +1214,8 @@
  */
 .lTitleText {
   font-size: calc(1em * var(--fit, 1));
+  /* 管理画面で入れた改行を守る（2026-09-29 ユーザー指示） */
+  white-space: pre-line;
   max-width: 480px;
   word-break: auto-phrase;
   overflow-wrap: anywhere;
@@ -1452,6 +1456,7 @@
  */
 .lRowTitle {
   max-width: 100%;
+  white-space: pre-line;
   font-weight: 700;
   font-size: calc(18px * var(--fit, 1));
   line-height: 1.2;

@@ -147,6 +147,23 @@ describe("EventForm（追加）", () => {
     });
   });
 
+  it("イベント名は複数行の欄で、改行を入れたまま送る（2026-09-29 ユーザー指示）", async () => {
+    actions.createEventAction.mockResolvedValue({ ok: true, data: { id: "e1" } });
+    render(<EventForm mode="create" now={NOW} categories={categories} />);
+    expect(input("イベント名").tagName).toBe("TEXTAREA");
+    type("イベント名", "台風制御 Engineering\n本当にできるのか？");
+    pickTime("開始の時刻", "18", "00");
+    save();
+    await waitFor(() => expect(actions.createEventAction).toHaveBeenCalledTimes(1));
+    expect(actions.createEventAction.mock.calls[0][0]).toMatchObject({ title: "台風制御 Engineering\n本当にできるのか？" });
+  });
+
+  it("イベント画像の推奨サイズ（横長 3:2・1800 × 1200 px）を出す（2026-09-29 ユーザー指示）", () => {
+    render(<EventForm mode="create" now={NOW} categories={categories} />);
+    expect(screen.getByText("推奨サイズ：横 1800 × 縦 1200 px（横長 3:2）")).toBeTruthy();
+    expect(screen.getByText(/見せたいものは右寄りに置く/)).toBeTruthy();
+  });
+
   it("終了なしの説明を出す", () => {
     render(<EventForm mode="create" now={NOW} categories={categories} />);
     expect(screen.getByText(/未入力の場合はその日の終わりまで表示されます/)).toBeTruthy();

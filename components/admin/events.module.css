@@ -434,6 +434,7 @@
 
 .dayEventTitle {
   min-width: 0;
+  white-space: pre-line;
   overflow-wrap: anywhere;
   font-weight: 700;
 }
@@ -605,6 +606,16 @@
   min-height: 104px;
   padding: 9px 12px;
   line-height: 1.7;
+  resize: vertical;
+}
+
+/* イベント名（改行を入れられる。2 行分の高さから、入力に合わせて伸びる。伸びないブラウザでは手で広げられる） */
+.titleInput {
+  height: auto;
+  min-height: 64px;
+  field-sizing: content;
+  padding: 9px 12px;
+  line-height: 1.6;
   resize: vertical;
 }
 
