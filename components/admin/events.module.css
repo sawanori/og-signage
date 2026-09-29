@@ -403,19 +403,18 @@
   margin-top: 4px;
 }
 
+/* イベント名は省略せず折り返す（2026-09-29 ユーザー指示）。長いときはマスが縦に伸びる */
 .dayEvent {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 5px;
-  height: 22px;
-  padding: 0 7px;
+  min-height: 22px;
+  padding: 5px 7px;
   border-radius: 5px;
   background: var(--event-color);
   color: #fff;
   font-size: 11px;
-  line-height: 1;
-  white-space: nowrap;
-  overflow: hidden;
+  line-height: 1.2;
 }
 
 .dayEvent:hover {
@@ -435,8 +434,7 @@
 
 .dayEventTitle {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
   font-weight: 700;
 }
 
@@ -614,6 +612,25 @@
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
   gap: 8px;
+}
+
+/* 時刻は 時・分 の 2 つの選択（分は 15 分きざみ。time-select.tsx） */
+.timeSelect {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.timeSelect > select {
+  flex: 1;
+  min-width: 0;
+  padding: 0 6px;
+}
+
+.timeSep {
+  flex: none;
+  color: #5b6b82;
+  font-weight: 700;
 }
 
 .emojiInput {

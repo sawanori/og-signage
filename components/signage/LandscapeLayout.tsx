@@ -9,6 +9,7 @@ import { Fragment } from "react";
 import { ArrowRight, CalendarDays, Clock } from "lucide-react";
 import type { SignageConfig, SignageEvent } from "@/lib/config-schema";
 import { COPY } from "./copy";
+import { FitText } from "./FitText";
 import {
   formatDateJa,
   formatMonthDay,
@@ -241,11 +242,12 @@ function Hero({
         <span className={styles.lCircleWeek}>{formatWeekdayUpper(event.startAt)}</span>
       </div>
       {/* 文字の配置は見本（2026-09-26 ユーザー指示）どおり。カテゴリ・大きなタイトル・短い線・説明・日付／時間／場所／参加の一覧 */}
-      <div className={`${styles.lHeroBody} ${fade}`}>
+      <div className={`${styles.lHeroBody} ${fade}`} data-fit-box>
         {event.category ? <span className={styles.lPill}>{event.category.name}</span> : null}
         {/* 絵文字はタイトルの最後の文字に続けて置く（2 行に折れても離れないよう、間は改行しない文字でつなぐ） */}
         <h1 className={styles.lTitle} data-size={titleSize} data-emoji={event.emoji ? "true" : undefined} data-testid="main-title">
-          <span className={styles.lTitleText}>
+          {/* 省略せず全文を出し、欄に入りきらないときだけ字を小さくする（2026-09-29 ユーザー指示。FitText.tsx） */}
+          <FitText className={styles.lTitleText} fitKey={event.title}>
             {event.title}
             {event.emoji ? (
               <>
@@ -253,7 +255,7 @@ function Hero({
                 <Emoji className={styles.lTitleEmoji}>{event.emoji}</Emoji>
               </>
             ) : null}
-          </span>
+          </FitText>
         </h1>
         <span className={styles.lTitleRule} aria-hidden />
         {event.description ? <p className={styles.lDesc}>{event.description}</p> : null}
@@ -301,7 +303,7 @@ function EventInfo({ event }: { event: SignageEvent }) {
 /** 1 行（見本どおり 左から 日付・写真・イベント名と時間／場所・説明の書き出し） */
 function UpcomingRow({ event, resolveMediaUrl }: { event: SignageEvent; resolveMediaUrl: ResolveMediaUrl }) {
   return (
-    <div className={styles.lRow} data-has-desc={event.description ? "true" : "false"}>
+    <div className={styles.lRow} data-has-desc={event.description ? "true" : "false"} data-fit-row>
       <div className={styles.lRowDate}>
         <span className={styles.lRowDay}>{formatMonthDay(event.startAt)}</span>
         <span className={styles.lRowWeek}>{formatWeekdayUpper(event.startAt)}</span>
@@ -314,7 +316,10 @@ function UpcomingRow({ event, resolveMediaUrl }: { event: SignageEvent; resolveM
         className={styles.lRowImage}
       />
       <div className={styles.lRowText}>
-        <span className={styles.lRowTitle}>{event.title}</span>
+        {/* 省略せず 2 行まで。入らなければ説明を外す → 字を小さくする → 行を伸ばす（2026-09-29 ユーザー指示） */}
+        <FitText className={styles.lRowTitle} fitKey={event.title} lines={2} minFit={0.72}>
+          {event.title}
+        </FitText>
         <span className={styles.lRowMeta}>
           {formatTimeRange(event)}
           {event.location ? <span className={styles.lRowPlace}>{event.location}</span> : null}

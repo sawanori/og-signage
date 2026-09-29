@@ -54,7 +54,7 @@ export function TodayEventCard({ events, now }: { events: DashboardEvent[]; now:
         )}
         <div style={{ minWidth: 0 }}>
           <p className={styles.todayTitle}>
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{e.title}</span>
+            <span>{e.title}</span>
             {e.emoji ? (
               <span className={styles.emoji} aria-hidden>
                 {e.emoji}

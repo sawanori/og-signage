@@ -213,7 +213,7 @@ function EventRow({ event: e, onDelete }: { event: ManagedEvent; onDelete: () =>
           {e.status === "draft" ? <span className={`${admin.tag} ${admin.tagDraft}`}>下書き</span> : null}
         </span>
         <p className={admin.rowTitle}>
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{e.title}</span>
+          <span>{e.title}</span>
           {e.emoji ? (
             <span className={admin.emoji} aria-hidden>
               {e.emoji}

@@ -155,7 +155,7 @@ function EventRow({ event: e, now, onError }: { event: DashboardEvent; now: numb
           </span>
         ) : null}
         <p className={styles.rowTitle}>
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{e.title}</span>
+          <span>{e.title}</span>
           {e.emoji ? (
             <span className={styles.emoji} aria-hidden>
               {e.emoji}

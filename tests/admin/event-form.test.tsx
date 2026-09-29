@@ -49,6 +49,12 @@ const pizza: EventFormSource = {
 const input = (label: string) => screen.getByLabelText(label, { exact: false }) as HTMLInputElement;
 const type = (label: string, value: string) => fireEvent.change(input(label), { target: { value } });
 const save = () => fireEvent.click(screen.getByRole("button", { name: "保存する" }));
+/** 時刻は 時・分 の 2 つの選択（分は 15 分きざみ。2026-09-29 ユーザー指示） */
+const select = (label: string) => screen.getByLabelText(label) as HTMLSelectElement;
+const pickTime = (label: string, hour: string, minute?: string) => {
+  fireEvent.change(select(`${label}（時）`), { target: { value: hour } });
+  if (minute !== undefined) fireEvent.change(select(`${label}（分）`), { target: { value: minute } });
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -68,8 +74,8 @@ describe("EventForm（追加）", () => {
   it("終了が開始より前ならエラーを出す", async () => {
     render(<EventForm mode="create" now={NOW} categories={categories} />);
     type("イベント名", "Pizza Night");
-    type("開始の時刻", "19:30");
-    type("終了日時", "18:00");
+    pickTime("開始の時刻", "19", "30");
+    pickTime("終了の時刻", "18", "00");
     save();
     expect(await screen.findByText("終了は開始より後にしてください")).toBeTruthy();
     expect(actions.createEventAction).not.toHaveBeenCalled();
@@ -79,7 +85,7 @@ describe("EventForm（追加）", () => {
     actions.createEventAction.mockResolvedValue({ ok: true, data: { id: "e1" } });
     render(<EventForm mode="create" now={NOW} categories={categories} />);
     type("イベント名", "Pizza Night");
-    type("開始の時刻", "19:30");
+    pickTime("開始の時刻", "19", "30");
     save();
     await waitFor(() => expect(actions.createEventAction).toHaveBeenCalledTimes(1));
     expect(actions.createEventAction.mock.calls[0][0]).toEqual({
@@ -117,6 +123,30 @@ describe("EventForm（追加）", () => {
     expect((screen.getByRole("button", { name: "保存する" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
+  it("時刻は 時 と 分 の 2 つで選び、分は 00・15・30・45 だけ（2026-09-29 ユーザー指示）", () => {
+    render(<EventForm mode="create" now={NOW} categories={categories} />);
+    const minutes = [...select("開始の時刻（分）").options].map((o) => o.value);
+    expect(minutes).toEqual(["", "00", "15", "30", "45"]);
+    expect([...select("終了の時刻（分）").options].map((o) => o.value)).toEqual(["", "00", "15", "30", "45"]);
+    expect([...select("開始の時刻（時）").options].map((o) => o.value)).toHaveLength(25);
+  });
+
+  it("時だけ選べば 00 分、分を先に選んでいれば時を選んだときに合わせる", async () => {
+    actions.createEventAction.mockResolvedValue({ ok: true, data: { id: "e1" } });
+    render(<EventForm mode="create" now={NOW} categories={categories} />);
+    type("イベント名", "Pizza Night");
+    pickTime("開始の時刻", "19");
+    expect(select("開始の時刻（分）").value).toBe("00");
+    fireEvent.change(select("終了の時刻（分）"), { target: { value: "45" } });
+    pickTime("終了の時刻", "20");
+    save();
+    await waitFor(() => expect(actions.createEventAction).toHaveBeenCalledTimes(1));
+    expect(actions.createEventAction.mock.calls[0][0]).toMatchObject({
+      startAt: tokyoDateTime(2025, 9, 24, 19, 0),
+      endAt: tokyoDateTime(2025, 9, 24, 20, 45),
+    });
+  });
+
   it("終了なしの説明を出す", () => {
     render(<EventForm mode="create" now={NOW} categories={categories} />);
     expect(screen.getByText(/未入力の場合はその日の終わりまで表示されます/)).toBeTruthy();
@@ -129,7 +159,7 @@ describe("EventForm（追加）", () => {
     });
     render(<EventForm mode="create" now={NOW} categories={categories} />);
     type("イベント名", "Pizza Night");
-    type("開始の時刻", "19:30");
+    pickTime("開始の時刻", "19", "30");
     save();
     expect(await screen.findByText("選んだカテゴリが見つかりません。選び直してください")).toBeTruthy();
     expect(input("イベント名").value).toBe("Pizza Night");
@@ -157,6 +187,17 @@ describe("EventForm（編集）", () => {
     await waitFor(() => expect(actions.updateEventAction).toHaveBeenCalledTimes(2));
     expect(actions.updateEventAction.mock.calls[1][1]).toMatchObject({ title: "Pizza Night 2", revision: 4 });
     await waitFor(() => expect(push).toHaveBeenCalledWith("/admin/events?saved=updated"));
+  });
+
+  it("15 分きざみでない保存済みの時刻（19:10）は、開いて保存しただけでは変わらない", async () => {
+    actions.updateEventAction.mockResolvedValue({ ok: true, data: { id: "e1" } });
+    const odd = { ...pizza, startAt: tokyoDateTime(2025, 9, 24, 19, 10) };
+    render(<EventForm mode="edit" eventId="e1" event={odd} revision={3} categories={categories} />);
+    expect(select("開始の時刻（時）").value).toBe("19");
+    expect(select("開始の時刻（分）").value).toBe("10");
+    save();
+    await waitFor(() => expect(actions.updateEventAction).toHaveBeenCalledTimes(1));
+    expect(actions.updateEventAction.mock.calls[0][1]).toMatchObject({ startAt: tokyoDateTime(2025, 9, 24, 19, 10) });
   });
 
   it("削除は確認してから行う", async () => {

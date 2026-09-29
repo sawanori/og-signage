@@ -4,6 +4,7 @@
 import { ArrowRight, Clock } from "lucide-react";
 import type { SignageConfig, SignageEvent } from "@/lib/config-schema";
 import { COPY } from "./copy";
+import { FitText } from "./FitText";
 import {
   formatDateJa,
   formatMonthDay,
@@ -229,9 +230,12 @@ function Hero({
           <span className={styles.pCatchTick2} />
         </div>
       ) : null}
-      <div className={styles.pHeroBody}>
+      <div className={styles.pHeroBody} data-fit-box>
         <h1 className={styles.pTitle} data-long={longTitle ? "true" : "false"} data-testid="main-title">
-          <span className={styles.pTitleText}>{event.title}</span>
+          {/* 省略せず全文を出し、欄に入りきらないときだけ字を小さくする（2026-09-29 ユーザー指示。FitText.tsx） */}
+          <FitText className={styles.pTitleText} fitKey={event.title}>
+            {event.title}
+          </FitText>
           {event.emoji ? <Emoji className={styles.pTitleEmoji}>{event.emoji}</Emoji> : null}
         </h1>
         {event.description ? <p className={styles.pDesc}>{event.description}</p> : null}
@@ -294,7 +298,7 @@ function QuietHero({ config }: { config: SignageConfig }) {
 
 function UpcomingRow({ event, resolveMediaUrl }: { event: SignageEvent; resolveMediaUrl: ResolveMediaUrl }) {
   return (
-    <div className={styles.pRow}>
+    <div className={styles.pRow} data-fit-row>
       <div className={styles.pRowDate}>
         <span className={styles.pRowDay}>{formatMonthDay(event.startAt)}</span>
         <span className={styles.pRowWeek}>{formatWeekdayUpper(event.startAt)}</span>
@@ -306,7 +310,9 @@ function UpcomingRow({ event, resolveMediaUrl }: { event: SignageEvent; resolveM
             {event.category.name}
           </span>
         ) : null}
-        <span className={styles.pRowTitle}>{event.title}</span>
+        <FitText className={styles.pRowTitle} fitKey={event.title} lines={1} minFit={0.7}>
+          {event.title}
+        </FitText>
         <span className={styles.pRowMeta}>
           {formatTimeRange(event)}
           {event.location ? (

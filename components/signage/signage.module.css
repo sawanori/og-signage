@@ -462,32 +462,31 @@
   font-family: var(--font-script);
   font-weight: 400;
   font-size: 90px;
-  line-height: 100px;
+  /* 100px。字を小さくしたとき（--fit）に行の間も一緒に詰まるよう、倍率で持つ */
+  line-height: 1.1111;
   letter-spacing: 0.01em;
 }
 
+/* 省略はしない（2026-09-29 ユーザー指示）。欄に入りきらないときだけ FitText.tsx が --fit で字を小さくする */
 .pTitleText {
   transform: rotate(-6deg);
   transform-origin: left bottom;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
+  font-size: calc(1em * var(--fit, 1));
   max-width: 470px;
+  overflow-wrap: anywhere;
 }
 
 .pTitle[data-long="true"] {
   font-family: var(--font-sans);
   font-weight: 700;
   font-size: 50px;
-  line-height: 60px;
+  line-height: 1.2;
   min-height: 0;
   margin-bottom: 0;
 }
 
 .pTitle[data-long="true"] .pTitleText {
   transform: none;
-  max-height: 120px;
 }
 
 .pTitleEmoji {
@@ -727,16 +726,27 @@
   white-space: nowrap;
 }
 
+/* イベント名は省略しない（2026-09-29 ユーザー指示）。1 行に入らなければ FitText.tsx が字を小さくし、最後は行を縦に伸ばす */
 .pRowTitle {
   margin-top: 4px;
   max-width: 100%;
   font-weight: 700;
-  font-size: 23px;
-  line-height: 31px;
+  font-size: calc(23px * var(--fit, 1));
+  line-height: 1.35;
   letter-spacing: 0.01em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: auto-phrase;
+  overflow-wrap: anywhere;
+}
+
+.pRow[data-tall="true"] {
+  height: auto;
+  min-height: 100px;
+}
+
+.pRow[data-tall="true"] .pRowText {
+  position: relative;
+  top: 0;
+  padding: 11px 0 14px;
 }
 
 .pRowMeta {
@@ -1189,20 +1199,19 @@
   display: flex;
   font-weight: 700;
   font-size: 94px;
-  line-height: 98px;
+  /* 98px。字を小さくしたとき（--fit）に行の間も一緒に詰まるよう、倍率で持つ */
+  line-height: 1.0426;
   letter-spacing: 0.01em;
   text-shadow: 0 2px 16px rgba(0, 0, 0, 0.28);
 }
 
 /*
  * 見本の大きさ（10 文字まで）は句のまとまりで折り返す（コーヒーの／淹れ方講座）。1 句が 1 行に入らなければ句の途中でも折る。
- * 長いタイトルは詰めて折り返し、2 行に収まるよう枠を広げる（11〜16 文字は 1 行 8 文字、17 文字からは 1 行 13 文字まで）
+ * 長いタイトルは詰めて折り返す（11〜16 文字は 1 行 8 文字、17 文字からは 1 行 13 文字まで）。
+ * 省略はしない（2026-09-29 ユーザー指示）。行数は決めず、欄に入りきらないときだけ FitText.tsx が --fit で字を小さくする
  */
 .lTitleText {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
+  font-size: calc(1em * var(--fit, 1));
   max-width: 480px;
   word-break: auto-phrase;
   overflow-wrap: anywhere;
@@ -1210,12 +1219,12 @@
 
 .lTitle[data-size="m"] {
   font-size: 68px;
-  line-height: 76px;
+  line-height: 1.1176;
 }
 
 .lTitle[data-size="s"] {
   font-size: 46px;
-  line-height: 56px;
+  line-height: 1.2174;
 }
 
 .lTitle[data-size="m"] .lTitleText {
@@ -1437,19 +1446,39 @@
   align-items: flex-start;
 }
 
+/*
+ * イベント名は省略せず 2 行まで折り返す（2026-09-29 ユーザー指示）。入らなければ FitText.tsx が
+ * 右の説明を外して幅を広げ（data-wide）、それでも入らなければ字を小さくし（--fit）、最後は行を縦に伸ばす（data-tall）
+ */
 .lRowTitle {
   max-width: 100%;
   font-weight: 700;
-  font-size: 18px;
-  line-height: 24px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: calc(18px * var(--fit, 1));
+  line-height: 1.2;
+  word-break: auto-phrase;
+  overflow-wrap: anywhere;
 }
 
 /* 説明が無い行は、右の説明の欄のぶんまでイベント名と時間を広げる */
-.lRow[data-has-desc="false"] .lRowText {
+.lRow[data-has-desc="false"] .lRowText,
+.lRow[data-wide="true"] .lRowText {
   width: 309px;
+}
+
+.lRow[data-wide="true"] .lRowDesc {
+  display: none;
+}
+
+.lRow[data-tall="true"] {
+  height: auto;
+  min-height: 66.5px;
+}
+
+.lRow[data-tall="true"] .lRowText {
+  position: relative;
+  height: auto;
+  min-height: 66.5px;
+  padding: 6px 0;
 }
 
 .lRowMeta {

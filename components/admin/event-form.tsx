@@ -14,7 +14,7 @@ import { ChevronLeft, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type CSSProperties } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import {
   createEventAction,
   deleteEventAction,
@@ -33,6 +33,7 @@ import {
 import { EventImageField } from "./event-image-field";
 import { mediaThumbnailUrl, type EventCategoryOption } from "./event-types";
 import styles from "./events.module.css";
+import { TimeSelect } from "./time-select";
 
 export const CONFLICT_MESSAGE = "他の人が先に更新しました。内容を確認して保存し直してください";
 const SAVE_FAILED = "保存できませんでした。通信の状態を確認して、もう一度お試しください";
@@ -196,12 +197,22 @@ export function EventForm(props: EventFormProps) {
                 </label>
                 <div className={styles.dateTime}>
                   <input id="startDate" type="date" className={styles.input} {...register("startDate")} {...invalid("startDate")} />
-                  <input
-                    type="time"
-                    className={styles.input}
-                    aria-label="開始の時刻"
-                    {...register("startTime")}
-                    {...invalid("startDate")}
+                  {/* 時と分の 2 つで選ぶ。分は 15 分きざみ（2026-09-29 ユーザー指示） */}
+                  <Controller
+                    control={control}
+                    name="startTime"
+                    render={({ field }) => (
+                      <TimeSelect
+                        label="開始の時刻"
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        className={styles.input}
+                        wrapClassName={styles.timeSelect}
+                        sepClassName={styles.timeSep}
+                        invalid={Boolean(errors.startDate)}
+                      />
+                    )}
                   />
                 </div>
                 {fieldError("startDate")}
@@ -213,7 +224,23 @@ export function EventForm(props: EventFormProps) {
                 </label>
                 <div className={styles.dateTime}>
                   <input type="date" className={styles.input} aria-label="終了の日付" {...register("endDate")} {...invalid("endTime")} />
-                  <input id="endTime" type="time" className={styles.input} {...register("endTime")} {...invalid("endTime")} />
+                  <Controller
+                    control={control}
+                    name="endTime"
+                    render={({ field }) => (
+                      <TimeSelect
+                        id="endTime"
+                        label="終了の時刻"
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        className={styles.input}
+                        wrapClassName={styles.timeSelect}
+                        sepClassName={styles.timeSep}
+                        invalid={Boolean(errors.endTime)}
+                      />
+                    )}
+                  />
                 </div>
                 <p className={styles.hint}>未入力の場合はその日の終わりまで表示されます。日付を空けると開始と同じ日になります。</p>
                 {fieldError("endTime")}
