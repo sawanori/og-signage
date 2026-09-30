@@ -757,7 +757,7 @@ function LibraryCard({
   library: VideoLibraryItem[];
   inList: Set<string>;
   canAdd: boolean;
-  /** 再生する動画が上限（3 本）に達している */
+  /** 再生する動画が上限（MAX_VIDEOS 本）に達している */
   full: boolean;
   onAdd: (video: VideoLibraryItem) => void;
   showDeviceHint: boolean;

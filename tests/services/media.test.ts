@@ -284,7 +284,7 @@ describe("アップロード", () => {
     expect(await db.select().from(media)).toHaveLength(1);
   });
 
-  it("アップロードする動画の本数は制限しない（3 本までは再生リストの側。再生リストから外した動画が残っていても入れられる）", async () => {
+  it("アップロードする動画の本数は制限しない（本数の上限は再生リストの側。再生リストから外した動画が残っていても入れられる）", async () => {
     for (let i = 0; i < 4; i++) {
       const { uploadId, parts } = await uploadVideo(12 * MB);
       await completeUpload(deps, staff, uploadId, meta(parts));

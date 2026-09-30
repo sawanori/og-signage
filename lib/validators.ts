@@ -234,7 +234,7 @@ export const videoSettingsInputSchema = z.object({
   enabled: z.boolean(),
   intervalMinutes: z.literal([...VIDEO_INTERVAL_MINUTES], "動画の間隔は一覧から選んでください"),
   mode: z.enum(["sequence", "random"]),
-  /** 再生順に並べた動画の mediaId（3 本まで） */
+  /** 再生順に並べた動画の mediaId（MAX_VIDEOS 本まで） */
   mediaIds: z.array(z.string().min(1)).max(MAX_VIDEOS, `再生する動画は ${MAX_VIDEOS} 本までです`),
   revision,
 });

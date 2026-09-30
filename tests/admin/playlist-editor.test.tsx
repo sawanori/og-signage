@@ -58,6 +58,8 @@ function pageData(items: PlaylistEntry[]): VideosPageData {
       { mediaId: "vid_a", name: "welcome.mp4", durationSeconds: 20, thumbnailUrl: null, playable: true },
       { mediaId: "vid_b", name: "event.mp4", durationSeconds: 15, thumbnailUrl: null, playable: true },
       { mediaId: "vid_c", name: "night.mp4", durationSeconds: 12, thumbnailUrl: null, playable: true },
+      { mediaId: "vid_d", name: "lunch.mp4", durationSeconds: 18, thumbnailUrl: null, playable: true },
+      { mediaId: "vid_e", name: "talk.mp4", durationSeconds: 25, thumbnailUrl: null, playable: true },
     ],
   };
 }
@@ -101,7 +103,7 @@ describe("スライドショーの行", () => {
       "/api/media/img_2/thumbnail",
     ]);
     expect(within(second).queryByText("未保存")).toBeNull();
-    expect(screen.getByText("動画 1 / 3 本")).toBeTruthy();
+    expect(screen.getByText("動画 1 / 5 本")).toBeTruthy();
     expect(screen.getByText("スライドショー 1 / 1")).toBeTruthy();
 
     // 写真の欄は閉じていて、合計だけを出す。開くと写真ごとの欄が出る
@@ -122,21 +124,23 @@ describe("スライドショーの行", () => {
     expect(saveButton().disabled).toBe(true);
     expect(
       screen.getByRole("img", {
-        name: /動画またはスライドショーを 1 つずつ全画面で流します。動画は 3 本まで、スライドショーは 1 つ（写真 3 枚まで・合計 30 秒まで）/,
+        name: /動画またはスライドショーを 1 つずつ全画面で流します。動画は 5 本まで、スライドショーは 1 つ（写真 3 枚まで・合計 30 秒まで）/,
       }),
     ).toBeTruthy();
   });
 
-  it("スライドショーは動画の本数（3 本まで）に数えない", () => {
+  it("スライドショーは動画の本数（5 本まで）に数えない", () => {
     renderEditor([videoA, slideshow, videoB]);
     const library = screen.getByRole("region", { name: "動画を追加" });
-    const night = within(library).getByText("night.mp4").closest("li");
-    if (!night) throw new Error("night.mp4 の行がありません");
-    fireEvent.click(within(night).getByRole("button", { name: "追加" }));
+    for (const name of ["night.mp4", "lunch.mp4", "talk.mp4"]) {
+      const row = within(library).getByText(name).closest("li");
+      if (!row) throw new Error(`${name} の行がありません`);
+      fireEvent.click(within(row).getByRole("button", { name: "追加" }));
+    }
 
-    expect(playlistRows()).toHaveLength(4);
-    expect(screen.getByText("動画 3 / 3 本")).toBeTruthy();
-    expect(within(library).getByText(/再生する動画は 3 本までです/)).toBeTruthy();
+    expect(playlistRows()).toHaveLength(6);
+    expect(screen.getByText("動画 5 / 5 本")).toBeTruthy();
+    expect(within(library).getByText(/再生する動画は 5 本までです/)).toBeTruthy();
   });
 });
 

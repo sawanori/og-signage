@@ -341,32 +341,36 @@ describe("プレイリストと再生設定をまとめて保存", () => {
     };
   }
 
-  it("再生する動画は 3 本まで。4 本にする保存は入力不正で、何も書かない", async () => {
+  it("再生する動画は 5 本まで。6 本にする保存は入力不正で、何も書かない", async () => {
     const { v1, v2, v3, playlistRevision } = await fixture();
     const v4 = await addMedia({ name: "v4.mp4" });
+    const v5 = await addMedia({ name: "v5.mp4" });
+    const v6 = await addMedia({ name: "v6.mp4" });
     const before = await snapshot();
     const error = await expectServiceError(
-      saveDevicePlayback(db, "d1", { settings: settingsInput, playlist: { revision: playlistRevision, mediaIds: [v1, v2, v3, v4] } }),
+      saveDevicePlayback(db, "d1", {
+        settings: settingsInput,
+        playlist: { revision: playlistRevision, mediaIds: [v1, v2, v3, v4, v5, v6] },
+      }),
       "invalid_input",
       400,
     );
-    expect(error.message).toBe("再生する動画は 3 本までです");
+    expect(error.message).toBe("再生する動画は 5 本までです");
     expect(await snapshot()).toEqual(before);
     await expect(
-      saveDevicePlayback(db, "d1", { settings: settingsInput, playlist: { revision: playlistRevision, mediaIds: [v1, v2, v3] } }),
+      saveDevicePlayback(db, "d1", { settings: settingsInput, playlist: { revision: playlistRevision, mediaIds: [v1, v2, v3, v4, v5] } }),
     ).resolves.toBeTruthy();
   });
 
-  it("1 本ずつの追加も 3 本まで", async () => {
+  it("1 本ずつの追加も 5 本まで", async () => {
     const { v3, playlistRevision } = await fixture();
-    const third = await addPlaylistItem(db, "pl1", { revision: playlistRevision, mediaId: v3 });
-    const v4 = await addMedia({ name: "v4.mp4" });
-    const error = await expectServiceError(
-      addPlaylistItem(db, "pl1", { revision: third.playlist.revision, mediaId: v4 }),
-      "invalid_input",
-      400,
-    );
-    expect(error.message).toBe("再生する動画は 3 本までです");
+    let revision = playlistRevision;
+    for (const mediaId of [v3, await addMedia({ name: "v4.mp4" }), await addMedia({ name: "v5.mp4" })]) {
+      revision = (await addPlaylistItem(db, "pl1", { revision, mediaId })).playlist.revision;
+    }
+    const v6 = await addMedia({ name: "v6.mp4" });
+    const error = await expectServiceError(addPlaylistItem(db, "pl1", { revision, mediaId: v6 }), "invalid_input", 400);
+    expect(error.message).toBe("再生する動画は 5 本までです");
   });
 
   it("外す・追加・並べ替え・再生設定を 1 回で丸ごと保存する", async () => {

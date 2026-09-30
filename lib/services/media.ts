@@ -155,7 +155,7 @@ export async function startUpload(
   input: StartUploadInput,
 ): Promise<{ uploadId: string; partSize: number }> {
   const { kind, size } = startUploadSchema.parse(input);
-  // アップロードする動画の本数は制限しない。3 本までにするのは再生リスト（定期動画）だけ（2026-09-25 ユーザー指示で見直し）
+  // アップロードする動画の本数は制限しない。本数の上限（MAX_VIDEOS）は再生リスト（定期動画）だけ（2026-09-25 ユーザー指示で見直し）
   if (size > MEDIA_MAX_BYTES[kind]) throw new MediaError(413, "too_large", sizeLimitMessage(kind));
 
   const uploadId = crypto.randomUUID();
