@@ -37,7 +37,7 @@ import {
   sniffMime,
   type MediaKind,
 } from "../file-sniff";
-import { mediaKeys, type MediaBucket, type R2Part } from "../r2";
+import { isSpotlightSubmissionKey, mediaKeys, putSpotlightSubmissionMarker, type MediaBucket, type R2Part } from "../r2";
 import { videoCodecViolations, videoRequirementMessage, videoRequirementViolations } from "../video-requirements";
 
 export const DELETE_DELAY_SECONDS = 7 * 24 * 60 * 60;
@@ -450,7 +450,12 @@ export async function purgeDeletedMedia(
   const failed: string[] = [];
   for (const row of due) {
     try {
-      await bucket.delete(row.thumbnailR2Key ? [row.r2Key, row.thumbnailR2Key] : [row.r2Key]);
+      if (isSpotlightSubmissionKey(row.r2Key)) {
+        await putSpotlightSubmissionMarker(bucket, row.r2Key);
+        if (row.thumbnailR2Key) await bucket.delete(row.thumbnailR2Key);
+      } else {
+        await bucket.delete(row.thumbnailR2Key ? [row.r2Key, row.thumbnailR2Key] : [row.r2Key]);
+      }
       await db.delete(media).where(and(eq(media.id, row.id), eq(media.state, "deleting")));
       purged.push(row.id);
     } catch (e) {

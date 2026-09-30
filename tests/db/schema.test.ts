@@ -1,7 +1,7 @@
 import { createClient } from "@libsql/client";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/libsql/migrator";
-import { mkdtempSync, rmSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -15,6 +15,7 @@ import {
   houseSettings,
   media,
   mediaFailures,
+  memberSpotlightSubmissions,
   memberSpotlights,
   notices,
   playlistItems,
@@ -23,6 +24,7 @@ import {
 } from "../../db/schema";
 import { SEED_HOUSE_SETTINGS_ID, SEED_PLAYLIST_ID, seed } from "../../db/seed";
 import { verifyPassword } from "../../lib/password";
+import { spotlightSubmissionInputSchema } from "../../lib/spotlight-submissions";
 import { createAdmin } from "../../scripts/create-admin";
 
 const TABLES = [
@@ -36,6 +38,7 @@ const TABLES = [
   "house_settings",
   "media",
   "media_failures",
+  "member_spotlight_submissions",
   "member_spotlights",
   "notices",
   "playlist_item_slides",
@@ -91,6 +94,83 @@ describe("マイグレーション", () => {
 
     const fk = await client.execute("PRAGMA foreign_keys");
     expect(fk.rows[0].foreign_keys).toBe(1);
+  });
+});
+
+describe("メンバー紹介の申請テーブル", () => {
+  const { requestKey: _key, consent: _consent, ...payload } = spotlightSubmissionInputSchema.parse({
+    requestKey: "123e4567-e89b-42d3-a456-426614174000", companyName: "所属", personName: "名前", consent: true,
+  });
+  void _key;
+  void _consent;
+  const submission = (requestKey: string) => ({ requestKey, requestFingerprint: "a".repeat(64), payload, consentedAt: 100, consentVersion: 1 });
+
+  it("既存の掲載情報と分離し、受信中・未回収の初期値を持つ", async () => {
+    await db.insert(memberSpotlights).values({ id: "published", companyName: "公開済み", personName: "既存" });
+    const [row] = await db.insert(memberSpotlightSubmissions).values(submission("request-1")).returning();
+    expect(row).toMatchObject({ status: "receiving", revision: 0, payload, photoFile: null, logoFile: null, submittedAt: null, cleanupNextAt: null, cleanupCompletedAt: null });
+    expect((await db.select().from(memberSpotlights)).map((r) => r.id)).toEqual(["published"]);
+    expect(await db.select().from(media)).toHaveLength(0);
+  });
+
+  it("request_keyの重複をDBで拒否する", async () => {
+    await db.insert(memberSpotlightSubmissions).values(submission("same"));
+    await expectConstraintError(db.insert(memberSpotlightSubmissions).values(submission("same")), /UNIQUE constraint failed/);
+  });
+
+  it("5状態以外をDBのCHECKで拒否する", async () => {
+    const [row] = await db.insert(memberSpotlightSubmissions).values(submission("status")).returning();
+    await expect(client.execute({ sql: "UPDATE member_spotlight_submissions SET status = ? WHERE id = ?", args: ["published", row.id] })).rejects.toThrow(/CHECK constraint failed/);
+    for (const status of ["receiving", "pending", "approved", "rejected", "expired"] as const) {
+      await db.update(memberSpotlightSubmissions).set({ status }).where(eq(memberSpotlightSubmissions.id, row.id));
+    }
+  });
+
+  it("審査者と掲載メンバーを削除しても申請の状態は残り参照だけnullになる", async () => {
+    await db.insert(users).values({ id: "reviewer", email: "reviewer@example.com" });
+    await db.insert(memberSpotlights).values({ id: "approved", companyName: "所属", personName: "名前" });
+    const [row] = await db.insert(memberSpotlightSubmissions).values({ ...submission("approved-request"), status: "approved", reviewedBy: "reviewer", approvedSpotlightId: "approved" }).returning();
+    await expectConstraintError(db.insert(memberSpotlightSubmissions).values({ ...submission("other"), approvedSpotlightId: "approved" }), /UNIQUE constraint failed/);
+    await db.delete(users).where(eq(users.id, "reviewer"));
+    await db.delete(memberSpotlights).where(eq(memberSpotlights.id, "approved"));
+    const [remaining] = await db.select().from(memberSpotlightSubmissions).where(eq(memberSpotlightSubmissions.id, row.id));
+    expect(remaining).toMatchObject({ status: "approved", reviewedBy: null, approvedSpotlightId: null });
+  });
+
+  it("期限の来た未回収だけを索引条件と同じ順序で取得できる", async () => {
+    await db.insert(memberSpotlightSubmissions).values([
+      { ...submission("late"), id: "b", status: "rejected", cleanupNextAt: 200 },
+      { ...submission("first"), id: "a", status: "expired", cleanupNextAt: 100 },
+      { ...submission("done"), status: "rejected", cleanupNextAt: null, cleanupCompletedAt: 80 },
+      { ...submission("future"), status: "expired", cleanupNextAt: 500 },
+      { ...submission("pending"), status: "pending" },
+    ]);
+    const rows = await db.select().from(memberSpotlightSubmissions)
+      .where(sql`status IN ('rejected', 'expired') AND cleanup_completed_at IS NULL AND cleanup_next_at <= 200`)
+      .orderBy(memberSpotlightSubmissions.cleanupNextAt, memberSpotlightSubmissions.id).limit(50);
+    expect(rows.map((row) => row.requestKey)).toEqual(["first", "late"]);
+    const indexes = await client.execute("SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'member_spotlight_submissions_cleanup_idx'");
+    expect(indexes.rows[0].sql).toMatch(/cleanup_next_at.*id.*WHERE.*rejected.*expired.*cleanup_completed_at.*IS NULL/i);
+  });
+
+  it("追加migrationは既存の掲載済みデータを変更しない", async () => {
+    const previousMigrations = join(dir, "previous-migrations");
+    cpSync("db/migrations", previousMigrations, { recursive: true });
+    const journalPath = join(previousMigrations, "meta/_journal.json");
+    const journal = JSON.parse(readFileSync(journalPath, "utf8"));
+    journal.entries = journal.entries.filter((entry: { idx: number }) => entry.idx <= 9);
+    writeFileSync(journalPath, JSON.stringify(journal));
+    const previous = createDb(createClient, pathToFileURL(join(dir, "previous.db")).href);
+    try {
+      await migrate(previous.db, { migrationsFolder: previousMigrations });
+      const [before] = await previous.db.insert(memberSpotlights).values({ id: "preserved", companyName: "以前の所属", personName: "以前の名前", personNameKana: "なまえ", tags: ["既存"], enabled: false, revision: 3 }).returning();
+      await migrate(previous.db, { migrationsFolder: "db/migrations" });
+      expect(await previous.db.select().from(memberSpotlights)).toEqual([before]);
+      await previous.db.insert(memberSpotlightSubmissions).values(submission("new"));
+      expect(await previous.db.select().from(memberSpotlightSubmissions)).toHaveLength(1);
+    } finally {
+      previous.client.close();
+    }
   });
 });
 

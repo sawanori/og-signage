@@ -4,4 +4,5 @@ export const env = {
   TURSO_AUTH_TOKEN: undefined as string | undefined,
   AUTH_SECRET: "test-secret-test-secret-test-secret-0123",
   LOGIN_RATE_LIMITER: { limit: async () => ({ success: true }) },
+  SPOTLIGHT_SUBMISSION_RATE_LIMITER: { limit: async () => ({ success: true }) },
 };

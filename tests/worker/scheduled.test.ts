@@ -4,7 +4,7 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "../../db/index";
-import { deviceLogs, devices, events, media, uploads, users } from "../../db/schema";
+import { deviceLogs, devices, events, media, memberSpotlightSubmissions, uploads, users } from "../../db/schema";
 import type { MediaBucket, R2Multipart, R2Part } from "../../lib/r2";
 import { openTempDb } from "../helpers/temp-db";
 
@@ -199,6 +199,22 @@ describe("purgeOldDeviceLogs", () => {
 });
 
 describe("scheduled", () => {
+  it("日次Cronは申請の期限切れと画像回収を行い、確認待ちは残す", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const key = `member-submissions/${crypto.randomUUID()}/photo`;
+    bucket.objects.set(key, new Uint8Array([1, 2, 3]));
+    const base = { requestFingerprint: "hash", consentedAt: now - DAY, consentVersion: 1, createdAt: now - DAY, updatedAt: now - DAY };
+    await db.insert(memberSpotlightSubmissions).values([
+      { ...base, id: "stale", requestKey: "stale", photoFile: { r2Key: key, mimeType: "image/jpeg", size: 3, sha256: "a".repeat(64) } },
+      { ...base, id: "pending", requestKey: "pending", status: "pending" },
+    ]);
+    await scheduled(DAILY_CRON);
+    const rows = await db.select().from(memberSpotlightSubmissions);
+    expect(rows.find((row) => row.id === "stale")).toMatchObject({ status: "expired", cleanupCompletedAt: expect.any(Number) });
+    expect(rows.find((row) => row.id === "pending")).toMatchObject({ status: "pending", cleanupCompletedAt: null });
+    expect(bucket.objects.get(key)).toHaveLength(0);
+    expect(bucket.deleted).not.toContain(key);
+  });
   it(`${WEATHER_CRON} は天気の取得だけを行う`, async () => {
     await scheduled(WEATHER_CRON);
     expect(refreshWeather).toHaveBeenCalledTimes(1);

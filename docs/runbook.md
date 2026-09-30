@@ -22,6 +22,7 @@
 | Turso DB | `og-signage` | グループ `default`（aws-ap-northeast-1）。URL 形式 `libsql://og-signage-sawanori.aws-ap-northeast-1.turso.io` |
 | Cron Trigger | `*/30 * * * *`（天気の取得） / `0 19 * * *`（UTC 19:00 = 日本時間 4:00 の掃除） | `wrangler.jsonc` の `triggers.crons`。ハンドラは `worker/index.ts` の `scheduled` → `worker/scheduled.ts` |
 | Rate Limiting binding | `LOGIN_RATE_LIMITER`（namespace_id `4301`） | ログインの IP / メールアドレス単位の緩い制限。厳密な回数制限ではない（`docs/spikes/workers.md` 7 節） |
+| 本人登録のRate Limiting binding | `SPOTLIGHT_SUBMISSION_RATE_LIMITER`（namespace_id `4302`） | 同一IPで5回/60秒。アカウント全体のnamespace重複は配備前に確認する。今回の実装では未確認 |
 | Secret（Workers） | `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` / `AUTH_SECRET` / `OPENWEATHER_API_KEY` | `npx wrangler secret list --name sharehouse-signage` で名前だけ確認できる（値は表示されない）。値はこの文書に書かない |
 | Pi（表示端末） | — | 導入・更新・交換は `raspberry-pi/README.md` を参照（本書の i 節） |
 
@@ -391,3 +392,68 @@ rm secrets.json
 コマンドを打つ前に対象名が **`sharehouse-signage`** または **`og-signage`** であることを
 必ず確認すること。特に破壊的な操作（`wrangler r2 bucket delete` や `turso db destroy` など）は、
 対象名を声に出して読み上げるくらいの慎重さで確認してから実行する。
+
+---
+
+## l. メンバー紹介の本人登録（2026-10-01追加）
+
+今回の実装はローカル検証済み。本番migration適用とデプロイは未実施。検証結果と残項目は [実装検証記録](reviews/member-registration-implementation-2026-10-01.md) を参照する。
+
+### URL共有と審査
+
+1. StaffまたはAdministratorが `/admin/spotlights` の「登録用URL・QR」を開き、現在のサイトの `/members/register` をコピーするかQRをPNG保存する。受付でそのURL・QRを案内する。
+2. 本人は会社名・所属、名前、任意の写真・紹介文を入力し、館内とログイン不要のWeb表示への同意後に送信する。
+3. スタッフは「確認待ち」から写真・全文・掲載プレビューを確認して「掲載する」。不適切な申請は確認ダイアログから「却下する」。承認前の内容は公開されない。
+4. 承認後の修正・表示OFF・削除は「掲載メンバー」の既存操作を使う。公開configの次回取得と、本人のスライドが巡回して表示される時点には時間差がある。
+
+### 送信・審査に失敗した場合
+
+- 「送信結果を確認できません」では画面を閉じず「送信結果を確認」を使う。同じ本文・画像・送信キーだけを再送する。最初の送信結果が不明なまま429になった場合も、新規登録へ切り替えない。
+- 429は60秒待つ。施設で同じ回線を使う人同士も制限を共有する。未対応画像はJPEG・PNG・WebPを選び直す。変換後は各2MiB、送信全体は5MiBまで。
+- 受付済みの文面修正はスタッフへ依頼する。ページを再読み込みした後の下書き・同じ送信キーの復元はない。
+- 審査競合は最新一覧を再取得する。同時承認でも紹介は1件だけ作成する。DB書き込みロックの限定再試行を尽くした場合は時間を置いて再操作する。
+
+### 画像回収と保持
+
+日次Cron（日本時間4:00）は、24時間更新のない受信中申請を最大50件期限切れにし、却下/期限切れの未回収申請を最大50件回収する。残件は翌日へ繰り越す。失敗行は次回対象時刻を24時間後へ移し、完了した行は再処理しない。確認待ちは期限で消さない。
+
+回収では `member-submissions/<UUID>/photo|logo` の画像本文を0バイトの空マーカーへ置き換える。すべての対象キーが成功した後に本文を消去し、`cleanup_completed_at` を記録する。キー・送信識別情報と空マーカーは残すため、日次処理は完了してもオブジェクト件数は減らない。遅延した画像保存は新規作成条件で拒否される。
+
+**`member-submissions/` に物理削除のライフサイクル規則・一括削除を設定しない。空マーカーも削除しない。** マーカーを除去すると遅延保存を拒否する条件が失われる。承認した画像は通常素材に移り、既存の参照保護と7日間の削除猶予を維持する。申請由来キーだけは最終削除時も空マーカーを残す。
+
+Cronログの `submissions expired/completed/failed` 件数で回収状況を確認する。繰り返し失敗する場合はDB/R2接続と `cleanup_next_at`、`cleanup_completed_at`、通常素材とのキー重複を保守担当が調べる。本文・写真・送信キー・生IPを障害報告へ転載しない。
+
+### 配備と切り戻し
+
+1. 隔離環境で既存データを含むDBに追加migrationを適用して検証する。今回の追加は `0010_parched_fat_cobra.sql` と対応meta/journalで、既存列の削除・改名はない。
+2. 本番配備前にnamespace `4302` がアカウント内で未使用であること、R2の対象プレフィックスに物理削除規則がないことを確認する。
+3. 本番DBへ追加migrationを先に適用し、その後に新しいWorkerを配備する。コマンドと接続先確認は本書c/d節に従う。今回の実装作業では本番への操作はしていない。
+4. 旧Workerへ戻す場合も申請テーブル・申請記録・空マーカーを削除しない。データを残したままコードを戻す。
+
+### 再テスト
+
+通常の検証は `npm run typecheck`、`npm run lint`、`npm test`、`npm run build`、`npm run check:worker`、`npm run build:display`、`npm run check:display`、`npm run test:visual`。visualは別のvinext検証サーバーと同時起動しない。同一HEAD・同一環境の再撮影との比較を回帰の根拠とし、古いデザインモックとの差分率だけで判定しない。
+
+HTTPモックなしの本人登録E2Eは、**空の専用ローカルsqldと隔離したリポジトリコピー**で実行する。コピーには本番の `.dev.vars`/`.env*`、DBファイル、`.wrangler`、ビルド出力を持ち込まない。既存node_modulesをリンクする場合は、コピーとリンク先の正規化した実パスをコピー側のVite `server.fs.allow` に設定する（macOSの `/var` と `/private/var` の違いに注意）。
+
+コピー側 `.dev.vars` にはダミーの `AUTH_SECRET`、`AUTH_URL=http://localhost:4186`、`TURSO_DATABASE_URL=http://127.0.0.1:8186`、空の `TURSO_AUTH_TOKEN` を設定する。以下は別ターミナルを使い、コピーのルートで実行する。sqld実行ファイルとPlaywright Chromiumが必要。
+
+```sh
+sqld --db-path <専用一時ディレクトリ>/database --http-listen-addr 127.0.0.1:8186
+```
+
+```sh
+E2E_DATABASE_URL=http://127.0.0.1:8186 E2E_BASE_URL=http://localhost:4186 \
+  npx tsx tests/e2e/seed-member-registration.ts
+npx vinext dev -p 4186
+```
+
+```sh
+E2E_DATABASE_URL=http://127.0.0.1:8186 E2E_BASE_URL=http://localhost:4186 \
+  E2E_OUTPUT_DIR=<専用一時ディレクトリ>/artifacts \
+  node tests/e2e/member-registration.mjs
+```
+
+seedはlocalhostのHTTP接続と空DBだけを許可する。ダミーStaff、端末、表示バンドルを作成し、E2Eは写真付き匿名申請、非公開確認、Staffログイン、承認、公開config/画像/実サイネージ表示、別申請の却下を通す。再実行時も新しい空DBを使う。終了後はこの検証で起動したdevとsqldを停止する。
+
+iOS Safari/Android Chrome実機の写真向き・キーボード・QRカメラ、Pi実機、隔離した**実クラウドR2**の条件付き保存と空マーカーの両順序は別途必要。ローカルR2やChromiumの成功で確認済みに置き換えない。

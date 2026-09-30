@@ -13,5 +13,6 @@ declare module "cloudflare:workers" {
     TURSO_AUTH_TOKEN?: string;
     AUTH_SECRET: string;
     LOGIN_RATE_LIMITER: RateLimit;
+    SPOTLIGHT_SUBMISSION_RATE_LIMITER: RateLimit;
   };
 }

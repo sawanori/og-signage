@@ -48,6 +48,11 @@ describe("checkCsrf", () => {
 });
 
 describe("proxy", () => {
+  it("匿名申請もOrigin検査を通り、同一Originなら管理ログインを要求しない", async () => {
+    expect((await proxy(request("POST", "/api/spotlight-submissions", ORIGIN))).headers.get("x-middleware-next")).toBe("1");
+    expect((await proxy(request("POST", "/api/spotlight-submissions", "https://evil.example"))).status).toBe(403);
+    expect((await proxy(request("POST", "/api/spotlight-submissions"))).status).toBe(403);
+  });
   it("別 Origin・Origin なしの更新系 /api/* は 403", async () => {
     expect((await proxy(request("POST", "/api/media/uploads", "https://evil.example"))).status).toBe(403);
     expect((await proxy(request("DELETE", "/api/events/e1"))).status).toBe(403);

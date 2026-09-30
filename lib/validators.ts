@@ -165,6 +165,8 @@ const spotlightFields = z.object({
 
 export const spotlightInputSchema = spotlightFields;
 export const spotlightUpdateSchema = spotlightFields.extend({ revision });
+/** 本人申請でも使う紹介文面。公開可否と素材の紐付けは管理者だけが決める。 */
+export const spotlightTextSchema = spotlightFields.omit({ photoMediaId: true, logoMediaId: true, enabled: true });
 
 // ---------------------------------------------------------------- デザイン設定
 

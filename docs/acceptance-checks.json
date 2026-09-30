@@ -1,5 +1,5 @@
 {
-  "feature": "share_house_signage_mvp",
+  "feature": "share_house_signage_mvp_and_member_spotlight_self_registration",
   "checks": [
     {
       "id": "check_001",
@@ -520,6 +520,514 @@
       "expected_result": "CI の全ジョブが成功",
       "manual_or_automated": "automated",
       "verification_method": "GitHub Actions"
+    },
+    {
+      "id": "check_066",
+      "target": "task_030 本人登録の主経路",
+      "rule": "ログインなしで会社名・名前・同意から申請できる",
+      "expected_result": "匿名ブラウザで送信が202になり、確認待ちが1件できる。サイネージにはまだ出ない",
+      "manual_or_automated": "automated",
+      "verification_method": "公開フォームの操作テストとAPI/一時DBの統合テスト",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/public/spotlight-registration-form.test.tsx",
+          "tests/api/spotlight-registration-flow.test.ts",
+          "docs/reviews/member-registration-2026-10-01/e2e-result.json"
+        ],
+        "result": "必須2項目/匿名202/pending・非公開を自動テストで確認。隔離実ブラウザーでも匿名写真送信202と未承認非公開。"
+      }
+    },
+    {
+      "id": "check_067",
+      "target": "task_026 入力制約",
+      "rule": "既存の紹介文面制約を維持する",
+      "expected_result": "必須空欄・上限超過・不正ふりがな・タグ4件は拒否され、任意空欄は受理される",
+      "manual_or_automated": "automated",
+      "verification_method": "validatorsの境界値・Unicode・既存管理入力の回帰テスト",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/lib/validators.test.ts"
+        ],
+        "result": "空欄・文字数・Unicode・ふりがな・タグ境界と既存管理入力の維持を確認。"
+      }
+    },
+    {
+      "id": "check_068",
+      "target": "task_030 写真とロゴ",
+      "rule": "各1枚の画像を準備してプレビューできる",
+      "expected_result": "対応画像は長辺1920px以下のWebPまたはJPEG/PNGになり、写真/ロゴ/文章の掲載イメージが見える。差し替えた古いBlob URLが解放される。WebP非対応でもJPEG/PNGで送信可能。",
+      "manual_or_automated": "automated",
+      "verification_method": "公開用画像準備関数とフォームのテストでWebP非対応、実際のBlob MIME、向き/寸法、容量、Blob URLの扱いを検査",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/public/spotlight-image.test.ts",
+          "tests/public/spotlight-registration-form.test.tsx"
+        ],
+        "result": "縮小、向き、WebP非対応のJPEG/PNG出力、容量、処理中制御、Blob URL解放を確認。"
+      }
+    },
+    {
+      "id": "check_069",
+      "target": "task_030 掲載説明と同意",
+      "rule": "館内とログイン不要のWeb表示を説明し、同意を送信条件にする",
+      "expected_result": "同意なしはブラウザとAPI双方で拒否し、同意時はサーバー日時と説明版1が保存される",
+      "manual_or_automated": "automated",
+      "verification_method": "フォーム/受付サービスのテストで同意true/false/欠落を送る",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/lib/validators.test.ts",
+          "tests/public/spotlight-registration-form.test.tsx",
+          "tests/services/spotlight-submissions.test.ts"
+        ],
+        "result": "同意なし/欠落/文字列trueを拒否し、受理した行にサーバー同意日時と版1を保存。"
+      }
+    },
+    {
+      "id": "check_070",
+      "target": "task_029 公開入力の境界",
+      "rule": "申請者が既存素材・審査状態・公開フラグを指定できない",
+      "expected_result": "enabled、status、reviewedBy、既存紹介/素材ID、R2キー、重複フィールドは400となり保存されない",
+      "manual_or_automated": "automated",
+      "verification_method": "新規APIへの不正multipartと余分なdataキーのテスト",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/lib/validators.test.ts",
+          "tests/api/spotlight-submissions.test.ts"
+        ],
+        "result": "管理用項目・重複/余分フィールドを保存前に拒否。"
+      }
+    },
+    {
+      "id": "check_071",
+      "target": "task_029 容量制限",
+      "rule": "実際の受信量でdata/画像/全体サイズを制限する",
+      "expected_result": "data 10KiB超、画像2MiB超、本文5MiB超を拒否する。Content-Lengthなし/過小申告も413でDB/R2未変更",
+      "manual_or_automated": "automated",
+      "verification_method": "上限丁度/1byte超と長さヘッダーなしストリームをAPIへ送る",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/api/spotlight-submissions.test.ts"
+        ],
+        "result": "data10KiB・画像2MiB・multipart5MiBの上限ちょうどを受理、超過を413。Content-Lengthなし/過小申告も実ストリームで拒否。"
+      }
+    },
+    {
+      "id": "check_072",
+      "target": "task_029 形式と破損",
+      "rule": "JPEG/PNG/WebP以外や宣言MIMEを偽装した添付を通さない",
+      "expected_result": "空ファイル、動画、SVG、WebPと称した別形式は415となり申請画像として保存されない",
+      "manual_or_automated": "automated",
+      "verification_method": "既存sniffMimeを利用した添付境界テスト。壊れた元画像のブラウザ処理失敗も確認",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/api/spotlight-submissions.test.ts",
+          "tests/public/spotlight-image.test.ts"
+        ],
+        "result": "空画像・SVG・動画・WebPと称したJPEG・MIME不一致は415。ブラウザーの画像読取/出力失敗は日本語で表示。"
+      }
+    },
+    {
+      "id": "check_073",
+      "target": "task_029 Originと既存認証",
+      "rule": "匿名受付でも同一Originを必要とする",
+      "expected_result": "Originなし/別Originは403。既存mediaアップロードは従来どおりログイン必須のまま",
+      "manual_or_automated": "automated",
+      "verification_method": "CSRF判定の新規パス回帰と既存media認証のAPIテスト",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/lib/csrf.test.ts",
+          "tests/api/spotlight-submissions.test.ts",
+          "lib/auth.ts"
+        ],
+        "result": "新規POSTのOriginなし/別Originを403。既存アップロードのwithRole認証を変更せず全体回帰も成功。"
+      }
+    },
+    {
+      "id": "check_074",
+      "target": "task_029 連続送信制限",
+      "rule": "ログインと別のbindingで送信を制限する",
+      "expected_result": "制限bindingが拒否した要求は本文処理/保存前に429、Retry-After:60となる。ログイン制限を消費しない",
+      "manual_or_automated": "automated",
+      "verification_method": "専用bindingの許可/拒否を差し替えるAPIテストとwrangler設定確認。厳密な全拠点の回数保証は判定対象外",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/api/spotlight-submissions.test.ts",
+          "wrangler.jsonc"
+        ],
+        "result": "専用binding拒否時は本文未読/DB未変更で429、Retry-After:60。既存LOGIN bindingとは別namespace4302。"
+      }
+    },
+    {
+      "id": "check_075",
+      "target": "task_027 送信再試行",
+      "rule": "同じkeyと内容の送信を1件として処理する",
+      "expected_result": "連打・並行送信・成功応答消失後の再送でも申請1件。異なる内容で同じkeyを使うと409",
+      "manual_or_automated": "automated",
+      "verification_method": "一時DBとR2の偽物で同時POSTと再送を実行し行数/キー数を確認",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/services/spotlight-submissions.test.ts",
+          "tests/public/spotlight-registration-flow.test.tsx"
+        ],
+        "result": "並行送信・受付応答消失後の再送で1行、異内容は409。"
+      }
+    },
+    {
+      "id": "check_076",
+      "target": "task_027 保存失敗からの回復",
+      "rule": "画像・DB更新の途中失敗を追跡し、同じ内容で再開できる",
+      "expected_result": "2枚目のput失敗やpending更新失敗で追跡行が残る。同じ送信の再試行で1件のpendingに復旧し、公開データは部分作成されない",
+      "manual_or_automated": "automated",
+      "verification_method": "条件付きputを再現するR2とDBの失敗注入テスト。既存の正常画像を再利用できる一方、0バイトの空マーカーを成功扱いせず、失敗した要求が並行要求の画像を削除しないことを確認する。掃除の前後に遅延putが確定する両順序も含める。",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/services/spotlight-submissions.test.ts",
+          "tests/api/spotlight-submissions.test.ts"
+        ],
+        "result": "2枚目R2失敗とpending更新失敗の回復、マーカー再利用拒否、遅延putの前後両順序を検証。"
+      }
+    },
+    {
+      "id": "check_077",
+      "target": "task_033 未承認内容の非公開",
+      "rule": "受信中・確認待ち・却下の内容を公開経路へ含めない",
+      "expected_result": "public/device config、公開画像API、通常media一覧に申請内容・画像が出ない。公開の申請内容GETは存在しない",
+      "manual_or_automated": "automated",
+      "verification_method": "各状態からconfigと公開relay、通常media一覧を呼ぶ統合テスト",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/api/spotlight-registration-flow.test.ts",
+          "docs/reviews/member-registration-2026-10-01/e2e-result.json"
+        ],
+        "result": "receiving/pending/rejectedをpublic/device config・公開画像・通常素材一覧へ出さない。実ブラウザーでも未承認画像は匿名401。"
+      }
+    },
+    {
+      "id": "check_078",
+      "target": "task_029 審査用画像の認証",
+      "rule": "確認待ちの申請画像は有効なStaff以上だけが取得できる",
+      "expected_result": "匿名/無効化済みセッションは401または403。Staffはpending画像を200で取得しprivate,no-storeとnosniffが付く。kind不正・未存在・状態違いは404",
+      "manual_or_automated": "automated",
+      "verification_method": "スタッフ専用画像GETの認証・状態・ヘッダーテスト",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/api/spotlight-submissions.test.ts"
+        ],
+        "result": "匿名/無効化は401、Staffのpending画像は200/private,no-store/nosniff。未存在/kind不正/添付なし/承認後は404。"
+      }
+    },
+    {
+      "id": "check_079",
+      "target": "task_028 承認掲載",
+      "rule": "承認操作で素材と紹介を同時に作成する",
+      "expected_result": "1回の承認で既存形式のenabled=true紹介1件と添付数分のmediaができ、申請がapprovedになる",
+      "manual_or_automated": "automated",
+      "verification_method": "サービス/Actionを通す承認テストでDB行とR2キーを確認",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/services/spotlight-submissions.test.ts",
+          "tests/admin/spotlight-submissions-integration.test.tsx"
+        ],
+        "result": "承認で添付数分mediaとenabled=true紹介1件を同時作成。実Action/preview経由も確認。"
+      }
+    },
+    {
+      "id": "check_080",
+      "target": "task_028 承認の失敗と競合",
+      "rule": "二重承認・承認対却下・途中失敗で重複/部分掲載を防ぐ",
+      "expected_result": "同一申請で紹介は最大1件。DB途中失敗はpendingと画像を維持してrollbackする。pendingの古いrevisionは409。approvedへの同一承認再送とrejectedへの同一却下再送はrevisionによらず処理済み結果になり、再作成しない。",
+      "manual_or_automated": "automated",
+      "verification_method": "同時呼出しとトランザクション失敗注入、承認/却下競合のサービステスト",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/services/spotlight-submissions.test.ts"
+        ],
+        "result": "同時承認は1件、承認と却下は片方だけ、DB失敗rollback、古いrevision/処理済み再送を確認。"
+      }
+    },
+    {
+      "id": "check_081",
+      "target": "task_028 審査権限",
+      "rule": "StaffとAdministratorのみ審査できる",
+      "expected_result": "匿名・無効化済み利用者・失効sessionVersionは承認/却下不可。StaffとAdministratorは処理可能",
+      "manual_or_automated": "automated",
+      "verification_method": "Server Actionsの認証境界をテストし、既存Authz動作を回帰確認",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/api/spotlight-submissions.test.ts"
+        ],
+        "result": "Staff/Administratorそれぞれで承認・却下成功。匿名・無効化・失効sessionVersionは拒否。"
+      }
+    },
+    {
+      "id": "check_082",
+      "target": "task_028 却下と再送",
+      "rule": "却下で紹介を作らず、処理済み操作の再送で状態を戻さない",
+      "expected_result": "却下後は公開されず同一要求の再送も再掲載しない。承認後に紹介を削除しても承認再送で復活しない",
+      "manual_or_automated": "automated",
+      "verification_method": "却下/承認済みへの再送と紹介削除後の外部キーSET NULLを確認",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/services/spotlight-submissions.test.ts",
+          "tests/db/schema.test.ts",
+          "tests/api/spotlight-registration-flow.test.ts"
+        ],
+        "result": "却下後の再送で公開せず、紹介削除後の再承認も再作成せずID null。"
+      }
+    },
+    {
+      "id": "check_083",
+      "target": "task_031 審査画面の状態",
+      "rule": "承認/却下/競合後は件数と詳細の状態を更新する",
+      "expected_result": "処理した申請が確認待ちから消え、件数が減る。競合時は古い詳細を閉じて最新一覧を取得する",
+      "manual_or_automated": "automated",
+      "verification_method": "React Testing Libraryで承認成功、却下確認、409、再取得後の再操作を検査",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/admin/spotlight-submissions-view.test.tsx",
+          "tests/admin/spotlight-submissions-integration.test.tsx"
+        ],
+        "result": "成功後件数更新と詳細閉鎖、実Action競合後の再取得を確認。"
+      }
+    },
+    {
+      "id": "check_084",
+      "target": "task_031 登録URLとQR",
+      "rule": "正しいoriginの本人登録URLを共有できる",
+      "expected_result": "コピーしたURLと保存PNGのQRが同じ/members/registerを開く。既存サイネージQRは書き換わらない",
+      "manual_or_automated": "manual",
+      "verification_method": "検証環境でリンクをコピーし、iOS/Androidのカメラで表示/保存QRを読む",
+      "verification": {
+        "status": "unverified",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/admin/spotlight-registration-share.test.tsx"
+        ],
+        "result": "URLコピー/同一URLのQR PNG生成を自動確認。iOS/Androidカメラでの表示/保存QR読取は未実施。"
+      }
+    },
+    {
+      "id": "check_085",
+      "target": "task_032 中断/却下の掃除",
+      "rule": "期限切れを確定してから未承認画像を空マーカーに置換し、回収完了を記録する",
+      "expected_result": "24時間未更新receivingのみexpiredになる。rejected/expiredの全対象キー（未保存分も含む）が0バイトになってから回収完了を記録し、本文を消去する。遅延putは画像を復活させない。R2またはDB更新失敗では未完了のまま次回再試行する。",
+      "manual_or_automated": "automated",
+      "verification_method": "時刻固定と条件付きputの偽物で、受信再開との競合、画像保存と空マーカー保存の両順序、画像なし、2キー途中失敗、DB完了更新失敗、再試行を検証する",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/services/spotlight-submissions.test.ts",
+          "tests/worker/scheduled.test.ts"
+        ],
+        "result": "24時間境界、受信再開CAS、put成功後pending前の期限切れ、空マーカー先行、画像なし、部分失敗と再試行を確認。"
+      }
+    },
+    {
+      "id": "check_086",
+      "target": "task_032 確認待ちと掲載素材の保護",
+      "rule": "掃除はpending/approvedと通常mediaの画像を消さない",
+      "expected_result": "長期間pendingや承認済み素材は申請掃除で変更しない。通常素材削除では既存の参照保護・7日猶予を維持し、申請由来キーだけ空マーカーに置換してからmedia行を削除する。他の既存キーは物理削除する。",
+      "manual_or_automated": "automated",
+      "verification_method": "全statusとmedia参照の組合せによる申請掃除、通常素材削除の期限前/後、R2失敗、申請由来/既存キー、承認後の削除に遅延putが続く順序を検証する",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/services/spotlight-submissions.test.ts",
+          "tests/services/media.test.ts"
+        ],
+        "result": "pending/approved/media所有キーを保護。通常素材の参照保護/7日猶予を維持し、申請由来キーだけマーカー化。"
+      }
+    },
+    {
+      "id": "check_087",
+      "target": "task_033 配信への反映",
+      "rule": "承認後は既存のconfig配信を通す",
+      "expected_result": "承認でconfigのversionが変わり、名前・画像がpublic/device configに入る。ふりがなは出ない。公開画像取得が成功する",
+      "manual_or_automated": "automated",
+      "verification_method": "端末/表示bundle fixtureを含む一時DBで受付から承認・config・公開画像まで実行する",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/api/spotlight-registration-flow.test.ts",
+          "docs/reviews/member-registration-2026-10-01/e2e-result.json"
+        ],
+        "result": "承認後のpublic/device config/version・画像を確認。実ブラウザーのサイネージ名前/写真も表示。ふりがな非配信。"
+      }
+    },
+    {
+      "id": "check_088",
+      "target": "task_033 既存機能の回帰",
+      "rule": "掲載済みメンバーと通常アップロードの操作を維持する",
+      "expected_result": "既存の手動登録、編集、表示ON/OFF、検索、五十音、並び替え、削除、素材参照保護が成功する",
+      "manual_or_automated": "automated",
+      "verification_method": "既存spotlights/media/device/public-signageテストと追加回帰ケースを実行",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/services/spotlights.test.ts",
+          "tests/admin/spotlights-view.test.tsx",
+          "tests/services/media.test.ts",
+          "tests/api/spotlight-registration-flow.test.ts"
+        ],
+        "result": "既存CRUD/表示切替/検索/五十音/並び替え/素材保護を回帰確認。"
+      }
+    },
+    {
+      "id": "check_089",
+      "target": "task_026 migration互換性",
+      "rule": "新テーブル追加で既存データと旧コードを壊さない",
+      "expected_result": "既存メンバー/素材が保持され、追加migrationの前後で既存CRUDが成功する。既存列の削除・改名がない",
+      "manual_or_automated": "automated",
+      "verification_method": "一時DBへ旧migration・データ投入・新migrationの順で適用し既存CRUDを実行",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/db/schema.test.ts",
+          "tests/services/spotlights.test.ts",
+          "db/migrations/0010_parched_fat_cobra.sql"
+        ],
+        "result": "0009までの旧DBへ既存紹介を投入して追加migration後も全列保持。新スキーマ上の既存CRUD回帰が成功。既存列変更を含まないSQLを確認。"
+      }
+    },
+    {
+      "id": "check_090",
+      "target": "task_030 モバイル画面",
+      "rule": "320〜430px幅と実機で入力・画像選択・確認・再送できる",
+      "expected_result": "横スクロールや操作不能な重なりがなく、キーボードでボタンが常時隠れない。iOS Safari/Android Chrome双方の写真処理と送信が成功する",
+      "manual_or_automated": "manual",
+      "verification_method": "両実機で本人登録を行い幅・OS/ブラウザ・写真向き・成功/失敗時の結果を記録。実機なしの場合は未検証",
+      "verification": {
+        "status": "unverified",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "docs/reviews/member-registration-implementation-2026-10-01.md"
+        ],
+        "result": "Chromium153で幅320/375/430pxの横はみ出し0と申請を確認。iOS Safari/Android Chrome実機、カメラ、画面キーボードは未検証。"
+      }
+    },
+    {
+      "id": "check_091",
+      "target": "task_030 エラー時の入力保持",
+      "rule": "通信失敗・形式不正・送信制限を日本語で説明する",
+      "expected_result": "入力と選択画像が残る。結果不明は同じ内容だけ再送でき、429後も以前の結果不明を解除しない。未解決送信がない場合の保存前エラーでは修正可能。410は新規送信の案内、202は完了、未対応画像は送信前に理由を表示する。",
+      "manual_or_automated": "automated",
+      "verification_method": "フォームで画像準備失敗、初回400/429、通信切断/503後の400/429、409、410、202を差し替え、編集可否とkey/Blobの保持を検証する",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/public/submit-spotlight.test.ts",
+          "tests/public/spotlight-registration-form.test.tsx"
+        ],
+        "result": "初回保存前400/429、結果不明後400/429、409/410/202、通信失敗と未対応画像の案内・入力保持・編集可否を確認。"
+      }
+    },
+    {
+      "id": "check_092",
+      "target": "task_033 開発検証",
+      "rule": "既存の型・Lint・テスト・ビルド・バンドル・見た目の検査が通る",
+      "expected_result": "npm run typecheck、lint、npm test、build、check:worker、build:display、check:display、test:visualがすべて終了コード0",
+      "manual_or_automated": "automated",
+      "verification_method": "計画13節のコマンドを依存順で実行し、失敗・スキップは出力と理由を記録",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "docs/reviews/member-registration-implementation-2026-10-01.md"
+        ],
+        "result": "型/Lint/51ファイル759テスト成功。build/check:worker・build:display/check:display・visual3件成功。同じHEAD/環境の3画面比較は変更画素0。"
+      }
+    },
+    {
+      "id": "check_093",
+      "target": "task_033 運用と主経路の実画面確認",
+      "rule": "本人申請から承認・公開Web表示まで転記なしで完了する",
+      "expected_result": "QRからの本人送信、Staff承認、公開Webの次回設定取得、該当スライド巡回での表示を確認し、共有/審査/障害確認/追加migration先行の配備順をrunbookに記録する 隔離した実R2で画像の条件付き新規保存と空マーカー保存の両順序を確認し、画像が復活しない。空マーカー保持と回収上限/完了条件をrunbookへ記録する。",
+      "manual_or_automated": "manual",
+      "verification_method": "本番と分離した検証環境で一連の操作を記録。公開データ反映とスライド巡回時間を区別し、Pi未確認なら未検証と記す 実R2の条件不成立時のnullと最終0バイトを記録し、実行できなければ未検証とする。",
+      "verification": {
+        "status": "unverified",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "docs/runbook.md",
+          "docs/reviews/member-registration-2026-10-01/e2e-result.json"
+        ],
+        "result": "HTTPモックなしの隔離Worker/ローカルsqld/R2で申請・Staff実ログイン・承認・公開Web表示・却下は成功。QRカメラ/実クラウドR2競合/Pi実機は未検証。"
+      }
+    },
+    {
+      "id": "check_094",
+      "target": "task_030 受付結果不明時の重複防止",
+      "rule": "結果不明の間は入力と画像を固定し、新しいkeyによる送信を許可しない",
+      "expected_result": "サーバーが受付済みでも202応答を失った場合、文面・同意・写真の変更と新規送信ができない。同じkey・本文・Blobの再送で申請は1件に保たれる。途中の429/400でロックが解除されず、202で完了、410で初めて新規送信可能になる。",
+      "manual_or_automated": "automated",
+      "verification_method": "フォーム操作と一時DBを使い、202消失、編集/画像差し替え操作、同一内容の再送、途中の拒否、202/410による確定を連続検証する。保証は同じ開いているフォーム内とする。",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/public/spotlight-registration-flow.test.tsx",
+          "tests/public/spotlight-registration-form.test.tsx"
+        ],
+        "result": "実フォーム/実client/一時DBで202消失→429→202後もpending1件・画像1件。固定したkey/本文/Blobと編集ロックを維持。410による解除も確認。"
+      }
+    },
+    {
+      "id": "check_095",
+      "target": "task_032 回収の完了条件と処理上限",
+      "rule": "完了済み申請を再処理せず、期限切れ確定と回収を各50件/回に制限する",
+      "expected_result": "回収完了行は次回以降R2呼出しゼロ。51件以上あれば後続実行へ繰り越し、失敗行は24時間後へ移して古い未処理行の処理を妨げない。SQLで取得数を制限し、全件消化ループを行わない。",
+      "manual_or_automated": "automated",
+      "verification_method": "時刻を固定したCron/一時DBテストで、完了済み行、多数の未回収行、連続失敗行を混在させ、各実行の取得数・処理順・R2呼出し数・次回時刻を確認する。",
+      "verification": {
+        "status": "passed",
+        "verified_at": "2026-10-01",
+        "evidence": [
+          "tests/services/spotlight-submissions.test.ts"
+        ],
+        "result": "51件繰越、完了後R2呼出し0、失敗行翌日送り、後続処理を確認。回収済み1万件でも実Drizzle/libSQLクエリが未回収部分索引を利用。"
+      }
     }
   ]
 }

@@ -16,6 +16,10 @@ const actions = vi.hoisted(() => ({
 }));
 const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn(), replace: vi.fn() }));
 vi.mock("@/app/admin/_actions/spotlights", () => actions);
+vi.mock("@/app/admin/_actions/spotlight-submissions", () => ({
+  approveSpotlightSubmissionAction: vi.fn(),
+  rejectSpotlightSubmissionAction: vi.fn(),
+}));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
 vi.mock("@/lib/client/upload", () => ({ uploadMedia: vi.fn(), UploadError: class UploadError extends Error {} }));
 

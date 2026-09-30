@@ -40,6 +40,7 @@ import {
   type VideoCodecInfo,
 } from "../../lib/services/media";
 import { openTempDb } from "../helpers/temp-db";
+import { SpotlightBucket } from "../helpers/spotlight-bucket";
 
 // ---------------------------------------------------------------- R2 の偽物
 
@@ -457,6 +458,36 @@ describe("削除予約と削除の実行", () => {
     const { uploadId, parts } = await uploadVideo(1000);
     return completeUpload(deps, staff, uploadId, meta(parts), new Uint8Array(WEBP_HEAD));
   }
+
+  it("申請由来の画像も参照保護・7日猶予を守り、最終削除後は空マーカーで遅延保存を防ぐ", async () => {
+    const submissionBucket = new SpotlightBucket();
+    const key = `member-submissions/${crypto.randomUUID()}/photo`;
+    await submissionBucket.put(key, new Uint8Array(JPEG_HEAD));
+    const [image] = await db.insert(media).values({ name: "本人写真", type: "image", r2Key: key }).returning();
+    const [spotlight] = await db.insert(memberSpotlights).values({ companyName: "会社", personName: "名前", photoMediaId: image.id }).returning();
+    await expectMediaError(requestMediaDeletion(db, image.id, NOW), 409, "in_use");
+    await db.delete(memberSpotlights).where(eq(memberSpotlights.id, spotlight.id));
+    await requestMediaDeletion(db, image.id, NOW);
+    expect(await purgeDeletedMedia({ db, bucket: submissionBucket }, NOW + DELETE_DELAY_SECONDS - 1)).toEqual({ purged: [], failed: [] });
+    expect(submissionBucket.objects.get(key)).toHaveLength(JPEG_HEAD.length);
+    expect(await purgeDeletedMedia({ db, bucket: submissionBucket }, NOW + DELETE_DELAY_SECONDS)).toEqual({ purged: [image.id], failed: [] });
+    expect(await db.select().from(media).where(eq(media.id, image.id))).toHaveLength(0);
+    expect(submissionBucket.objects.get(key)).toHaveLength(0);
+    expect(await submissionBucket.put(key, new Uint8Array(JPEG_HEAD), { onlyIf: { etagDoesNotMatch: "*" } })).toBeNull();
+    expect(submissionBucket.objects.get(key)).toHaveLength(0);
+  });
+
+  it("申請由来キーのマーカー保存に失敗したらmediaを残して次回再試行する", async () => {
+    const submissionBucket = new SpotlightBucket();
+    const key = `member-submissions/${crypto.randomUUID()}/logo`;
+    await submissionBucket.put(key, new Uint8Array(JPEG_HEAD));
+    const [image] = await db.insert(media).values({ name: "ロゴ", type: "image", r2Key: key, state: "deleting", deleteAfter: NOW }).returning();
+    submissionBucket.failKeys.add(key);
+    expect(await purgeDeletedMedia({ db, bucket: submissionBucket }, NOW)).toEqual({ purged: [], failed: [image.id] });
+    expect(await db.select().from(media).where(eq(media.id, image.id))).toHaveLength(1);
+    submissionBucket.failKeys.clear();
+    expect(await purgeDeletedMedia({ db, bucket: submissionBucket }, NOW)).toEqual({ purged: [image.id], failed: [] });
+  });
 
   it("参照が無ければ deleting にし、7 日後を delete_after にする。一覧から消える", async () => {
     const m = await newMedia();

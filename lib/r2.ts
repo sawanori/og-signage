@@ -30,13 +30,14 @@ export interface R2Multipart {
 }
 
 type PutOptions = { httpMetadata?: { contentType?: string } };
+export type R2PutOptions = PutOptions & { onlyIf?: { etagDoesNotMatch: string } };
 
 export interface MediaBucket {
   createMultipartUpload(key: string, options?: PutOptions): Promise<R2Multipart>;
   resumeMultipartUpload(key: string, uploadId: string): R2Multipart;
   head(key: string): Promise<R2ObjectInfo | null>;
   get(key: string, options?: { range?: R2Range }): Promise<R2ObjectWithBody | null>;
-  put(key: string, value: Uint8Array, options?: PutOptions): Promise<R2ObjectInfo | null>;
+  put(key: string, value: Uint8Array, options?: R2PutOptions): Promise<R2ObjectInfo | null>;
   delete(keys: string | string[]): Promise<void>;
 }
 
@@ -50,6 +51,17 @@ export const mediaKeys = (uploadId: string) => ({
   original: `media/${uploadId}/original`,
   thumbnail: `media/${uploadId}/thumbnail`,
 });
+
+/** 本人申請の保存先だけを判定する。既存素材の物理削除は維持する。 */
+export function isSpotlightSubmissionKey(key: string): boolean {
+  return /^member-submissions\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/(photo|logo)$/i.test(key);
+}
+
+/** キーを残してcreate-onlyの遅延putを拒否し続ける。画像本文は保持しない。 */
+export async function putSpotlightSubmissionMarker(bucket: MediaBucket, key: string): Promise<void> {
+  const marker = await bucket.put(key, new Uint8Array(), { httpMetadata: { contentType: "application/octet-stream" } });
+  if (marker === null || marker.size !== 0) throw new Error("Submission marker was not stored");
+}
 
 // ---------------------------------------------------------------- Range と中継
 

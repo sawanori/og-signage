@@ -1,0 +1,17 @@
+.preview {
+  width: 100%;
+  max-width: 516px;
+  margin-inline: auto;
+  border-radius: 12px;
+  border: 1px solid #dddcd7;
+  overflow: hidden;
+  background: #fff;
+}
+.scene {
+  width: 516px;
+  height: 319px;
+}
+.scene > div {
+  left: 0;
+  top: 0;
+}

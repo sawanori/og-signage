@@ -1,6 +1,6 @@
 {
-  "feature": "share_house_signage_mvp",
-  "version": 2.5,
+  "feature": "share_house_signage_mvp_and_member_spotlight_self_registration",
+  "version": 3,
   "tasks": [
     {
       "task_id": "task_001",
@@ -1192,6 +1192,561 @@
         "npm run build"
       ],
       "risk_level": "medium"
+    },
+    {
+      "task_id": "task_026",
+      "title": "本人登録のデータ契約と申請テーブル",
+      "goal": "既存の掲載情報と分離した申請保存先を、追加migrationと共通入力制約で定義する",
+      "scope": [
+        "member_spotlight_submissions の列・5状態・索引・外部キー",
+        "会社名と名前の必須条件、既存文字数、公開入力の許可フィールド",
+        "requestKey・fingerprint・同意日時と版・画像情報の契約",
+        "既存メンバーへのデータ変更なし",
+        "cleanup_next_at・cleanup_completed_atと未回収行の部分索引",
+        "共通入力型・DTOと予定するservice/Actionの関数名・引数・戻り値・エラー契約の確定"
+      ],
+      "non_scope": [
+        "受付API",
+        "管理画面",
+        "本番migration適用"
+      ],
+      "files_to_read": [
+        "db/schema.ts",
+        "db/migrations/meta/_journal.json",
+        "lib/validators.ts",
+        "lib/config-schema.ts",
+        "tests/helpers/temp-db.ts",
+        "docs/implementation-plan.md"
+      ],
+      "files_to_create": [
+        "lib/spotlight-submissions.ts",
+        "db/migrations/0010_parched_fat_cobra.sql",
+        "db/migrations/meta/0010_snapshot.json"
+      ],
+      "files_to_modify": [
+        "db/schema.ts",
+        "lib/validators.ts",
+        "db/migrations/meta/_journal.json",
+        "tests/db/schema.test.ts",
+        "tests/lib/validators.test.ts"
+      ],
+      "dependencies": [],
+      "implementation_steps": [
+        "計画6・9・10節に合わせて申請専用の契約を定義し、管理用入力の既存挙動を維持する",
+        "lib/spotlight-submissions.tsに共通入力型・DTOを定義し、一覧/詳細取得と承認/却下の予定service/Actionの関数名・引数・戻り値・エラー契約を両UI担当へ共有してから並行着手する。service/Actionの実装は後続タスクで行う",
+        "schemaへ追加テーブル、status CHECK、request_key一意制約、SET NULL外部キー、回収時刻と完了時刻、未回収rejected/expiredの(cleanup_next_at,id)部分索引を追加する",
+        "npm run db:generate で生成物を作り、既存列の削除・変更がないことを確認する",
+        "一時DBに全migrationを適用し、既存メンバーと申請を同時に保存するテストを追加する"
+      ],
+      "done_definition": [
+        "会社名/名前・文字数・任意項目が既存仕様と一致する",
+        "公開入力からenabled・素材ID・審査状態等を指定できない",
+        "request_key重複、不正statusはDBでも拒否される",
+        "掲載メンバー削除時は申請の参照だけがnullになりapproved状態が維持される",
+        "既存データを保持したままmigrationを適用できる",
+        "回収完了行を除く期限到来順の検索と、完了時刻/次回時刻の初期値を一時DBで検証できる",
+        "公開UI・管理UIが共通入力型・DTOと確定したservice/Action契約を使って独立実装に着手できる"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test"
+      ],
+      "risk_level": "high",
+      "execution": {
+        "status": "completed",
+        "verified_at": "2026-10-01",
+        "result": "共通入力/DTO、申請schema、追加migrationを実装。一時DBで一意制約・status CHECK・SET NULL・既存データ保持を確認。",
+        "evidence": "docs/reviews/member-registration-implementation-2026-10-01.md"
+      }
+    },
+    {
+      "task_id": "task_027",
+      "title": "非公開画像付き申請受付と同一送信の再試行",
+      "goal": "R2保存途中の失敗を追跡し、匿名申請を公開データへ混ぜず1件だけ受け付ける",
+      "scope": [
+        "申請サービスの受付処理",
+        "サーバーでの画像MIME・サイズ・SHA-256確認",
+        "DB先行のreceiving登録、画像保存後のpending切替",
+        "同一key/fingerprintの再送と異なる内容の409",
+        "条件付き新規保存と、既存画像/空マーカーの区別"
+      ],
+      "non_scope": [
+        "HTTPルート",
+        "承認・却下",
+        "通常mediaへの未承認画像登録"
+      ],
+      "files_to_read": [
+        "lib/r2.ts",
+        "lib/file-sniff.ts",
+        "lib/services/notices.ts",
+        "lib/services/media.ts",
+        "lib/spotlight-submissions.ts",
+        "tests/helpers/temp-db.ts"
+      ],
+      "files_to_create": [
+        "lib/services/spotlight-submissions.ts",
+        "tests/services/spotlight-submissions.test.ts",
+        "tests/helpers/spotlight-bucket.ts"
+      ],
+      "files_to_modify": [
+        "lib/r2.ts"
+      ],
+      "dependencies": [
+        "task_026"
+      ],
+      "implementation_steps": [
+        "受信済みの本文・JPEG/PNG/WebP添付を検証し、fingerprintとサーバー生成R2キーを確定する",
+        "R2 putより前にreceiving行を保存する。同一keyでは一意制約を使って既存状態を読み直す",
+        "lib/r2.tsのput専用オプションにonlyIfを追加し、multipart用オプションは維持する。同一内容のreceiving再送はupdatedAtを条件付き更新し、同じキーへetagDoesNotMatch:\"*\"の条件で新規保存する",
+        "putがnullなら申請状態とheadのサイズを再確認し、同じfingerprintのreceivingかつ期待サイズの既存画像のみ再利用する。空マーカー/画像欠落/保存エラーを成功扱いにしない。全画像が揃った時だけreceivingを条件にpendingへ変更する。途中失敗は追跡行を残し、その場で画像を削除しない",
+        "条件付きputを再現するR2の偽物で、完了済み再送、同時送信、2枚目保存失敗、DB更新失敗、掃除の前後に遅延保存が確定する両順序をテストする"
+      ],
+      "done_definition": [
+        "初回送信と同一内容の再送で申請は1件になる",
+        "保存失敗後もキーが追跡でき、同じ入力で再送できる",
+        "本文変更による同一key再利用を409にする",
+        "申請受付でmedia・member_spotlights・uploadsの行を作らない",
+        "期限切れ申請を同じkeyで再有効化しない",
+        "受付画像が既存画像や空マーカーを上書きせず、保存済み画像を再利用して受信を再開できる"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test"
+      ],
+      "risk_level": "high",
+      "execution": {
+        "status": "completed",
+        "verified_at": "2026-10-01",
+        "result": "条件付きR2保存、同一key再送、fingerprint競合、保存途中失敗の回復を確認。",
+        "evidence": "docs/reviews/member-registration-implementation-2026-10-01.md"
+      }
+    },
+    {
+      "task_id": "task_028",
+      "title": "スタッフによる承認・却下と原子的な掲載",
+      "goal": "1つの申請から最大1件だけ掲載し、競合や途中失敗で部分的な公開を発生させない",
+      "scope": [
+        "承認・却下サービス",
+        "Staff認証付きServer Actions",
+        "申請一覧・件数・審査対象の取得",
+        "承認時のmediaとmember_spotlights作成"
+      ],
+      "non_scope": [
+        "審査画面",
+        "承認前の文章編集",
+        "自動承認",
+        "本人編集リンク"
+      ],
+      "files_to_read": [
+        "lib/services/spotlights.ts",
+        "lib/services/notices.ts",
+        "lib/auth.ts",
+        "app/admin/_actions/spotlights.ts",
+        "lib/config-builder.ts",
+        "lib/services/spotlight-submissions.ts"
+      ],
+      "files_to_create": [
+        "app/admin/_actions/spotlight-submissions.ts"
+      ],
+      "files_to_modify": [
+        "lib/services/spotlight-submissions.ts",
+        "tests/services/spotlight-submissions.test.ts"
+      ],
+      "dependencies": [
+        "task_027"
+      ],
+      "implementation_steps": [
+        "サービスでもStaff以上を照合し、確認待ちの取得と並び順を実装する",
+        "承認前に申請画像のR2存在・サイズを確認する",
+        "pendingとrevisionの照合、既存キーを参照するmedia登録、enabled=trueの紹介登録、申請の承認確定を同一書き込みトランザクションにする",
+        "却下はpendingとrevision条件付きで更新する。pendingの古いrevisionは409。approvedへの同一承認、rejectedへの同一却下の再送はrevisionに関係なく処理済み結果を返し、二重処理しない。",
+        "ActionでAuthzError/ServiceErrorを既存形式に変換する。競合・失敗注入・承認後の紹介削除と再送をテストする",
+        "却下確定と同じDB更新でcleanup_next_atを現在時刻に設定し、回収対象に入れる"
+      ],
+      "done_definition": [
+        "承認時にだけ通常mediaと掲載メンバーが作成される",
+        "同時承認、承認と却下で片方だけが確定する",
+        "トランザクション失敗で素材・紹介の部分登録が残らない",
+        "無効化済みセッションと匿名利用者は審査できない",
+        "紹介削除後の承認再送で紹介を復活させない"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test"
+      ],
+      "risk_level": "high",
+      "execution": {
+        "status": "completed",
+        "verified_at": "2026-10-01",
+        "result": "Staff Actions、原子的承認、却下、並行審査、DB rollback、承認再送を確認。SQLITE_BUSYだけ上限付き再試行。",
+        "evidence": "docs/reviews/member-registration-implementation-2026-10-01.md"
+      }
+    },
+    {
+      "task_id": "task_029",
+      "title": "匿名受付APIとスタッフ専用画像取得",
+      "goal": "容量と認証の境界を保ちながら、フォームが利用できるHTTP経路を追加する",
+      "scope": [
+        "POST /api/spotlight-submissions",
+        "Staff専用の申請画像GET",
+        "実受信量による本文上限・multipart検証",
+        "専用レート制限binding・型・テスト用環境"
+      ],
+      "non_scope": [
+        "既存media APIの認証変更",
+        "公開申請GET",
+        "公開relayやCSRF例外の追加"
+      ],
+      "files_to_read": [
+        "lib/csrf.ts",
+        "proxy.ts",
+        "lib/r2.ts",
+        "lib/auth.ts",
+        "lib/rate-limit.ts",
+        "lib/services/spotlight-submissions.ts",
+        "wrangler.jsonc",
+        "types/cloudflare-workers.d.ts",
+        "tests/stubs/cloudflare-workers.ts"
+      ],
+      "files_to_create": [
+        "app/api/spotlight-submissions/route.ts",
+        "app/api/spotlight-submissions/[id]/images/[kind]/route.ts",
+        "tests/api/spotlight-submissions.test.ts"
+      ],
+      "files_to_modify": [
+        "wrangler.jsonc",
+        "types/cloudflare-workers.d.ts",
+        "tests/stubs/cloudflare-workers.ts",
+        "tests/lib/csrf.test.ts"
+      ],
+      "dependencies": [
+        "task_027"
+      ],
+      "implementation_steps": [
+        "公式資料とアカウント内の既存設定を確認し、ログイン制限と共有しないnamespaceでSPOTLIGHT_SUBMISSION_RATE_LIMITERを追加する",
+        "同一Originとrate limitを本文読込前に確認する。CloudflareのIPヘッダーを利用し、本番で欠落した場合は共通の制限キーを使う",
+        "Content-Lengthがなくても最大5MiBで読み止め、data 10KiB、JPEG/PNG/WebP各1枚/2MiB、余分なフィールドを検査する",
+        "受付サービスを呼び、202と計画9節のエラーを返す",
+        "申請画像GETはStaff認証とpending状態を照合し、DBで解決したキーだけをprivate/no-storeで返す"
+      ],
+      "done_definition": [
+        "通常POSTはログインなしで受付でき、他Originは403になる",
+        "ヘッダーなし/偽装の超過本文でもDB/R2書込前に413になる",
+        "動画・SVG・偽装画像・任意media ID/R2キーを拒否する",
+        "制限時は429とRetry-Afterになり、ログイン制限の設定を変えない",
+        "匿名で申請画像は取得できず、応答に申請内容や素材IDを含めない"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test",
+        "npm run lint"
+      ],
+      "risk_level": "high",
+      "execution": {
+        "status": "completed",
+        "verified_at": "2026-10-01",
+        "result": "匿名POST/Staff画像GET、Origin、専用レート制限、実受信量、MIMEと認証を確認。namespace4302のアカウント全体重複は未確認。",
+        "evidence": "docs/reviews/member-registration-implementation-2026-10-01.md"
+      }
+    },
+    {
+      "task_id": "task_030",
+      "title": "スマートフォン用の本人登録・プレビュー",
+      "goal": "本人が管理アカウントなしで紹介内容を確認し、写真付きで送信できるようにする",
+      "scope": [
+        "/members/register",
+        "必須2項目と任意情報のフォーム",
+        "公開用の画像準備とローカルプレビュー（WebP非対応ブラウザではJPEG/PNG）",
+        "掲載先説明・同意・送信状態・再送",
+        "送信結果不明時の入力固定と同一内容だけの再試行"
+      ],
+      "non_scope": [
+        "管理フォームの全面改修",
+        "本人の後日編集",
+        "HEICライブラリの導入",
+        "縦型サイネージの変更",
+        "再読み込み・別端末をまたぐ下書き復元と重複防止"
+      ],
+      "files_to_read": [
+        "lib/client/upload.ts",
+        "lib/spotlight-submissions.ts",
+        "components/signage/SpotlightCard.tsx",
+        "components/signage/signage.module.css",
+        "components/signage/ScaledCanvas.tsx",
+        "app/events/[id]/page.tsx"
+      ],
+      "files_to_create": [
+        "app/members/register/page.tsx",
+        "components/members/spotlight-registration-form.tsx",
+        "components/members/registration.module.css",
+        "components/members/spotlight-preview.tsx",
+        "lib/client/submit-spotlight.ts",
+        "tests/public/spotlight-registration-form.test.tsx",
+        "lib/client/prepare-spotlight-image.ts",
+        "tests/public/spotlight-image.test.ts",
+        "tests/public/submit-spotlight.test.ts",
+        "tests/public/spotlight-registration-flow.test.tsx"
+      ],
+      "files_to_modify": [],
+      "dependencies": [
+        "task_026"
+      ],
+      "implementation_steps": [
+        "対象iOS Safari/Android Chromeで画像読取と出力形式を先に確認して版を記録する。WebP非対応の模擬テストも用意する。",
+        "管理レイアウト外にviewportと日本語書体を備えた1列フォームを作る",
+        "既存文字数と必須条件を利用し、詳しい情報欄、欄ごとのエラー、同意を実装する",
+        "元画像20MiBと対応形式を確認する。新しい公開用画像関数で長辺1920px・向きをそろえ、WebPを試して非対応なら写真JPEG/ロゴPNGを出力する。実際のBlobのMIMEと2MiB制限を確認し、既存管理用変換は変えない。",
+        "既存SpotlightCardを縮小プレビューし、画像のBlob URLを差し替え・終了時に破棄する",
+        "初回送信でkey・正規化本文・同意・変換済みBlobを固定し、送信中/結果不明/受付済みを区別する。結果不明では編集・新しいkeyの発行を禁止し、送信結果を確認する同一内容の再送だけを許可する",
+        "202で完了し、修正はスタッフへ依頼する。410だけは元の申請の期限切れ確定として編集と新しいkeyでの送信を許可する。未解決送信がない場合の保存前400/403/413/415/429は修正可能とするが、結果不明後の同応答ではロックを解除しない。409も自動的に新規送信へ切り替えない",
+        "成功応答消失後の文面/写真変更、新規送信、同じBlobでの再送、結果不明後の429、初回入力エラーの修正を操作テストする。結果不明の間は画面を閉じずに確認する案内を出す",
+        "task_029完了後に実装済み受付APIと共通プレビューを接続して操作テストし、接続先を仮の応答に置き換えた確認だけでは完了にしない"
+      ],
+      "done_definition": [
+        "会社名・名前・同意で申請でき、任意項目が空でも送信できる",
+        "写真とロゴを選択して掲載イメージを確認できる",
+        "画像準備/送信中の重複操作を防ぎ、失敗後も入力を失わない",
+        "通常の認証付きuploadMediaは呼ばない",
+        "フォーム操作のテストが成功し、320〜430pxの確認条件を満たす",
+        "WebPを出力できないブラウザでもJPEG/PNG経路から写真付き申請を送れる",
+        "成功応答消失後に編集・新しいkeyでの送信ができず、同じ内容の再送で申請1件を維持する",
+        "再送が429や400でも以前の結果不明状態を消さず、202/410で確定するまで固定内容を保持する",
+        "task_029が完了し、実装済み受付APIと共通プレビューへの接続テストが成功する"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test",
+        "npm run lint"
+      ],
+      "risk_level": "medium",
+      "completion_dependencies": [
+        "task_029"
+      ],
+      "execution": {
+        "status": "completed",
+        "verified_at": "2026-10-01",
+        "result": "公開フォーム・画像準備・共通preview・結果不明の編集固定を実装。実サービス再送とChromium実動作を確認。実機iOS/Androidは未検証。",
+        "evidence": "docs/reviews/member-registration-implementation-2026-10-01.md"
+      }
+    },
+    {
+      "task_id": "task_031",
+      "title": "確認待ち一覧・承認操作・登録QRの共有",
+      "goal": "スタッフが転記なしで申請を掲載し、本人入力用のURLを配布できるようにする",
+      "scope": [
+        "掲載メンバー/確認待ちタブと件数",
+        "申請詳細・写真・掲載プレビュー",
+        "承認と却下、競合時の状態更新",
+        "登録URLコピー・QR表示・PNG保存"
+      ],
+      "non_scope": [
+        "管理画面全体のモバイル化",
+        "メール等の通知",
+        "サイネージ上のQR自動配置",
+        "一括承認"
+      ],
+      "files_to_read": [
+        "app/admin/spotlights/page.tsx",
+        "components/admin/spotlights-view.tsx",
+        "components/admin/confirm-dialog.tsx",
+        "components/admin/kana-row.ts",
+        "lib/site-url.ts",
+        "components/members/spotlight-preview.tsx",
+        "app/admin/_actions/spotlight-submissions.ts"
+      ],
+      "files_to_create": [
+        "components/admin/spotlight-submissions-view.tsx",
+        "components/admin/spotlight-registration-share.tsx",
+        "tests/admin/spotlight-submissions-view.test.tsx",
+        "tests/admin/spotlight-registration-share.test.tsx",
+        "tests/admin/spotlight-submissions-integration.test.tsx"
+      ],
+      "files_to_modify": [
+        "app/admin/spotlights/page.tsx",
+        "components/admin/spotlights-view.tsx",
+        "tests/admin/spotlights-view.test.tsx"
+      ],
+      "dependencies": [
+        "task_026"
+      ],
+      "implementation_steps": [
+        "ページで確認待ち一覧・件数を取得し、既存メンバー一覧とは別タブに表示する",
+        "古い申請から詳細を開き、Staff専用画像URLでプレビューを出す",
+        "承認・却下Actionを接続する。成功または競合で詳細を閉じ、一覧/件数/revisionを再取得する",
+        "既存qrcodeで現在のoriginを含む登録URLのQRを生成し、コピーとPNG保存を追加する",
+        "既存の検索・五十音・並び替え・登録・編集・削除と、却下確認ダイアログを回帰確認する",
+        "task_028・029・030完了後に実装済みservice/Action・Staff専用画像API・public UI担当所有の共通プレビューを接続して操作テストする。接続先未実装でも確定した契約による画面実装は先行できるが、完了にはしない"
+      ],
+      "done_definition": [
+        "入力の転記や画像の再アップロードなしで掲載できる",
+        "確認待ち件数が承認/却下後に更新される",
+        "競合後に古い詳細とrevisionを再送し続けない",
+        "QRとコピーURLが同じ/members/registerを開く",
+        "既存掲載メンバーの操作を維持する",
+        "task_028・029・030が完了し、実装済みservice/Action・Staff専用画像API・共通プレビューへの接続テストが成功する"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test",
+        "npm run lint"
+      ],
+      "risk_level": "medium",
+      "completion_dependencies": [
+        "task_028",
+        "task_029",
+        "task_030"
+      ],
+      "execution": {
+        "status": "completed",
+        "verified_at": "2026-10-01",
+        "result": "審査/件数/競合再取得/登録URLとQRを実装。実Action/preview結合と実ブラウザー承認・却下を確認。カメラでのQR読取は未検証。",
+        "evidence": "docs/reviews/member-registration-implementation-2026-10-01.md"
+      }
+    },
+    {
+      "task_id": "task_032",
+      "title": "中断・却下画像の回収完了管理と遅延保存の防止",
+      "goal": "画像を空マーカーへ置換して遅延保存を防ぎ、完了済み申請を掃除対象から外す",
+      "scope": [
+        "日次Cronへの申請掃除追加",
+        "24時間未更新receivingのexpired確定と、未回収rejected/expiredの回収を各50件/回に制限",
+        "全対象キーの空マーカー保存後の完了記録、失敗の翌日再試行",
+        "通常mediaの保護と、申請由来素材の最終削除時の空マーカー保存"
+      ],
+      "non_scope": [
+        "pendingの自動削除",
+        "申請掃除によるapproved画像の回収",
+        "既存media削除猶予・参照保護・APIの変更",
+        "R2プレフィックス一括削除"
+      ],
+      "files_to_read": [
+        "worker/scheduled.ts",
+        "lib/services/media.ts",
+        "lib/services/spotlight-submissions.ts",
+        "tests/worker/scheduled.test.ts",
+        "lib/r2.ts",
+        "tests/services/media.test.ts"
+      ],
+      "files_to_create": [],
+      "files_to_modify": [
+        "lib/services/spotlight-submissions.ts",
+        "worker/scheduled.ts",
+        "tests/services/spotlight-submissions.test.ts",
+        "tests/worker/scheduled.test.ts",
+        "lib/services/media.ts",
+        "tests/services/media.test.ts",
+        "lib/r2.ts"
+      ],
+      "dependencies": [
+        "task_028"
+      ],
+      "implementation_steps": [
+        "24時間未更新receivingをupdated_at,id順でSQL LIMIT 50により取得し、statusとupdated_atの条件付き更新でexpiredを確定しcleanup_next_atを設定する",
+        "未回収かつ期限到来のrejected/expiredをcleanup_next_at,id順でSQL LIMIT 50により取得する。全件取得後の切り出しや同じCron内の全件消化ループを行わない",
+        "media.r2_keyに存在するキーを保護し、それ以外の記録済みキーは未保存分も含め0バイトの空マーカーを条件なしでputする。全キー成功後にcleanup_completed_atを記録しcleanup_next_at/payloadをnullにする。完了行を以後の処理から除外する",
+        "R2失敗・通常素材との重複・DB完了更新失敗は未完了のまま残し、cleanup_next_atを24時間後へ移して次の行へ進む。DB自体が利用不能なら失敗を記録して終了する",
+        "purgeDeletedMediaはアプリ生成member-submissions/<id>/photo|logoだけ空マーカーへ置換し、成功後にmedia行を削除する。その他の既存キーの物理削除、参照保護、7日猶予は維持する",
+        "条件付き保存を再現するR2の偽物で遅延putと回収の両順序、空マーカー途中失敗、DB完了更新失敗、再送との競合、完了後のR2呼出しゼロ、51件目繰越、失敗行による後続の処理妨害がないことを検証する。承認後の通常素材削除も含める"
+      ],
+      "done_definition": [
+        "期限切れ確定と画像回収は各50件/回以内で、残件は後続のCronへ繰り越す",
+        "全キーの空マーカー保存とDB完了記録が成功した行は、次回以降R2へアクセスしない",
+        "回収後に遅延保存が届いても画像が復活せず、途中失敗だけ翌日再試行する",
+        "受信再開との競合を制御し、pending/approvedと通常mediaを申請掃除から保護する",
+        "承認済み紹介を削除した後も素材は既存の参照保護・7日猶予に従い、最終削除後の遅延保存を防げる",
+        "既存の天気・素材・ログ・イベントの定期処理を維持する"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm test"
+      ],
+      "risk_level": "high",
+      "execution": {
+        "status": "completed",
+        "verified_at": "2026-10-01",
+        "result": "有限回収、空マーカー、完了除外、承認素材保護を実装。強制競合2順序と実クエリの部分索引利用を確認。実クラウドR2は未検証。",
+        "evidence": "docs/reviews/member-registration-implementation-2026-10-01.md"
+      }
+    },
+    {
+      "task_id": "task_033",
+      "title": "登録から掲載までの確認と運用記録",
+      "goal": "本人の申請・スタッフ承認・既存配信の一連の流れとモバイル動作を確認する",
+      "scope": [
+        "受付からconfig/公開素材配信までの統合テスト",
+        "既存公開/端末配信の回帰",
+        "iOS Safari/Android Chromeの手動確認",
+        "ビルド・バンドル検査と運用手順"
+      ],
+      "non_scope": [
+        "Pi既存不具合の修正",
+        "本番データでの試験",
+        "計画外の機能追加"
+      ],
+      "files_to_read": [
+        "docs/implementation-plan.md",
+        "docs/acceptance-checks.json",
+        "package.json",
+        "playwright.config.ts",
+        "tests/helpers/temp-db.ts",
+        "tests/api/public-signage.test.ts",
+        "tests/api/device.test.ts",
+        "docs/runbook.md"
+      ],
+      "files_to_create": [
+        "tests/api/spotlight-registration-flow.test.ts",
+        "tests/e2e/seed-member-registration.ts",
+        "tests/e2e/member-registration.mjs",
+        "docs/reviews/member-registration-implementation-2026-10-01.md",
+        "docs/reviews/member-registration-2026-10-01/e2e-result.json"
+      ],
+      "files_to_modify": [
+        "docs/runbook.md",
+        "docs/implementation-plan.md",
+        "docs/task-list.json",
+        "docs/acceptance-checks.json"
+      ],
+      "dependencies": [
+        "task_026",
+        "task_027",
+        "task_028",
+        "task_029",
+        "task_030",
+        "task_031",
+        "task_032"
+      ],
+      "implementation_steps": [
+        "一時DB・R2の偽物・端末/バンドルfixtureで受付から承認、config変化、画像取得を連続確認する",
+        "未承認/却下の公開拒否と、ふりがながconfigに出ない回帰テストを追加する",
+        "typecheck/lint/test、Workerと表示bundleのbuild/check、既存visual testを実行する",
+        "隔離検証環境でiOS SafariとAndroid Chromeから申請し、Staff承認とQRの読み取り、公開Web反映を確認する",
+        "runbookへURL共有・審査・結果不明時の同一内容再送・回収上限/完了条件・空マーカーを物理削除しない運用・migration先行の配備順序と検証結果を記録する",
+        "隔離した実R2で、画像の条件付き新規保存と空マーカー保存の両順序を確認し、null応答と画像復活防止の結果を記録する。実行できなければ未検証と記録する"
+      ],
+      "done_definition": [
+        "check_066〜check_095の各結果を根拠付きで記録する",
+        "申請から掲載まで転記/再アップロードを要しない",
+        "既存の手動登録と公開表示を壊していない",
+        "全検証コマンドが成功し、未実施の実機確認は未検証として明記する",
+        "追加migrationを先行させる配備手順と、旧コードへ戻しても申請表を消さない方針が記載される"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm run lint",
+        "npm test",
+        "npm run build",
+        "npm run check:worker",
+        "npm run build:display",
+        "npm run check:display",
+        "npm run test:visual"
+      ],
+      "risk_level": "high",
+      "execution": {
+        "status": "completed",
+        "verified_at": "2026-10-01",
+        "result": "統合・全体品質・build・visual・HTTPモックなし実ブラウザー確認と運用記録を完了。実機/実クラウド/本番配備の未実施を記録。",
+        "evidence": "docs/reviews/member-registration-implementation-2026-10-01.md"
+      }
     }
   ]
 }

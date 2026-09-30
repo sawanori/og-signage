@@ -17,6 +17,7 @@ import { getMediaBucket, type MediaBucket } from "../lib/r2";
 import { getDb } from "../lib/runtime";
 import { purgeEndedEvents } from "../lib/services/events";
 import { purgeDeletedMedia } from "../lib/services/media";
+import { cleanupSpotlightSubmissions } from "../lib/services/spotlight-submissions";
 import { refreshWeather } from "../lib/weather";
 
 export const WEATHER_CRON = "*/30 * * * *";
@@ -66,9 +67,11 @@ async function runDailyCleanup(db: Db, bucket: MediaBucket, now: number): Promis
   const stale = await abortStaleUploads(db, bucket, now);
   const deletedLogCount = await purgeOldDeviceLogs(db, now);
   const endedEvents = await purgeEndedEvents(db, now);
+  const submissions = await cleanupSpotlightSubmissions(db, bucket, now);
   console.log(
     `[scheduled] daily cleanup: media purged=${media.purged.length} failed=${media.failed.length} ` +
-      `uploads aborted=${stale.abortedIds.length} device_logs deleted=${deletedLogCount} ended events deleted=${endedEvents.length}`,
+      `uploads aborted=${stale.abortedIds.length} device_logs deleted=${deletedLogCount} ended events deleted=${endedEvents.length} ` +
+      `submissions expired=${submissions.expired} completed=${submissions.completed} failed=${submissions.failed}`,
   );
 }
 

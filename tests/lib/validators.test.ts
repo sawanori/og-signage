@@ -10,8 +10,10 @@ import {
   houseRulesSchema,
   mediaFailuresSchema,
   noticeInputSchema,
+  spotlightInputSchema,
   videoSettingsInputSchema,
 } from "../../lib/validators";
+import { spotlightSubmissionInputSchema } from "../../lib/spotlight-submissions";
 import { NOW, fakeSha256 } from "../fixtures/config.fixture";
 
 function messages(result: { success: boolean; error?: { issues: { message: string }[] } }): string[] {
@@ -27,6 +29,65 @@ const validEvent = {
   qrUrl: "https://example.com/pizza",
   status: "published",
 };
+
+describe("メンバー本人登録の入力契約", () => {
+  const input = {
+    requestKey: "123e4567-e89b-42d3-a456-426614174000",
+    companyName: " 株式会社サンプル ",
+    personName: " 山田 陸 ",
+    consent: true,
+  };
+
+  it("必須2項目と同意だけで申請でき、任意の空欄を正規化する", () => {
+    expect(spotlightSubmissionInputSchema.parse(input)).toEqual({
+      ...input, companyName: "株式会社サンプル", personName: "山田 陸",
+      personNameKana: null, role: null, quote: null, bio: null, tags: [],
+    });
+    expect(spotlightSubmissionInputSchema.parse({ ...input, role: "  " }).role).toBeNull();
+  });
+
+  it.each(["companyName", "personName"])("%sは空にできない", (field) => {
+    expect(spotlightSubmissionInputSchema.safeParse({ ...input, [field]: " " }).success).toBe(false);
+  });
+
+  it.each([
+    ["companyName", 30], ["personName", 20], ["role", 30], ["quote", 30], ["bio", 60],
+  ])("%sは既存と同じコードポイント上限%i", (field, max) => {
+    for (const schema of [spotlightSubmissionInputSchema, spotlightInputSchema]) {
+      const base = schema === spotlightInputSchema
+        ? { companyName: input.companyName, personName: input.personName, enabled: true }
+        : input;
+      expect(schema.safeParse({ ...base, [field]: "🍕".repeat(Number(max)) }).success).toBe(true);
+      expect(schema.safeParse({ ...base, [field]: "🍕".repeat(Number(max) + 1) }).success).toBe(false);
+    }
+  });
+
+  it("ふりがな・タグも既存と同じ制限", () => {
+    expect(spotlightSubmissionInputSchema.safeParse({ ...input, personNameKana: "あ".repeat(40), tags: ["映像", "写真", "🍕".repeat(10)] }).success).toBe(true);
+    expect(spotlightSubmissionInputSchema.safeParse({ ...input, personNameKana: "あ".repeat(41) }).success).toBe(false);
+    expect(spotlightSubmissionInputSchema.safeParse({ ...input, personNameKana: "Yamada" }).success).toBe(false);
+    expect(spotlightSubmissionInputSchema.safeParse({ ...input, tags: ["🍕".repeat(11)] }).success).toBe(false);
+    expect(spotlightSubmissionInputSchema.safeParse({ ...input, tags: ["a", "b", "c", "d"] }).success).toBe(false);
+  });
+
+  it.each([false, undefined, "true"])("明示的な同意true以外を拒否する（%s）", (consent) => {
+    expect(spotlightSubmissionInputSchema.safeParse({ ...input, consent }).success).toBe(false);
+  });
+
+  it.each(["", "not-a-uuid"])("不正requestKeyを拒否する（%s）", (requestKey) => {
+    expect(spotlightSubmissionInputSchema.safeParse({ ...input, requestKey }).success).toBe(false);
+  });
+
+  it.each(["enabled", "photoMediaId", "logoMediaId", "status", "reviewedBy", "approvedSpotlightId", "r2Key", "requestFingerprint"])("管理用項目%sの混入を拒否する", (field) => {
+    expect(spotlightSubmissionInputSchema.safeParse({ ...input, [field]: "injected" }).success).toBe(false);
+  });
+
+  it("管理入力は従来どおり素材・表示設定を受け付ける", () => {
+    const parsed = spotlightInputSchema.parse({ companyName: "所属", personName: "名前", enabled: false, photoMediaId: "photo" });
+    expect(parsed.enabled).toBe(false);
+    expect(parsed.photoMediaId).toBe("photo");
+  });
+});
 
 describe("イベント入力", () => {
   it("正しい入力を通し、空欄の任意項目は null にする", () => {

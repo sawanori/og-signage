@@ -9,6 +9,7 @@
  */
 import { sql } from "drizzle-orm";
 import { check, index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import type { SpotlightSubmissionFile, SpotlightSubmissionPayload } from "../lib/spotlight-submissions";
 
 const id = () =>
   text("id")
@@ -321,6 +322,38 @@ export const memberSpotlights = sqliteTable("member_spotlights", {
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
+
+/** 承認前の申請は公開紹介・通常素材と分離する。R2保存前に追跡用の行を作成する。 */
+export const memberSpotlightSubmissions = sqliteTable(
+  "member_spotlight_submissions",
+  {
+    id: id(),
+    requestKey: text("request_key").notNull().unique(),
+    requestFingerprint: text("request_fingerprint").notNull(),
+    payload: text("payload", { mode: "json" }).$type<SpotlightSubmissionPayload>(),
+    photoFile: text("photo_file", { mode: "json" }).$type<SpotlightSubmissionFile>(),
+    logoFile: text("logo_file", { mode: "json" }).$type<SpotlightSubmissionFile>(),
+    status: text("status", { enum: ["receiving", "pending", "approved", "rejected", "expired"] }).notNull().default("receiving"),
+    revision: revision(),
+    consentedAt: integer("consented_at").notNull(),
+    consentVersion: integer("consent_version").notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    submittedAt: integer("submitted_at"),
+    reviewedAt: integer("reviewed_at"),
+    reviewedBy: text("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+    approvedSpotlightId: text("approved_spotlight_id").unique().references(() => memberSpotlights.id, { onDelete: "set null" }),
+    cleanupNextAt: integer("cleanup_next_at"),
+    cleanupCompletedAt: integer("cleanup_completed_at"),
+  },
+  (t) => [
+    check("member_spotlight_submissions_status_check", sql`${t.status} IN ('receiving', 'pending', 'approved', 'rejected', 'expired')`),
+    index("member_spotlight_submissions_status_submitted_at_idx").on(t.status, t.submittedAt),
+    index("member_spotlight_submissions_status_updated_at_idx").on(t.status, t.updatedAt),
+    index("member_spotlight_submissions_cleanup_idx").on(t.cleanupNextAt, t.id)
+      .where(sql`${t.status} IN ('rejected', 'expired') AND ${t.cleanupCompletedAt} IS NULL`),
+  ],
+);
 
 /** 1 行だけ */
 export const houseSettings = sqliteTable("house_settings", {

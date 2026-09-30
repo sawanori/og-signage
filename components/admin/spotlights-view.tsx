@@ -12,11 +12,14 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { createSpotlightAction, deleteSpotlightAction, updateSpotlightAction } from "@/app/admin/_actions/spotlights";
 import type { SpotlightRow } from "@/lib/services/spotlights";
+import type { SpotlightSubmissionDetail } from "@/lib/spotlight-submissions";
 import admin from "./admin.module.css";
 import events from "./events.module.css";
 import { KANA_ROWS, kanaRowOf, normalizeForSearch, sortByReading, type KanaRow } from "./kana-row";
 import { mediaThumbnailUrl } from "./media-upload-field";
 import styles from "./settings.module.css";
+import { SpotlightSubmissionsView } from "./spotlight-submissions-view";
+import { SpotlightRegistrationShare } from "./spotlight-registration-share";
 import {
   SpotlightForm,
   emptySpotlightForm,
@@ -37,7 +40,14 @@ function matches(s: SpotlightRow, needle: string): boolean {
   );
 }
 
-export function SpotlightsView({ spotlights }: { spotlights: SpotlightRow[] }) {
+export function SpotlightsView({
+  spotlights,
+  submissions = [],
+}: {
+  spotlights: SpotlightRow[];
+  submissions?: SpotlightSubmissionDetail[];
+}) {
+  const [tab, setTab] = useState<"published" | "pending">("published");
   const [form, setForm] = useState<SpotlightFormState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -114,7 +124,7 @@ export function SpotlightsView({ spotlights }: { spotlights: SpotlightRow[] }) {
           <h1 className={styles.pageTitle}>メンバー紹介</h1>
           <p className={styles.pageDesc}>サイネージの右上の MEMBER SPOTLIGHT に、登録順に 1 人ずつ切り替えて出します。</p>
         </div>
-        {form ? null : (
+        {form || tab !== "published" ? null : (
           <button type="button" className={styles.primaryButton} onClick={openNew}>
             <Plus size={18} strokeWidth={2.4} aria-hidden />
             メンバーを追加
@@ -122,126 +132,143 @@ export function SpotlightsView({ spotlights }: { spotlights: SpotlightRow[] }) {
         )}
       </div>
 
-      {form ? (
-        // 人ごとに作り直し、前の人の写真・ロゴのアップロード結果が入らないようにする（spotlight-form.tsx）
-        <SpotlightForm
-          key={form.id ?? "new"}
-          form={form}
-          onChange={patchForm}
-          error={error}
-          pending={pending}
-          onSave={save}
-          onCancel={closeForm}
-        />
-      ) : null}
+      <SpotlightRegistrationShare />
 
-      {error && !form ? (
-        <p className={styles.formError} role="alert">
-          {error}
-        </p>
-      ) : null}
-      {success ? <p className={styles.formSuccess}>{SAVED_MESSAGE}</p> : null}
+      <div className={`${admin.chips} ${styles.kanaChips}`} role="group" aria-label="メンバー紹介の表示切り替え" style={{ marginLeft: 0, marginTop: 0 }}>
+        <button type="button" className={admin.chip} aria-pressed={tab === "published"} onClick={() => setTab("published")}>
+          掲載メンバー
+        </button>
+        <button type="button" className={admin.chip} aria-pressed={tab === "pending"} onClick={() => setTab("pending")}>
+          確認待ち（{submissions.length}件）
+        </button>
+      </div>
 
-      <section className={styles.panel} aria-label="メンバー紹介一覧">
-        <div className={styles.listTools}>
-          <h2 className={styles.panelTitle}>メンバー紹介一覧</h2>
-          <label className={events.search}>
-            <Search size={17} strokeWidth={2.2} aria-hidden />
-            <input
-              type="search"
-              placeholder="お名前・会社名・タグで探す"
-              aria-label="メンバーを検索"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
+      {tab === "pending" ? (
+        <SpotlightSubmissionsView submissions={submissions} />
+      ) : (
+        <>
+          {form ? (
+            // 人ごとに作り直し、前の人の写真・ロゴのアップロード結果が入らないようにする（spotlight-form.tsx）
+            <SpotlightForm
+              key={form.id ?? "new"}
+              form={form}
+              onChange={patchForm}
+              error={error}
+              pending={pending}
+              onSave={save}
+              onCancel={closeForm}
             />
-          </label>
-          <select
-            className={styles.select}
-            aria-label="並び順"
-            value={sort}
-            onChange={(e) => setSort(e.target.value === "kana" ? "kana" : "registered")}
-          >
-            <option value="registered">登録順</option>
-            <option value="kana">名前順（あいうえお）</option>
-          </select>
-        </div>
-        <div className={`${admin.chips} ${styles.kanaChips}`} role="group" aria-label="名前の行で絞り込む">
-          <button type="button" className={admin.chip} aria-pressed={row === "all"} onClick={() => setRow("all")}>
-            すべて
-          </button>
-          {KANA_ROWS.map((r) => {
-            const count = searched.filter((s) => kanaRowOf(s) === r).length;
-            return (
-              <button
-                key={r}
-                type="button"
-                className={admin.chip}
-                aria-pressed={row === r}
-                disabled={count === 0}
-                onClick={() => setRow(r)}
+          ) : null}
+
+          {error && !form ? (
+            <p className={styles.formError} role="alert">
+              {error}
+            </p>
+          ) : null}
+          {success ? <p className={styles.formSuccess}>{SAVED_MESSAGE}</p> : null}
+
+          <section className={styles.panel} aria-label="メンバー紹介一覧">
+            <div className={styles.listTools}>
+              <h2 className={styles.panelTitle}>メンバー紹介一覧</h2>
+              <label className={events.search}>
+                <Search size={17} strokeWidth={2.2} aria-hidden />
+                <input
+                  type="search"
+                  placeholder="お名前・会社名・タグで探す"
+                  aria-label="メンバーを検索"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </label>
+              <select
+                className={styles.select}
+                aria-label="並び順"
+                value={sort}
+                onChange={(e) => setSort(e.target.value === "kana" ? "kana" : "registered")}
               >
-                {r === "その他" ? r : `${r}行`} {count}
+                <option value="registered">登録順</option>
+                <option value="kana">名前順（あいうえお）</option>
+              </select>
+            </div>
+            <div className={`${admin.chips} ${styles.kanaChips}`} role="group" aria-label="名前の行で絞り込む">
+              <button type="button" className={admin.chip} aria-pressed={row === "all"} onClick={() => setRow("all")}>
+                すべて
               </button>
-            );
-          })}
-        </div>
-        <p className={styles.hint} style={{ marginTop: 8 }}>
-          登録順は、サイネージに出す順番と同じです。
-        </p>
-        {spotlights.length === 0 ? (
-          <div className={styles.empty}>
-            <p>メンバー紹介はまだありません。</p>
-          </div>
-        ) : shown.length === 0 ? (
-          <div className={styles.empty}>
-            <p>該当するメンバーはいません</p>
-          </div>
-        ) : (
-          <ul className={styles.list}>
-            {shown.map((s) => (
-              <li key={s.id} className={styles.listRow}>
-                {s.photoMediaId ? (
-                  // 縦長の写真は顔が上の方にあるので、横長の枠では上寄りを見せる
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    className={styles.thumb}
-                    style={{ objectPosition: "50% 20%" }}
-                    src={mediaThumbnailUrl(s.photoMediaId)}
-                    alt=""
-                  />
-                ) : (
-                  <div className={`${styles.thumb} ${styles.thumbEmpty}`} aria-hidden>
-                    <UserRound size={20} strokeWidth={1.6} />
-                  </div>
-                )}
-                <div className={styles.rowMain}>
-                  <p className={styles.rowTitle}>{s.personName}さん</p>
-                  <p className={styles.rowBody}>{s.role ? `${s.companyName} / ${s.role}` : s.companyName}</p>
-                </div>
-                <span className={`${styles.badge} ${s.enabled ? styles.badgeOn : styles.badgeOff}`}>
-                  {s.enabled ? "表示する" : "表示しない"}
-                </span>
-                <p className={styles.scheduleText}>{s.tags.join("・")}</p>
-                <div className={styles.rowActions}>
-                  <button type="button" className={styles.secondaryButton} disabled={pending} onClick={() => openEdit(s)}>
-                    <Pencil size={14} strokeWidth={2.2} aria-hidden />
-                    編集
-                  </button>
+              {KANA_ROWS.map((r) => {
+                const count = searched.filter((s) => kanaRowOf(s) === r).length;
+                return (
                   <button
+                    key={r}
                     type="button"
-                    className={`${styles.secondaryButton} ${styles.dangerButton}`}
-                    disabled={pending}
-                    onClick={() => remove(s)}
+                    className={admin.chip}
+                    aria-pressed={row === r}
+                    disabled={count === 0}
+                    onClick={() => setRow(r)}
                   >
-                    <Trash2 size={14} strokeWidth={2.2} aria-hidden />
-                    削除
+                    {r === "その他" ? r : `${r}行`} {count}
                   </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                );
+              })}
+            </div>
+            <p className={styles.hint} style={{ marginTop: 8 }}>
+              登録順は、サイネージに出す順番と同じです。
+            </p>
+            {spotlights.length === 0 ? (
+              <div className={styles.empty}>
+                <p>メンバー紹介はまだありません。</p>
+              </div>
+            ) : shown.length === 0 ? (
+              <div className={styles.empty}>
+                <p>該当するメンバーはいません</p>
+              </div>
+            ) : (
+              <ul className={styles.list}>
+                {shown.map((s) => (
+                  <li key={s.id} className={styles.listRow}>
+                    {s.photoMediaId ? (
+                      // 縦長の写真は顔が上の方にあるので、横長の枠では上寄りを見せる
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        className={styles.thumb}
+                        style={{ objectPosition: "50% 20%" }}
+                        src={mediaThumbnailUrl(s.photoMediaId)}
+                        alt=""
+                      />
+                    ) : (
+                      <div className={`${styles.thumb} ${styles.thumbEmpty}`} aria-hidden>
+                        <UserRound size={20} strokeWidth={1.6} />
+                      </div>
+                    )}
+                    <div className={styles.rowMain}>
+                      <p className={styles.rowTitle}>{s.personName}さん</p>
+                      <p className={styles.rowBody}>{s.role ? `${s.companyName} / ${s.role}` : s.companyName}</p>
+                    </div>
+                    <span className={`${styles.badge} ${s.enabled ? styles.badgeOn : styles.badgeOff}`}>
+                      {s.enabled ? "表示する" : "表示しない"}
+                    </span>
+                    <p className={styles.scheduleText}>{s.tags.join("・")}</p>
+                    <div className={styles.rowActions}>
+                      <button type="button" className={styles.secondaryButton} disabled={pending} onClick={() => openEdit(s)}>
+                        <Pencil size={14} strokeWidth={2.2} aria-hidden />
+                        編集
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.secondaryButton} ${styles.dangerButton}`}
+                        disabled={pending}
+                        onClick={() => remove(s)}
+                      >
+                        <Trash2 size={14} strokeWidth={2.2} aria-hidden />
+                        削除
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </>
+      )}
     </div>
   );
 }

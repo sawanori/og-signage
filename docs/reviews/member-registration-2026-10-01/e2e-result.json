@@ -1,0 +1,21 @@
+{
+  "browser": "153.0.8010.12",
+  "base": "http://localhost:4186",
+  "databaseUrl": "http://127.0.0.1:8186",
+  "mockedRequests": 0,
+  "anonymousPost": 202,
+  "unpublishedUntilApproval": true,
+  "anonymousPendingImage": 401,
+  "staffLogin": true,
+  "staffPendingImage": 200,
+  "approved": true,
+  "publicConfigChanged": true,
+  "publicImage": 200,
+  "signageNameAndImage": true,
+  "rejectedWithoutPublication": true,
+  "submissionCount": 2,
+  "spotlightCount": 1,
+  "mediaCount": 1,
+  "errors": [],
+  "failedAssets": []
+}
