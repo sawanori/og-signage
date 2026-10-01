@@ -79,7 +79,8 @@ describe("管理ページと実Action・サービス・プレビューの接続"
     expect(JSON.stringify(submission.payload)).not.toContain("member@example.com");
     const published = await db.select().from(memberSpotlights);
     expect(published).toHaveLength(review === "approve" ? 1 : 0);
-    expect(JSON.stringify(published)).not.toContain("member@example.com");
+    // 掲載メンバーには申請のアドレスを引き継ぐ（管理画面で見るだけ。公開 config には出さない）
+    if (review === "approve") expect(published[0].contactEmail).toBe("member@example.com");
   });
 
   it("実際のStaff画像と掲載カードを確認して承認するとDBに掲載され、再取得で件数と掲載一覧が更新される", async () => {

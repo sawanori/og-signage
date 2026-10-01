@@ -17,6 +17,7 @@ import {
   type SpotlightSubmissionApproval,
   type SpotlightSubmissionReview,
 } from "../spotlight-submissions";
+import { SPOTLIGHT_PLACEHOLDER_EMAIL } from "../validators";
 import { assertRole } from "./notices";
 import { notifySpotlightSubmission } from "./spotlight-notifications";
 
@@ -204,7 +205,8 @@ export async function approveSpotlightSubmission(db: Db, bucket: MediaBucket, us
       const [image] = await tx.insert(media).values({ name: `${row.payload.personName} ${kind === "photo" ? "写真" : "ロゴ"}`, type: "image", r2Key: file.r2Key, mimeType: file.mimeType, fileSize: file.size, sha256: file.sha256 }).returning({ id: media.id });
       imageIds[kind] = image.id;
     }
-    const [spotlight] = await tx.insert(memberSpotlights).values({ ...row.payload, photoMediaId: imageIds.photo ?? null, logoMediaId: imageIds.logo ?? null, enabled: true }).returning({ id: memberSpotlights.id });
+    // 申請のメールアドレスを掲載メンバーに引き継ぐ（管理画面で見るだけ）。メール欄の無い頃の申請は届かない仮のアドレス
+    const [spotlight] = await tx.insert(memberSpotlights).values({ ...row.payload, contactEmail: row.contactEmail ?? SPOTLIGHT_PLACEHOLDER_EMAIL, photoMediaId: imageIds.photo ?? null, logoMediaId: imageIds.logo ?? null, enabled: true }).returning({ id: memberSpotlights.id });
     await tx.update(memberSpotlightSubmissions).set({ approvedSpotlightId: spotlight.id }).where(eq(memberSpotlightSubmissions.id, id));
     return { spotlightId: spotlight.id };
   }, { behavior: "immediate" }));

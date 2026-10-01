@@ -10,6 +10,7 @@
 import { sql } from "drizzle-orm";
 import { check, index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import type { SpotlightSubmissionFile, SpotlightSubmissionPayload } from "../lib/spotlight-submissions";
+import { SPOTLIGHT_PLACEHOLDER_EMAIL } from "../lib/validators";
 
 const id = () =>
   text("id")
@@ -315,6 +316,11 @@ export const memberSpotlights = sqliteTable("member_spotlights", {
   bio: text("bio"),
   /** タグ（文字列の配列。最大 3 つ） */
   tags: text("tags", { mode: "json" }).$type<string[]>().notNull().$defaultFn(() => []),
+  /**
+   * メールアドレス（必須。管理画面で見るだけで、サイネージの config には入れない。2026-10-01 ユーザー指示）。
+   * 本人登録で承認した人は申請のアドレスを引き継ぐ。それより前からいる人は届かない仮のアドレス
+   */
+  contactEmail: text("contact_email").notNull().default(SPOTLIGHT_PLACEHOLDER_EMAIL),
   photoMediaId: text("photo_media_id").references(() => media.id, { onDelete: "restrict" }),
   logoMediaId: text("logo_media_id").references(() => media.id, { onDelete: "restrict" }),
   enabled: bool("enabled").notNull().default(true),

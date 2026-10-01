@@ -28,6 +28,7 @@ import { uploadMedia } from "@/lib/client/upload";
 
 const SAVED = "保存しました。サイネージには 30 秒以内に反映されます。";
 const PERSON_LABEL = "お名前（サイネージでは「さん」を付けて出します）";
+const EMAIL_LABEL = "メールアドレス（必須。管理用で、サイネージには表示しません）";
 const KANA_LABEL = "ふりがな（任意。一覧の あ行・か行… の絞り込みと名前順に使います）";
 const QUOTE_LABEL = "ひとこと（任意。サイネージでは写真の上に、手書き風の文字で出します）";
 const PHOTO_LABEL = "写真（任意。縦長の写真がきれいに出ます）";
@@ -37,6 +38,7 @@ const yamada: SpotlightRow = {
   companyName: "株式会社サンプル",
   personName: "山田 太郎",
   personNameKana: "やまだ たろう",
+  contactEmail: "yamada@example.com",
   role: "デザイナー",
   quote: "毎日が実験です",
   bio: "映像と Web を作っています",
@@ -249,6 +251,10 @@ describe("SpotlightsView の追加・編集・削除", () => {
 
     fireEvent.change(screen.getByLabelText("会社名"), { target: { value: "株式会社サンプル" } });
     fireEvent.change(screen.getByLabelText(PERSON_LABEL), { target: { value: "山田 太郎" } });
+    // メールアドレスも入るまでは保存できない
+    expect(saveButton().disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText(EMAIL_LABEL), { target: { value: "yamada@example.com" } });
+    expect(saveButton().disabled).toBe(false);
     fireEvent.change(screen.getByLabelText(KANA_LABEL), { target: { value: "やまだ たろう" } });
     fireEvent.change(screen.getByLabelText(QUOTE_LABEL), { target: { value: "毎日が実験です" } });
     fireEvent.change(screen.getByLabelText("タグ 1"), { target: { value: " 映像 " } });
@@ -261,6 +267,7 @@ describe("SpotlightsView の追加・編集・削除", () => {
       companyName: "株式会社サンプル",
       personName: "山田 太郎",
       personNameKana: "やまだ たろう",
+      contactEmail: "yamada@example.com",
       role: null,
       quote: "毎日が実験です",
       bio: null,
@@ -278,6 +285,7 @@ describe("SpotlightsView の追加・編集・削除", () => {
     fireEvent.click(screen.getByRole("button", { name: "メンバーを追加" }));
     fireEvent.change(screen.getByLabelText("会社名"), { target: { value: "株式会社サンプル" } });
     fireEvent.change(screen.getByLabelText(PERSON_LABEL), { target: { value: "山田 太郎" } });
+    fireEvent.change(screen.getByLabelText(EMAIL_LABEL), { target: { value: "yamada@example.com" } });
     fireEvent.change(screen.getByLabelText(QUOTE_LABEL), { target: { value: "あ".repeat(31) } });
     expect(screen.getByText("31 / 30")).toBeTruthy();
     expect(screen.getByText("0 / 60")).toBeTruthy();
@@ -295,6 +303,7 @@ describe("SpotlightsView の追加・編集・削除", () => {
     choosePhoto();
     fireEvent.change(screen.getByLabelText("会社名"), { target: { value: "株式会社サンプル" } });
     fireEvent.change(screen.getByLabelText(PERSON_LABEL), { target: { value: "山田 太郎" } });
+    fireEvent.change(screen.getByLabelText(EMAIL_LABEL), { target: { value: "yamada@example.com" } });
     expect(saveButton().disabled).toBe(true);
 
     await act(async () => finishUpload({ id: "img_new", type: "image" }));
@@ -330,6 +339,8 @@ describe("SpotlightsView の追加・編集・削除", () => {
     fireEvent.click(screen.getByRole("button", { name: "編集" }));
     expect((screen.getByLabelText("会社名") as HTMLInputElement).value).toBe("株式会社サンプル");
     expect((screen.getByLabelText(KANA_LABEL) as HTMLInputElement).value).toBe("やまだ たろう");
+    expect((screen.getByLabelText(EMAIL_LABEL) as HTMLInputElement).value).toBe("yamada@example.com");
+    expect(screen.queryByText(/仮のアドレスです/)).toBeNull();
     expect((screen.getByLabelText("タグ 2") as HTMLInputElement).value).toBe("Web");
     expect((screen.getByLabelText("タグ 3") as HTMLInputElement).value).toBe("");
     expect(screen.getByRole("switch", { name: "サイネージに出す" }).getAttribute("aria-checked")).toBe("true");
@@ -346,6 +357,7 @@ describe("SpotlightsView の追加・編集・削除", () => {
         companyName: "株式会社サンプル",
         personName: "山田 太郎",
         personNameKana: null,
+        contactEmail: "yamada@example.com",
         role: null,
         quote: "毎日が実験です",
         bio: "映像と Web を作っています",
@@ -369,6 +381,23 @@ describe("SpotlightsView の追加・編集・削除", () => {
     expect(router.refresh).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("region", { name: "メンバー紹介を編集" })).toBeTruthy();
     expect(screen.queryByText(SAVED)).toBeNull();
+  });
+
+  it("本人登録より前からいる人は届かない仮のアドレスで開き、直すよう案内する。仮のままでも保存できる", async () => {
+    render(<SpotlightsView spotlights={[{ ...yamada, contactEmail: "unregistered@example.invalid" }]} />);
+    fireEvent.click(screen.getByRole("button", { name: "編集" }));
+    expect((screen.getByLabelText(EMAIL_LABEL) as HTMLInputElement).value).toBe("unregistered@example.invalid");
+    expect(screen.getByText("仮のアドレスです（届きません）。分かれば本人のメールアドレスに直してください。")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText(EMAIL_LABEL), { target: { value: " " } });
+    expect(saveButton().disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText(EMAIL_LABEL), { target: { value: "yamada@example.com" } });
+    expect(screen.queryByText(/仮のアドレスです/)).toBeNull();
+    fireEvent.change(screen.getByLabelText(EMAIL_LABEL), { target: { value: "unregistered@example.invalid" } });
+
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(actions.updateSpotlightAction).toHaveBeenCalledTimes(1));
+    expect(actions.updateSpotlightAction.mock.calls[0][1]).toMatchObject({ contactEmail: "unregistered@example.invalid" });
   });
 
   it("削除は確認してから、その人の id で削除する", async () => {

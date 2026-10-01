@@ -10,7 +10,9 @@ import {
   houseRulesSchema,
   mediaFailuresSchema,
   noticeInputSchema,
+  SPOTLIGHT_PLACEHOLDER_EMAIL,
   spotlightInputSchema,
+  spotlightUpdateSchema,
   videoSettingsInputSchema,
 } from "../../lib/validators";
 import { spotlightSubmissionInputSchema } from "../../lib/spotlight-submissions";
@@ -80,7 +82,7 @@ describe("メンバー本人登録の入力契約", () => {
   ])("%sは既存と同じコードポイント上限%i", (field, max) => {
     for (const schema of [spotlightSubmissionInputSchema, spotlightInputSchema]) {
       const base = schema === spotlightInputSchema
-        ? { companyName: input.companyName, personName: input.personName, enabled: true }
+        ? { companyName: input.companyName, personName: input.personName, contactEmail: input.email, enabled: true }
         : input;
       expect(schema.safeParse({ ...base, [field]: "🍕".repeat(Number(max)) }).success).toBe(true);
       expect(schema.safeParse({ ...base, [field]: "🍕".repeat(Number(max) + 1) }).success).toBe(false);
@@ -108,9 +110,19 @@ describe("メンバー本人登録の入力契約", () => {
   });
 
   it("管理入力は従来どおり素材・表示設定を受け付ける", () => {
-    const parsed = spotlightInputSchema.parse({ companyName: "所属", personName: "名前", enabled: false, photoMediaId: "photo" });
+    const parsed = spotlightInputSchema.parse({ companyName: "所属", personName: "名前", contactEmail: "member@example.com", enabled: false, photoMediaId: "photo" });
     expect(parsed.enabled).toBe(false);
     expect(parsed.photoMediaId).toBe("photo");
+  });
+
+  it("管理入力のメールアドレスは必須で形式を検証し、届かない仮のアドレスも受け付ける", () => {
+    const base = { companyName: "所属", personName: "名前", enabled: true };
+    expect(messages(spotlightInputSchema.safeParse(base))).toContain("メールアドレスを入力してください");
+    expect(messages(spotlightInputSchema.safeParse({ ...base, contactEmail: "  " }))).toContain("メールアドレスを入力してください");
+    expect(messages(spotlightInputSchema.safeParse({ ...base, contactEmail: "invalid" }))).toContain("メールアドレスの形式が正しくありません");
+    expect(spotlightInputSchema.parse({ ...base, contactEmail: " member@example.com " }).contactEmail).toBe("member@example.com");
+    expect(spotlightInputSchema.parse({ ...base, contactEmail: SPOTLIGHT_PLACEHOLDER_EMAIL }).contactEmail).toBe("unregistered@example.invalid");
+    expect(spotlightUpdateSchema.safeParse({ ...base, revision: 0 }).success).toBe(false);
   });
 });
 

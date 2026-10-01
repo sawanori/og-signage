@@ -163,8 +163,20 @@ const spotlightFields = z.object({
   enabled: z.boolean(),
 });
 
-export const spotlightInputSchema = spotlightFields;
-export const spotlightUpdateSchema = spotlightFields.extend({ revision });
+/**
+ * 掲載メンバーのメールアドレス（必須。管理画面で見るだけで、サイネージには出さない。2026-10-01 ユーザー指示）。
+ * 本人登録より前からいるメンバーには、届かないと規格で決まっている仮のアドレスを入れた（migration 0012）。
+ */
+export const SPOTLIGHT_PLACEHOLDER_EMAIL = "unregistered@example.invalid";
+const spotlightContactEmail = z
+  .string({ error: "メールアドレスを入力してください" })
+  .trim()
+  .min(1, "メールアドレスを入力してください")
+  .max(254, "メールアドレスは254文字以内で入力してください")
+  .email("メールアドレスの形式が正しくありません");
+
+export const spotlightInputSchema = spotlightFields.extend({ contactEmail: spotlightContactEmail });
+export const spotlightUpdateSchema = spotlightFields.extend({ contactEmail: spotlightContactEmail, revision });
 /** 本人申請でも使う紹介文面。公開可否と素材の紐付けは管理者だけが決める。 */
 export const spotlightTextSchema = spotlightFields.omit({ photoMediaId: true, logoMediaId: true, enabled: true });
 

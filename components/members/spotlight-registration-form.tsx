@@ -215,7 +215,7 @@ export function SpotlightRegistrationForm({ notificationFrom }: { notificationFr
             {showPreview ? <div className={styles.previewArea}><SpotlightPreview payload={textPayload} photoUrl={images.photo?.url ?? null} logoUrl={images.logo?.url ?? null} /><p className={styles.hint}>横型サイネージでの掲載イメージです。</p></div> : null}
             <label className={styles.consent}>
               <input type="checkbox" checked={consent} disabled={locked} onChange={(event) => { if (!locked) setConsent(event.target.checked); }} aria-invalid={Boolean(errors.consent)} />
-              <span>入力した紹介内容と写真を、館内および誰でも閲覧できるWebサイネージに掲載することに同意します。メールアドレスは掲載結果のお知らせにだけ使い、サイネージには表示しません。</span>
+              <span>入力した紹介内容と写真を、館内および誰でも閲覧できるWebサイネージに掲載することに同意します。メールアドレスは掲載結果のお知らせに使い、掲載中は管理のために保管します。サイネージには表示しません。</span>
             </label>
             {errors.consent ? <p className={styles.fieldError}>{errors.consent}</p> : null}
             {message ? <p role="alert" className={styles.message}>{message}</p> : null}

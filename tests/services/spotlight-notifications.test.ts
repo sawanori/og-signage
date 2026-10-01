@@ -79,7 +79,8 @@ describe("審査結果のメール通知", () => {
     expect(await stored(row.id)).toMatchObject({ status, notificationStatus: "sent", notificationAttempts: 0, notifiedAt: NOW, contactEmail: null, notificationName: null, notificationNextAt: null });
     if (status === "approved") {
       expect((await stored(row.id)).payload).toBeNull();
-      expect(JSON.stringify(await db.select().from(memberSpotlights))).not.toContain(email);
+      // 通知の宛先は消すが、掲載メンバーには申請のアドレスを引き継ぐ（管理画面で見るだけ）
+      expect((await db.select().from(memberSpotlights)).map((spotlight) => spotlight.contactEmail)).toEqual([email]);
       await approveSpotlightSubmission(db, bucket, staff, row.id, 0);
     } else await rejectSpotlightSubmission(db, staff, row.id, 0);
     expect(fetchMock).toHaveBeenCalledTimes(1);

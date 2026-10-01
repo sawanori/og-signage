@@ -57,7 +57,7 @@ describe("本人登録フォーム", () => {
     expect(email.getAttribute("aria-describedby")).toBe("email-hint");
     expect(email.parentElement?.textContent).not.toContain("文字");
     expect(screen.getByText("掲載の可否をお知らせします。サイネージには表示しません。")).toBeTruthy();
-    expect(screen.getByRole("checkbox").parentElement?.textContent).toContain("メールアドレスは掲載結果のお知らせにだけ使い、サイネージには表示しません");
+    expect(screen.getByRole("checkbox").parentElement?.textContent).toContain("メールアドレスは掲載結果のお知らせに使い、掲載中は管理のために保管します。サイネージには表示しません。");
     input();
     fireEvent.change(email, { target: { value: "" } });
     send();

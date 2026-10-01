@@ -164,9 +164,14 @@ describe("メンバー紹介の申請テーブル", () => {
     const previous = createDb(createClient, pathToFileURL(join(dir, "previous.db")).href);
     try {
       await migrate(previous.db, { migrationsFolder: previousMigrations });
-      const [before] = await previous.db.insert(memberSpotlights).values({ id: "preserved", companyName: "以前の所属", personName: "以前の名前", personNameKana: "なまえ", tags: ["既存"], enabled: false, revision: 3 }).returning();
+      // 0009 の時点の列だけで入れる（今の schema には後から足した列があるので SQL で書く）
+      await previous.client.execute("INSERT INTO member_spotlights (id, company_name, person_name, person_name_kana, tags, enabled, revision, created_at, updated_at) VALUES ('preserved', '以前の所属', '以前の名前', 'なまえ', '[\"既存\"]', 0, 3, 100, 100)");
       await migrate(previous.db, { migrationsFolder: "db/migrations" });
-      expect(await previous.db.select().from(memberSpotlights)).toEqual([before]);
+      // 既存の値は変えず、0012 で足したメールアドレスには届かない仮のアドレスが入る
+      expect(await previous.db.select().from(memberSpotlights)).toEqual([{
+        id: "preserved", companyName: "以前の所属", personName: "以前の名前", personNameKana: "なまえ", role: null, quote: null, bio: null,
+        tags: ["既存"], contactEmail: "unregistered@example.invalid", photoMediaId: null, logoMediaId: null, enabled: false, revision: 3, createdAt: 100, updatedAt: 100,
+      }]);
       await previous.db.insert(memberSpotlightSubmissions).values(submission("new"));
       expect(await previous.db.select().from(memberSpotlightSubmissions)).toHaveLength(1);
     } finally {

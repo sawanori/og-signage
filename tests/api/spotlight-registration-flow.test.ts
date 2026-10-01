@@ -122,7 +122,7 @@ beforeEach(async () => {
   const issued = await registerDevice(db, { name: "受付", orientation: "landscape", resolutionWidth: 1920, resolutionHeight: 1080 }, BASE);
   deviceId = issued.deviceId;
   token = (JSON.parse(issued.content) as { deviceToken: string }).deviceToken;
-  existing = await createSpotlight(db, staff, { companyName: "既存会社", personName: "既存 太郎", enabled: true });
+  existing = await createSpotlight(db, staff, { companyName: "既存会社", personName: "既存 太郎", contactEmail: "existing@example.com", enabled: true });
 });
 afterEach(() => { vi.restoreAllMocks(); close(); });
 
@@ -151,9 +151,9 @@ describe("本人申請から既存サイネージ配信まで", () => {
     const id = approved.data!.spotlightId;
     const [row] = await db.select().from(memberSpotlights).where(eq(memberSpotlights.id, id!));
     expect(row).toMatchObject({ personName: data.personName, personNameKana: data.personNameKana, enabled: true });
-    expect(JSON.stringify(row)).not.toContain(EMAIL);
+    // 申請のアドレスは掲載メンバーに引き継ぐ（管理画面で見るだけ）。公開・端末の config には出さない（下で確かめる）
+    expect(row.contactEmail).toBe(EMAIL);
     expect(row).not.toHaveProperty("email");
-    expect(row).not.toHaveProperty("contactEmail");
     expect(await listMedia(db)).toHaveLength(2);
     expect(JSON.stringify(await listMedia(db))).not.toContain(EMAIL);
     expect(await listSpotlightSubmissions(db, staff)).toHaveLength(0);

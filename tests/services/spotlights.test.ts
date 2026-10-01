@@ -20,6 +20,7 @@ type SpotlightFormInput = {
   companyName: string;
   personName: string;
   personNameKana: string | null;
+  contactEmail: string;
   role: string | null;
   quote: string | null;
   bio: string | null;
@@ -34,6 +35,7 @@ function spotlightInput(overrides: Partial<SpotlightFormInput> = {}): SpotlightF
     companyName: "株式会社サンプル",
     personName: "山田 太郎",
     personNameKana: null,
+    contactEmail: "member@example.com",
     role: null,
     quote: null,
     bio: null,

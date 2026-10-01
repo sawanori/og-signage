@@ -7,7 +7,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import type { SpotlightRow } from "@/lib/services/spotlights";
-import { SPOTLIGHT_BIO_MAX, SPOTLIGHT_QUOTE_MAX, SPOTLIGHT_TAG_MAX, SPOTLIGHT_TAGS_MAX, countChars } from "@/lib/validators";
+import { SPOTLIGHT_BIO_MAX, SPOTLIGHT_PLACEHOLDER_EMAIL, SPOTLIGHT_QUOTE_MAX, SPOTLIGHT_TAG_MAX, SPOTLIGHT_TAGS_MAX, countChars } from "@/lib/validators";
 import { MediaUploadField, mediaThumbnailUrl } from "./media-upload-field";
 import styles from "./settings.module.css";
 
@@ -18,6 +18,8 @@ export type SpotlightFormState = {
   companyName: string;
   personName: string;
   personNameKana: string;
+  /** メールアドレス（必須。管理用でサイネージには出さない） */
+  contactEmail: string;
   role: string;
   quote: string;
   bio: string;
@@ -42,6 +44,7 @@ export function emptySpotlightForm(): SpotlightFormState {
     companyName: "",
     personName: "",
     personNameKana: "",
+    contactEmail: "",
     role: "",
     quote: "",
     bio: "",
@@ -61,6 +64,7 @@ export function toSpotlightForm(s: SpotlightRow): SpotlightFormState {
     companyName: s.companyName,
     personName: s.personName,
     personNameKana: s.personNameKana ?? "",
+    contactEmail: s.contactEmail,
     role: s.role ?? "",
     quote: s.quote ?? "",
     bio: s.bio ?? "",
@@ -82,6 +86,7 @@ export function toSpotlightInput(form: SpotlightFormState) {
     companyName: form.companyName,
     personName: form.personName,
     personNameKana: blankToNull(form.personNameKana),
+    contactEmail: form.contactEmail,
     role: blankToNull(form.role),
     quote: blankToNull(form.quote),
     bio: blankToNull(form.bio),
@@ -150,6 +155,26 @@ export function SpotlightForm({
           maxLength={20}
           onChange={(personName) => onChange({ personName })}
         />
+        <div className={`${styles.field} ${styles.fieldFull}`}>
+          <label className={styles.label} htmlFor="spotlight-email">
+            メールアドレス（必須。管理用で、サイネージには表示しません）
+          </label>
+          <input
+            id="spotlight-email"
+            className={styles.input}
+            type="email"
+            autoComplete="off"
+            value={form.contactEmail}
+            maxLength={254}
+            aria-describedby={form.contactEmail === SPOTLIGHT_PLACEHOLDER_EMAIL ? "spotlight-email-placeholder" : undefined}
+            onChange={(e) => onChange({ contactEmail: e.target.value })}
+          />
+          {form.contactEmail === SPOTLIGHT_PLACEHOLDER_EMAIL ? (
+            <p id="spotlight-email-placeholder" className={styles.hint}>
+              仮のアドレスです（届きません）。分かれば本人のメールアドレスに直してください。
+            </p>
+          ) : null}
+        </div>
         {/* 説明が長いので 1 行を使う（肩書きとタグは今までどおり横に並べる） */}
         <TextField
           id="spotlight-kana"
@@ -244,7 +269,7 @@ export function SpotlightForm({
         <button
           type="button"
           className={styles.primaryButton}
-          disabled={busy || form.companyName.trim() === "" || form.personName.trim() === ""}
+          disabled={busy || form.companyName.trim() === "" || form.personName.trim() === "" || form.contactEmail.trim() === ""}
           onClick={onSave}
         >
           保存する

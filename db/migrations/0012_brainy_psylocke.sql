@@ -1,0 +1,1 @@
+ALTER TABLE `member_spotlights` ADD `contact_email` text DEFAULT 'unregistered@example.invalid' NOT NULL;
