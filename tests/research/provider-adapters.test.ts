@@ -203,11 +203,20 @@ describe("private research provider adapters", () => {
       .rejects.toMatchObject({ code: "private_model_output" });
   });
 
-  it("rejects a generated personal name inside a JSON field", async () => {
+  it.each(["電話 045-123-4567 まで", "生年月日は1980年1月1日"])("rejects unmistakable personal data inside a JSON field: %s", async (text) => {
     await expect(extractProfile({ apiKey: "test-secret", sourceId: "member_1", generation: 1,
       pages: [{ sourceId: "page_1", markdown }], beforePaidCall: async () => {},
-      fetcher: async () => metaResponse({ ...profile, company: { ...profile.company, name: { ...claim, text: "Alice Johnson" } } }),
+      fetcher: async () => metaResponse({ ...profile, company: { ...profile.company, name: { ...claim, text } } }),
     })).rejects.toMatchObject({ code: "private_model_output", retryable: false });
+  });
+
+  it("keeps product names and ordinary wording that only resemble names in the output", async () => {
+    const text = "Opero Copilotなど様々な業種向けのサービスを2019年から提供";
+    const result = await extractProfile({ apiKey: "test-secret", sourceId: "member_1", generation: 1,
+      pages: [{ sourceId: "page_1", markdown }], beforePaidCall: async () => {},
+      fetcher: async () => metaResponse({ ...profile, company: { ...profile.company, name: { ...claim, text } } }),
+    });
+    expect(result.profile.company.name).toMatchObject({ text });
   });
 
   it("retains uncertainty on network failure and caps Retry-After", async () => {

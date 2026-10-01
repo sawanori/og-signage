@@ -50,13 +50,33 @@ describe("Contributor input screening", () => {
     expect(result.markdown).not.toMatch(/山田|example.com|090-|secret|instructions|1990/);
     expect(result.reasons).toContain("embedded_instruction_removed");
   });
-  it("withholds ambiguous personal sentences and personal pages", () => {
-    expect(sanitizePage({ url: "https://company.example/", markdown: business + "\n佐藤氏が設計を担当しました。" }).status).toBe("privacy_review_required");
-    expect(sanitizePage({ url: "https://company.example/", markdown: business + "\nJohn Smith" }).status).toBe("privacy_review_required");
-    expect(sanitizePage({ url: "https://company.example/", markdown: "# Company\nAlice Johnson leads the video production service for business customers." }).status).toBe("privacy_review_required");
-    expect(sanitizePage({ url: "https://company.example/", markdown: "# 会社概要\n創業者の山田太郎が映像制作サービスを提供しています。" }).status).toBe("privacy_review_required");
+  it("removes ambiguous personal lines but keeps the business text, and withholds personal pages", () => {
+    for (const personal of ["佐藤氏が設計を担当しました。", "John Smith", "Alice Johnson leads the video production service for business customers.", "創業者の山田太郎が映像制作サービスを提供しています。"]) {
+      const result = sanitizePage({ url: "https://company.example/", markdown: `# 会社概要\n${business}\n${personal}` });
+      expect(result).toMatchObject({ status: "ready", removedLines: 1, reasons: ["ambiguous_personal_content_removed"] });
+      expect(result.markdown).toContain(business);
+      expect(result.markdown).not.toMatch(/佐藤|John|Alice|山田/u);
+    }
+    expect(sanitizePage({ url: "https://company.example/", markdown: "# Company\nAlice Johnson leads the service." }).status).toBe("empty");
     expect(sanitizePage({ url: "https://company.example/staff/", markdown: business }).status).toBe("privacy_review_required");
     expect(sanitizePage({ url: "https://company.example/", title: "代表紹介", markdown: business }).status).toBe("privacy_review_required");
+  });
+  it("keeps business pages whose only suspicious lines are footers or product names (observed in production)", () => {
+    const result = sanitizePage({ url: "https://company.example/", markdown: [
+      "# 事業内容", business, "Opero Copilotで業務を効率化します。", "Copyright © 2026 Example Inc. All Rights Reserved.",
+    ].join("\n") });
+    expect(result.status).toBe("ready");
+    expect(result.markdown).toContain(business);
+    expect(result.markdown).not.toMatch(/Copilot|Reserved/u);
+    expect(result.removedLines).toBe(2);
+  });
+  it("removes a whole section under a personal heading such as a representative's message", () => {
+    const result = sanitizePage({ url: "https://company.example/", markdown: [
+      "# 会社概要", business, "## 代表メッセージ", "創業から地域の企業と歩んできました。", "山田太郎", "## お客様の声", "とても満足しています。", "## 料金", "月額プランを提供しています。",
+    ].join("\n") });
+    expect(result.status).toBe("ready");
+    expect(result.markdown).toContain("月額プラン");
+    expect(result.markdown).not.toMatch(/創業から|山田|満足/u);
   });
   it("does not claim unsupported PDFs or empty material were read", () => {
     expect(sanitizePage({ url: "https://company.example/brochure.pdf", markdown: business }).status).toBe("unsupported");

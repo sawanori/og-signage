@@ -5,7 +5,7 @@ import {
   PROFILE_JSON_SCHEMA, RESEARCH_MODEL, RESEARCH_PROMPT_VERSION, profileContentSchema,
   type EvidencePage, type ExtractedProfile,
 } from "./profile-schema";
-import { sanitizePage } from "./sanitize";
+import { containsDefinitePersonalData, sanitizePage } from "./sanitize";
 
 export type MetaUsage = PaidCallUsage;
 const usageSchema = z.object({
@@ -117,11 +117,8 @@ export async function extractProfile(input: {
     if (!validated.success) throw new ProviderError("invalid_profile_schema", false);
     profile = validated.data;
     validateEvidence(profile, input.pages);
-    const outputText = JSON.stringify(profile);
-    const screenedOutput = sanitizePage({ url: "https://source.example/", markdown: outputText });
-    if (screenedOutput.status !== "ready" || screenedOutput.markdown !== outputText) {
-      throw new ProviderError("private_model_output", false);
-    }
+    // Product names and words such as 様々 legitimately appear in profiles; reject only unmistakable personal data.
+    if (containsDefinitePersonalData(JSON.stringify(profile))) throw new ProviderError("private_model_output", false);
   } catch (error) {
     const failure = error instanceof ProviderError ? error : new ProviderError(
       error instanceof EvidenceError ? "invalid_evidence" : "invalid_profile_output", error instanceof EvidenceError,

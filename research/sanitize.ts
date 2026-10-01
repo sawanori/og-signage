@@ -36,12 +36,22 @@ const ambiguousPersonal = /(?:\b(?:Mr|Mrs|Ms|Dr)\.?\s+\p{L}|[\p{Script=Han}\p{Sc
 const injectedInstruction = /(?:ignore (?:all |previous |the )?(?:instructions|prompt)|system\s*prompt|developer\s*message|api[_ -]?key|secret[_ -]?key|前の指示を無視|以前の指示を無視|システムプロンプト|秘密鍵)/iu;
 const businessNameWord = /\b(?:Company|Services?|Business|Products?|Solutions?|Technology|Development|Design|Support|Pricing|Works?|Overview|Corporate|Limited|Studio|Agency|Systems?|Cloud|Labs?|Digital|Media|Video|Web|Creative|Marketing|Consulting|Research|LLC|Inc|Ltd)\b/u;
 
+const definiteEmail = /[\w.+-]+@[\w.-]+\.[a-z]{2,}/iu;
+const definiteBirthDate = /(?:生年月日|date\s+of\s+birth)/iu;
+const phoneCandidate = /\+?\d[\d ()-]{7,}\d/gu;
+
+/** Output check: only data that is personal regardless of context. Ambiguous wording was already removed from the input. */
+export function containsDefinitePersonalData(value: string): boolean {
+  if (definiteEmail.test(value) || definiteBirthDate.test(value)) return true;
+  return [...value.matchAll(phoneCandidate)].some((match) => match[0].replace(/\D/gu, "").length >= 10);
+}
+
 export function hasAmbiguousPersonName(value: string): boolean {
   const names = value.match(/\b[A-Z][a-z]{1,30}(?:[ -][A-Z][a-z]{1,30}){1,2}\b/gu) ?? [];
   return names.some((name) => !businessNameWord.test(name));
 }
 
-/** Conservative screening: uncertain personal material is withheld, never assumed safe. */
+/** Conservative screening: lines that may identify a person are removed, never assumed safe. Personal pages are withheld whole. */
 export function sanitizePage(input: { url: string; title?: string; markdown: string; html?: string }): SanitizedPage {
   const reasons = new Set<string>();
   const unsupportedLinks = discoverUnsupportedLinks(input);
@@ -71,14 +81,19 @@ export function sanitizePage(input: { url: string; title?: string; markdown: str
   for (const line of lines) {
     const heading = /^(#{1,6})\s+(.+)$/u.exec(line);
     if (heading && blockedHeadingLevel !== null && heading[1].length <= blockedHeadingLevel) blockedHeadingLevel = null;
-    if (heading && personalSection.test(heading[2])) blockedHeadingLevel = heading[1].length;
+    // A section headed by possibly personal wording (e.g. 代表メッセージ, お客様の声) is removed as a whole.
+    // English capitalized headings are usually product names, so only that line is removed below.
+    if (heading && (personalSection.test(heading[2]) || ambiguousPersonal.test(heading[2]))) blockedHeadingLevel = heading[1].length;
     if (blockedHeadingLevel !== null || /^\s*(?:\|\s*)?(?:full\s+)?name\s*[:：|]/iu.test(line) || personalLine.test(line) || personalSection.test(line) || injectedInstruction.test(line)) {
       removedLines += 1;
       reasons.add(injectedInstruction.test(line) ? "embedded_instruction_removed" : "personal_content_removed");
       continue;
     }
     if (ambiguousPersonal.test(line) || hasAmbiguousPersonName(line)) {
-      return { status: "privacy_review_required", markdown: "", reasons: [...reasons, "ambiguous_personal_content"], removedLines, unsupportedLinks };
+      // Remove only the line: one footer such as "All Rights Reserved" must not discard the whole business page.
+      removedLines += 1;
+      reasons.add("ambiguous_personal_content_removed");
+      continue;
     }
     kept.push(line.trimEnd());
   }
