@@ -27,11 +27,12 @@
     { "binding": "COMPANY_RESEARCH", "service": "og-company-research" }
   ],
 
-  // 分析イベント配送は1分ごと。天気と掲載結果メール再送は30分ごと、既存の掃除は日次を維持。
+  // 分析イベントは保存成功後にバックグラウンド配送し、未配送分は既存の30分Cronでも再送する。
+  // 天気・掲載結果メール再送は30分ごと、既存の掃除は日次を維持。
   // scheduled ハンドラは worker/index.ts の scheduled から worker/scheduled.ts を呼ぶ。
   // "0 19 * * *" は日本時間 4:00（Pi の Chromium 毎日再起動と同じ時間帯。計画 7 節）。
   "triggers": {
-    "crons": ["*/30 * * * *", "0 19 * * *", "* * * * *"]
+    "crons": ["*/30 * * * *", "0 19 * * *"]
   },
 
   // Rate Limiting binding（ログインの IP / メールアドレス単位、lib/rate-limit.ts）。

@@ -82,9 +82,14 @@ vi.mock("../../lib/r2", async (importOriginal) => {
   return { ...actual, getMediaBucket: () => state.bucket };
 });
 vi.mock("../../lib/weather", () => ({ refreshWeather: vi.fn(async () => {}) }));
+vi.mock("../../lib/services/spotlight-notifications", async (original) => {
+  const actual = await original<typeof import("../../lib/services/spotlight-notifications")>();
+  return { ...actual, retrySpotlightNotifications: vi.fn(actual.retrySpotlightNotifications) };
+});
 
-const { abortStaleUploads, purgeOldDeviceLogs, scheduled, WEATHER_CRON, DAILY_CRON, COMPANY_RESEARCH_CRON } = await import("../../worker/scheduled");
+const { abortStaleUploads, purgeOldDeviceLogs, scheduled, WEATHER_CRON, DAILY_CRON } = await import("../../worker/scheduled");
 const { refreshWeather } = await import("../../lib/weather");
+const { retrySpotlightNotifications } = await import("../../lib/services/spotlight-notifications");
 
 const DAY = 24 * 60 * 60;
 
@@ -175,16 +180,28 @@ describe("abortStaleUploads", () => {
   });
 });
 
-it("1分Cronは分析イベントだけを配送し、30分天気と日次掃除を増やさない", async () => {
+it("30分Cronは分析イベントを配送し、既存の天気頻度と日次掃除を変えない", async () => {
   const event = await buildCompanyResearchEvent({ sourceId: "scheduled-source", sourceRevision: 0, eventType: "upsert", urls: [{ slot: 1, url: "https://example.com/" }] });
   await enqueueCompanyResearchEvent(db, event, 100);
   await db.insert(media).values({ name: "pending deletion", type: "image", r2Key: "pending-deletion", state: "deleting", deleteAfter: 100 });
   const fetch = vi.fn(async () => Response.json({ eventId: event.eventId, status: "accepted" }, { status: 202 }));
   env.COMPANY_RESEARCH = { fetch };
-  await scheduled(COMPANY_RESEARCH_CRON);
+  await scheduled(WEATHER_CRON);
   expect(fetch).toHaveBeenCalledTimes(1);
-  expect(refreshWeather).not.toHaveBeenCalled();
+  expect(refreshWeather).toHaveBeenCalledTimes(1);
   expect(await db.select().from(media)).toHaveLength(1);
+  expect((await db.select().from(companyResearchOutbox))[0].status).toBe("delivered");
+});
+
+it("通知再送の例外があっても天気と分析配送を実行する", async () => {
+  const event = await buildCompanyResearchEvent({ sourceId: "mail-failure-source", sourceRevision: 0, eventType: "upsert", urls: [{ slot: 1, url: "https://example.com/" }] });
+  await enqueueCompanyResearchEvent(db, event, 100);
+  const fetch = vi.fn(async () => Response.json({ eventId: event.eventId, status: "accepted" }, { status: 202 }));
+  env.COMPANY_RESEARCH = { fetch };
+  vi.mocked(retrySpotlightNotifications).mockRejectedValueOnce(new Error("notification unavailable"));
+  await expect(scheduled(WEATHER_CRON)).rejects.toThrow("Scheduled maintenance failed");
+  expect(refreshWeather).toHaveBeenCalledTimes(1);
+  expect(fetch).toHaveBeenCalledTimes(1);
   expect((await db.select().from(companyResearchOutbox))[0].status).toBe("delivered");
 });
 
@@ -256,9 +273,15 @@ describe("scheduled", () => {
     await scheduled(DAILY_CRON);
     expect((await db.select().from(memberSpotlightSubmissions))[0]).toMatchObject({ notificationStatus: "pending", contactEmail: "member@example.com", cleanupCompletedAt: null });
     expect(fetch).not.toHaveBeenCalled();
+    const event = await buildCompanyResearchEvent({ sourceId: "weather-failure-source", sourceRevision: 0, eventType: "upsert", urls: [{ slot: 1, url: "https://example.com/" }] });
+    await enqueueCompanyResearchEvent(db, event, now);
+    const researchFetch = vi.fn(async () => Response.json({ eventId: event.eventId, status: "accepted" }, { status: 202 }));
+    env.COMPANY_RESEARCH = { fetch: researchFetch };
     vi.mocked(refreshWeather).mockRejectedValueOnce(new Error("weather unavailable"));
-    await expect(scheduled(WEATHER_CRON)).rejects.toThrow("weather unavailable");
+    await expect(scheduled(WEATHER_CRON)).rejects.toThrow("Scheduled maintenance failed");
     expect(fetch).toHaveBeenCalledTimes(1);
+    expect(researchFetch).toHaveBeenCalledTimes(1);
+    expect((await db.select().from(companyResearchOutbox))[0].status).toBe("delivered");
     await scheduled(DAILY_CRON);
     expect((await db.select().from(memberSpotlightSubmissions))[0]).toMatchObject({ notificationStatus: "sent", contactEmail: null, cleanupCompletedAt: expect.any(Number) });
   });

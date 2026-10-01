@@ -13,11 +13,14 @@ import { getDb } from "../../../lib/runtime";
 import { ServiceError } from "../../../lib/services/notices";
 import * as spotlights from "../../../lib/services/spotlights";
 import type { ActionResult } from "./content";
+import { scheduleCompanyResearchAfterSave } from "../../../worker/company-research-after-save";
 
 async function run<T>(fn: (user: AuthUser) => Promise<T>): Promise<ActionResult<T>> {
   try {
     const user = await requireRole("staff");
-    return { data: await fn(user) };
+    const data = await fn(user);
+    scheduleCompanyResearchAfterSave();
+    return { data };
   } catch (e) {
     if (e instanceof ServiceError) return { error: { code: e.code, message: e.message } };
     if (e instanceof AuthzError) {

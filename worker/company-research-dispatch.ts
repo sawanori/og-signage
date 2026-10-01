@@ -2,7 +2,7 @@ import type { Db } from "../db/index";
 import { companyResearchEventSchema } from "../lib/company-research-contract";
 import {
   claimCompanyResearchEvents, completeCompanyResearchDelivery, failCompanyResearchDelivery,
-  type CompanyResearchOutboxRow,
+  COMPANY_RESEARCH_BATCH_SIZE, type CompanyResearchOutboxRow,
 } from "../lib/services/company-research-outbox";
 
 export interface CompanyResearchServiceBinding {
@@ -15,10 +15,10 @@ const DISPATCH_CONCURRENCY = 5;
 export type CompanyResearchDispatchResult = { delivered: number; retried: number; blocked: number; unavailable: boolean };
 
 /** Service Binding の202（受付DBへの永続化完了）まで待つ。生のHTTP bodyや例外をログへ出さない。 */
-export async function dispatchCompanyResearchEvents(db: Db, binding: CompanyResearchServiceBinding | undefined, now: number): Promise<CompanyResearchDispatchResult> {
+export async function dispatchCompanyResearchEvents(db: Db, binding: CompanyResearchServiceBinding | undefined, now: number, limit = COMPANY_RESEARCH_BATCH_SIZE): Promise<CompanyResearchDispatchResult> {
   const result: CompanyResearchDispatchResult = { delivered: 0, retried: 0, blocked: 0, unavailable: !binding };
   if (!binding) return result;
-  const rows = await claimCompanyResearchEvents(db, now);
+  const rows = await claimCompanyResearchEvents(db, now, limit);
   let cursor = 0;
   async function deliver(row: CompanyResearchOutboxRow): Promise<void> {
     const parsed = companyResearchEventSchema.safeParse({

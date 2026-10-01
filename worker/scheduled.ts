@@ -1,8 +1,7 @@
 /**
  * Cron Trigger の本体（task_013）。worker/index.ts の `scheduled` から呼ぶ。
  *
- * - `*​/30 * * * *`: 天気の取得（lib/weather.ts）と掲載結果メールの再送。
- * - `* * * * *`: 非公開企業分析の保存イベントを最大25件配送する。
+ * - `*​/30 * * * *`: 天気の取得（lib/weather.ts）、掲載結果メールの再送、非公開分析イベントを最大25件配送。
  * - `0 19 * * *`（日本時間 4:00）: 削除予約が過ぎた media を R2 と行から消す（purgeDeletedMedia）、
  *   24 時間以上 uploading のままの uploads を R2 の abortMultipartUpload と aborted に、
  *   30 日より古い device_logs の削除、終わってから 1 週間を過ぎたイベントの削除（purgeEndedEvents）。
@@ -26,7 +25,6 @@ import { dispatchCompanyResearchEvents } from "./company-research-dispatch";
 
 export const WEATHER_CRON = "*/30 * * * *";
 export const DAILY_CRON = "0 19 * * *";
-export const COMPANY_RESEARCH_CRON = "* * * * *";
 
 const UPLOAD_STALE_SECONDS = 24 * 60 * 60;
 const DEVICE_LOG_RETENTION_SECONDS = 30 * 24 * 60 * 60;
@@ -92,16 +90,16 @@ export async function scheduled(cron: string): Promise<void> {
   const db = getDb();
   const now = Math.floor(Date.now() / 1000);
 
-  if (cron === COMPANY_RESEARCH_CRON) {
-    const result = await dispatchCompanyResearchEvents(db, env.COMPANY_RESEARCH, now);
-    console.log(`[scheduled] research dispatch: delivered=${result.delivered} retried=${result.retried} blocked=${result.blocked} unavailable=${result.unavailable}`);
-    return;
-  }
-
   if (cron === WEATHER_CRON) {
-    // 天気の取得が失敗しても、確定済みの審査結果は通知する。
-    try { await refreshWeather(db, readOpenWeatherApiKey()); }
-    finally { await retrySpotlightNotifications(db, now); }
+    // それぞれを独立して開始し、天気・通知の障害で永続イベントの再配送を妨げない。
+    const outcomes = await Promise.allSettled([
+      refreshWeather(db, readOpenWeatherApiKey()),
+      retrySpotlightNotifications(db, now),
+      dispatchCompanyResearchEvents(db, env.COMPANY_RESEARCH, now).then((result) => {
+        console.log(`[scheduled] research dispatch: delivered=${result.delivered} retried=${result.retried} blocked=${result.blocked} unavailable=${result.unavailable}`);
+      }),
+    ]);
+    if (outcomes.some((outcome) => outcome.status === "rejected")) throw new Error("Scheduled maintenance failed");
     return;
   }
   if (cron === DAILY_CRON) {

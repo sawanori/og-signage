@@ -18,6 +18,20 @@ async function queue() {
 }
 
 describe("非公開分析Workerへの配送", () => {
+  it("保存後の指定バッチは5件、Cronの既定バッチは25件まで配送する", async () => {
+    for (let index = 0; index < 31; index++) await queue();
+    const fetch = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+      const { eventId } = JSON.parse(init!.body as string);
+      return Response.json({ eventId, status: "accepted" }, { status: 202 });
+    });
+    expect(await dispatchCompanyResearchEvents(db, { fetch }, 100, 5)).toMatchObject({ delivered: 5 });
+    expect(fetch).toHaveBeenCalledTimes(5);
+    expect((await db.select().from(companyResearchOutbox)).filter((row) => row.status === "pending")).toHaveLength(26);
+    expect(await dispatchCompanyResearchEvents(db, { fetch }, 100)).toMatchObject({ delivered: 25 });
+    expect(fetch).toHaveBeenCalledTimes(30);
+    expect((await db.select().from(companyResearchOutbox)).filter((row) => row.status === "pending")).toHaveLength(1);
+  });
+
   it("Service Bindingが無ければclaimせず、正常な202を待って配送済みにする", async () => {
     const event = await queue();
     expect(await dispatchCompanyResearchEvents(db, undefined, 100)).toMatchObject({ unavailable: true });
