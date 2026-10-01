@@ -202,8 +202,11 @@ describe("確認待ちの審査", () => {
     expect((await screen.findByRole("alert")).textContent).toBe("ログインしてください");
     expect(screen.getByRole("region", { name: "申請内容の確認" })).toBeTruthy();
     expect(router.refresh).not.toHaveBeenCalled();
+    // エラー表示とtransitionの完了は別なので、再操作が可能になってから次の応答を設定する。
+    const retryButton = await screen.findByRole<HTMLButtonElement>("button", { name: "掲載する" });
+    expect(retryButton.disabled).toBe(false);
     actions.approveSpotlightSubmissionAction.mockRejectedValueOnce(new Error("offline"));
-    fireEvent.click(screen.getByRole("button", { name: "掲載する" }));
+    fireEvent.click(retryButton);
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("処理結果を確認できませんでした"));
     expect(screen.queryByRole("status")).toBeNull();
   });
