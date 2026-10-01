@@ -65,7 +65,7 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
       {/* メンバー紹介。右の列の一番上で、UPCOMING と同じ左端・幅・見出しの並び（2026-09-26 ユーザー指示の見本どおり） */}
       <div className={styles.lSectionTitle} style={{ left: stretchX(1372, 1), top: 38 }}>
         <span className={styles.lSectionEn}>{COPY.spotlight.en}</span>
-        <span className={styles.lSectionJa}>{COPY.spotlight.ja}</span>
+        <span className={`${styles.lSectionJa} ${styles.lSectionJaLong}`}>{COPY.spotlight.ja}</span>
       </div>
       <SpotlightCard
         spotlight={view.spotlight}
