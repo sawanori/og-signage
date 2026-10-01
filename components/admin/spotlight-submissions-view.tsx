@@ -123,7 +123,8 @@ export function SpotlightSubmissionsView({ submissions }: { submissions: Spotlig
               ["ひとこと", selected.payload.quote],
               ["紹介文", selected.payload.bio],
               ["タグ", selected.payload.tags.join("・")],
-              ["ホームページ（サイネージにQRコードで出します）", selected.payload.websiteUrl ?? ""],
+              ["ホームページのURL 1（サイネージにQRコードで出します）", selected.payload.websiteUrl ?? ""],
+              ["ホームページのURL 2", selected.payload.websiteUrl2 ?? ""],
               ["掲載先への同意日時", dateTime.format(selected.consentedAt * 1000)],
             ].map(([label, value]) => (
               <div key={label} className={styles.field}>
@@ -145,7 +146,15 @@ export function SpotlightSubmissionsView({ submissions }: { submissions: Spotlig
           <div style={{ marginTop: 24 }}>
             <h3 className={styles.panelTitle}>掲載イメージ</h3>
             <div style={{ marginTop: 12 }}>
-              <SpotlightPreview payload={selected.payload} photoUrl={selected.photoUrl} />
+              <SpotlightPreview payload={{
+                companyName: selected.payload.companyName,
+                personName: selected.payload.personName,
+                role: selected.payload.role,
+                quote: selected.payload.quote,
+                bio: selected.payload.bio,
+                tags: selected.payload.tags,
+                websiteUrl: selected.payload.websiteUrl,
+              }} photoUrl={selected.photoUrl} />
             </div>
           </div>
           <div className={styles.rowActions} style={{ marginTop: 24 }}>

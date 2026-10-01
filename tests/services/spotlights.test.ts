@@ -25,6 +25,8 @@ type SpotlightFormInput = {
   quote: string | null;
   bio: string | null;
   tags: string[];
+  websiteUrl: string | null;
+  websiteUrl2: string | null;
   photoMediaId: string | null;
   logoMediaId: string | null;
   enabled: boolean;
@@ -40,6 +42,8 @@ function spotlightInput(overrides: Partial<SpotlightFormInput> = {}): SpotlightF
     quote: null,
     bio: null,
     tags: [],
+    websiteUrl: null,
+    websiteUrl2: null,
     photoMediaId: null,
     logoMediaId: null,
     enabled: true,
@@ -75,6 +79,39 @@ beforeEach(async () => {
 afterEach(() => close());
 
 describe("member spotlights（Staff 以上）", () => {
+  it("URLを2つ保存・更新でき、それぞれ独立して空欄に戻せる", async () => {
+    const created = await spotlightsService.createSpotlight(db, staff, spotlightInput({
+      websiteUrl: " https://first.example.com/ ", websiteUrl2: " https://second.example.com/ ",
+    }));
+    expect(await spotlightsService.getSpotlight(db, created.id)).toMatchObject({
+      websiteUrl: "https://first.example.com/", websiteUrl2: "https://second.example.com/",
+    });
+    const updated = await spotlightsService.updateSpotlight(db, staff, created.id, {
+      ...spotlightInput({ websiteUrl: "", websiteUrl2: "https://second.example.com/new" }), revision: created.revision,
+    });
+    expect(updated).toMatchObject({ websiteUrl: null, websiteUrl2: "https://second.example.com/new" });
+    const cleared = await spotlightsService.updateSpotlight(db, staff, created.id, {
+      ...spotlightInput({ websiteUrl: "https://first.example.com/", websiteUrl2: " " }), revision: updated.revision,
+    });
+    expect(cleared).toMatchObject({ websiteUrl: "https://first.example.com/", websiteUrl2: null });
+  });
+
+  it("旧画面からの更新でURL2を省略すると保持し、明示的なnullでは消す", async () => {
+    const created = await spotlightsService.createSpotlight(db, staff, spotlightInput({
+      websiteUrl: "https://first.example.com/", websiteUrl2: "https://second.example.com/",
+    }));
+    const { websiteUrl2: omitted, ...legacyInput } = spotlightInput({ websiteUrl: created.websiteUrl });
+    void omitted;
+    const updated = await spotlightsService.updateSpotlight(db, staff, created.id, {
+      ...legacyInput, personName: "変更後の名前", revision: created.revision,
+    });
+    expect(updated).toMatchObject({ personName: "変更後の名前", websiteUrl: created.websiteUrl, websiteUrl2: created.websiteUrl2 });
+    const cleared = await spotlightsService.updateSpotlight(db, staff, created.id, {
+      ...legacyInput, websiteUrl2: null, revision: updated.revision,
+    });
+    expect(cleared).toMatchObject({ websiteUrl: created.websiteUrl, websiteUrl2: null });
+  });
+
   it("作成できる（revision は 0 から。任意の欄の空欄は null、前後の空白は除く）", async () => {
     await insertMedia("img_photo");
     await insertMedia("img_logo");

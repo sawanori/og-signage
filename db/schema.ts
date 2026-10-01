@@ -323,6 +323,8 @@ export const memberSpotlights = sqliteTable("member_spotlights", {
   contactEmail: text("contact_email").notNull().default(SPOTLIGHT_PLACEHOLDER_EMAIL),
   /** ホームページの URL（任意。http/https のみ。サイネージのカードに QR で出す。2026-10-01 ユーザー指示） */
   websiteUrl: text("website_url"),
+  /** 2つ目のホームページの URL（任意。管理画面で保持し、サイネージの QR には使わない）。 */
+  websiteUrl2: text("website_url_2"),
   photoMediaId: text("photo_media_id").references(() => media.id, { onDelete: "restrict" }),
   logoMediaId: text("logo_media_id").references(() => media.id, { onDelete: "restrict" }),
   enabled: bool("enabled").notNull().default(true),

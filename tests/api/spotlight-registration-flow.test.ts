@@ -51,6 +51,7 @@ let existing: SpotlightRow;
 const input = () => ({
   requestKey: crypto.randomUUID(), companyName: "申請株式会社", personName: "申請 花子", personNameKana: "しんせい はなこ",
   email: EMAIL,
+  websiteUrl: "https://first.example.com/", websiteUrl2: "https://management-only.example.com/",
   role: "デザイナー", quote: "毎日が実験です", bio: "映像を作っています", tags: ["映像"], consent: true,
 });
 
@@ -68,7 +69,7 @@ async function publicConfig(): Promise<SignageConfig> {
   const response = await getPublicConfig(new Request(`${BASE}/api/signage/config?device=${deviceId}`));
   expect(response.status).toBe(200);
   const json = await response.json();
-  expect(JSON.stringify(json)).not.toMatch(/private-member@example\.com|contactEmail|contact_email|notificationName|notification_name/);
+  expect(JSON.stringify(json)).not.toMatch(/private-member@example\.com|contactEmail|contact_email|notificationName|notification_name|websiteUrl2|management-only\.example\.com/);
   return signageConfigSchema.parse(json);
 }
 
@@ -76,7 +77,7 @@ async function deviceConfig(): Promise<SignageConfig> {
   const response = await getDeviceConfig(new Request(`${BASE}/api/device/config`, { headers: { authorization: `Bearer ${token}` } }));
   expect(response.status).toBe(200);
   const json = await response.json();
-  expect(JSON.stringify(json)).not.toMatch(/private-member@example\.com|contactEmail|contact_email|notificationName|notification_name/);
+  expect(JSON.stringify(json)).not.toMatch(/private-member@example\.com|contactEmail|contact_email|notificationName|notification_name|websiteUrl2|management-only\.example\.com/);
   return signageConfigSchema.parse(json);
 }
 
@@ -136,6 +137,7 @@ describe("本人申請から既存サイネージ配信まで", () => {
     expect("GET" in submissionsEndpoint).toBe(false);
     const [pending] = await listSpotlightSubmissions(db, staff);
     expect(pending.contactEmail).toBe(EMAIL);
+    expect(pending.payload).toMatchObject({ websiteUrl: data.websiteUrl, websiteUrl2: data.websiteUrl2 });
     expect(JSON.stringify(pending.payload)).not.toContain(EMAIL);
     expect(pending.payload).not.toHaveProperty("email");
     await expectUnpublished(pending.id, before.version);
@@ -150,7 +152,7 @@ describe("本人申請から既存サイネージ配信まで", () => {
     expect(approved.error).toBeUndefined();
     const id = approved.data!.spotlightId;
     const [row] = await db.select().from(memberSpotlights).where(eq(memberSpotlights.id, id!));
-    expect(row).toMatchObject({ personName: data.personName, personNameKana: data.personNameKana, enabled: true });
+    expect(row).toMatchObject({ personName: data.personName, personNameKana: data.personNameKana, websiteUrl: data.websiteUrl, websiteUrl2: data.websiteUrl2, enabled: true });
     // 申請のアドレスは掲載メンバーに引き継ぐ（管理画面で見るだけ）。公開・端末の config には出さない（下で確かめる）
     expect(row.contactEmail).toBe(EMAIL);
     expect(row).not.toHaveProperty("email");
@@ -163,6 +165,7 @@ describe("本人申請から既存サイネージ配信まで", () => {
       const published = config.spotlights!.find((item) => item.id === id)!;
       expect(published).toMatchObject({ personName: data.personName, companyName: data.companyName, photo: { mediaId: row.photoMediaId }, logo: { mediaId: row.logoMediaId } });
       expect(published).not.toHaveProperty("personNameKana");
+      expect(published.websiteUrl).toBe(data.websiteUrl);
       expect(JSON.stringify(config)).not.toContain(data.personNameKana);
     }
     for (const response of [await publicImage(row.photoMediaId!), await deviceImage(row.photoMediaId!)]) {
@@ -175,6 +178,18 @@ describe("本人申請から既存サイネージ配信まで", () => {
     expect(await db.select().from(memberSpotlightSubmissions)).toHaveLength(1);
     expect(await db.select().from(memberSpotlights)).toHaveLength(2);
     expect(await db.select().from(media)).toHaveLength(2);
+  });
+
+  it("1つ目が空で2つ目だけ登録しても公開・端末configへURLを出さない", async () => {
+    expect((await post({ ...input(), websiteUrl: "" })).status).toBe(202);
+    const [pending] = await listSpotlightSubmissions(db, staff);
+    state.session = session;
+    const approved = await approveSpotlightSubmissionAction(pending.id, pending.revision);
+    const [row] = await db.select().from(memberSpotlights).where(eq(memberSpotlights.id, approved.data!.spotlightId!));
+    expect(row).toMatchObject({ websiteUrl: null, websiteUrl2: "https://management-only.example.com/" });
+    for (const config of [await publicConfig(), await deviceConfig()]) {
+      expect(config.spotlights!.find((item) => item.id === row.id)).toMatchObject({ websiteUrl: null });
+    }
   });
 
   it("画像保存中断でreceivingのまま残った画像も公開経路・通常素材一覧へ出さない", async () => {

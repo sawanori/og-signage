@@ -22,6 +22,7 @@ export type SpotlightFormState = {
   contactEmail: string;
   /** ホームページの URL（任意。サイネージのカードに QR で出す） */
   websiteUrl: string;
+  websiteUrl2: string;
   role: string;
   quote: string;
   bio: string;
@@ -48,6 +49,7 @@ export function emptySpotlightForm(): SpotlightFormState {
     personNameKana: "",
     contactEmail: "",
     websiteUrl: "",
+    websiteUrl2: "",
     role: "",
     quote: "",
     bio: "",
@@ -69,6 +71,7 @@ export function toSpotlightForm(s: SpotlightRow): SpotlightFormState {
     personNameKana: s.personNameKana ?? "",
     contactEmail: s.contactEmail,
     websiteUrl: s.websiteUrl ?? "",
+    websiteUrl2: s.websiteUrl2 ?? "",
     role: s.role ?? "",
     quote: s.quote ?? "",
     bio: s.bio ?? "",
@@ -91,7 +94,8 @@ export function toSpotlightInput(form: SpotlightFormState) {
     personName: form.personName,
     personNameKana: blankToNull(form.personNameKana),
     contactEmail: form.contactEmail,
-    websiteUrl: blankToNull(form.websiteUrl),
+    websiteUrl: blankToNull(form.websiteUrl.trim()),
+    websiteUrl2: blankToNull(form.websiteUrl2.trim()),
     role: blankToNull(form.role),
     quote: blankToNull(form.quote),
     bio: blankToNull(form.bio),
@@ -238,11 +242,19 @@ export function SpotlightForm({
         {/* 会社のロゴはサイネージに出さないので欄を外した（2026-10-01 ユーザー指示）。登録済みのロゴは保存しても変えない */}
         <TextField
           id="spotlight-website"
-          label="ホームページのURL（任意。サイネージのカードの右下にQRコードで出します）"
+          label="ホームページのURL 1（任意。サイネージのカードの右下にQRコードで出します）"
           value={form.websiteUrl}
           maxLength={200}
           full
           onChange={(websiteUrl) => onChange({ websiteUrl })}
+        />
+        <TextField
+          id="spotlight-website-2"
+          label="ホームページのURL 2（任意）"
+          value={form.websiteUrl2}
+          maxLength={200}
+          full
+          onChange={(websiteUrl2) => onChange({ websiteUrl2 })}
         />
 
         <div className={styles.field}>

@@ -145,7 +145,7 @@ const KANA_READING = /^[ぁ-ゖァ-ヺー・ ]+$/;
 /** ホームページの URL（任意。サイネージのカードに QR で出す。長いと QR の点が細かくなり読み取りにくいので 200 文字まで） */
 const spotlightWebsiteUrl = z.preprocess(
   (v) => (typeof v === "string" && v.trim() === "" ? null : typeof v === "string" ? v.trim() : v),
-  httpUrlSchema.max(200, "ホームページの URL は 200 文字以内で入力してください").nullable().default(null),
+  httpUrlSchema.max(200, "ホームページの URL は 200 文字以内で入力してください").nullable(),
 );
 
 const spotlightFields = z.object({
@@ -165,7 +165,9 @@ const spotlightFields = z.object({
     .max(SPOTLIGHT_TAGS_MAX, `タグは${SPOTLIGHT_TAGS_MAX}つまでです`)
     .default([]),
   /** ホームページの URL（任意。2026-10-01 ユーザー指示。サイネージのカードに QR で出す） */
-  websiteUrl: spotlightWebsiteUrl,
+  websiteUrl: spotlightWebsiteUrl.default(null),
+  /** 2つ目の URL（任意。管理用に保存し、サイネージの QR には使わない） */
+  websiteUrl2: spotlightWebsiteUrl.default(null),
   photoMediaId: optionalId,
   logoMediaId: optionalId,
   enabled: z.boolean(),
@@ -184,7 +186,12 @@ const spotlightContactEmail = z
   .email("メールアドレスの形式が正しくありません");
 
 export const spotlightInputSchema = spotlightFields.extend({ contactEmail: spotlightContactEmail });
-export const spotlightUpdateSchema = spotlightFields.extend({ contactEmail: spotlightContactEmail, revision });
+export const spotlightUpdateSchema = spotlightFields.extend({
+  contactEmail: spotlightContactEmail,
+  revision,
+  /** 旧画面から省略された場合は既存値を維持する。空欄・null は明示的に消す。 */
+  websiteUrl2: spotlightWebsiteUrl.optional(),
+});
 /** 本人申請でも使う紹介文面。公開可否と素材の紐付けは管理者だけが決める。 */
 export const spotlightTextSchema = spotlightFields.omit({ photoMediaId: true, logoMediaId: true, enabled: true });
 

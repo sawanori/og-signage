@@ -170,7 +170,7 @@ describe("メンバー紹介の申請テーブル", () => {
       // 既存の値は変えず、0012 で足したメールアドレスには届かない仮のアドレスが入る
       expect(await previous.db.select().from(memberSpotlights)).toEqual([{
         id: "preserved", companyName: "以前の所属", personName: "以前の名前", personNameKana: "なまえ", role: null, quote: null, bio: null,
-        tags: ["既存"], contactEmail: "unregistered@example.invalid", websiteUrl: null, photoMediaId: null, logoMediaId: null, enabled: false, revision: 3, createdAt: 100, updatedAt: 100,
+        tags: ["既存"], contactEmail: "unregistered@example.invalid", websiteUrl: null, websiteUrl2: null, photoMediaId: null, logoMediaId: null, enabled: false, revision: 3, createdAt: 100, updatedAt: 100,
       }]);
       await previous.db.insert(memberSpotlightSubmissions).values(submission("new"));
       expect(await previous.db.select().from(memberSpotlightSubmissions)).toHaveLength(1);
@@ -199,6 +199,29 @@ describe("メンバー紹介の申請テーブル", () => {
       await migrate(previous.db, { migrationsFolder: "db/migrations" });
       const after = await previous.client.execute("SELECT * FROM member_spotlight_submissions ORDER BY id");
       expect(after.rows).toEqual(before.rows.map((row) => ({ ...row, contact_email: null, notification_status: null, notification_attempts: 0, notified_at: null, notification_next_at: null, notification_name: null })));
+    } finally {
+      previous.client.close();
+    }
+  });
+
+  it("2つ目のURL追加は既存URL・掲載情報・申請payloadとfingerprintを変更しない", async () => {
+    const previousMigrations = join(dir, "before-second-url-migrations");
+    cpSync("db/migrations", previousMigrations, { recursive: true });
+    const journalPath = join(previousMigrations, "meta/_journal.json");
+    const journal = JSON.parse(readFileSync(journalPath, "utf8"));
+    journal.entries = journal.entries.filter((entry: { idx: number }) => entry.idx <= 13);
+    writeFileSync(journalPath, JSON.stringify(journal));
+    const previous = createDb(createClient, pathToFileURL(join(dir, "before-second-url.db")).href);
+    try {
+      await migrate(previous.db, { migrationsFolder: previousMigrations });
+      await previous.client.execute("INSERT INTO member_spotlights (id, company_name, person_name, contact_email, website_url, tags, enabled, revision, created_at, updated_at) VALUES ('first-url', '会社', '名前', 'existing@example.com', 'https://first.example.com/', '[]', 1, 4, 100, 200)");
+      await previous.client.execute("INSERT INTO member_spotlight_submissions (id, request_key, request_fingerprint, payload, status, consented_at, consent_version, created_at, updated_at) VALUES ('pending', 'legacy-key', 'legacy-hash', '{\"companyName\":\"会社\",\"personName\":\"名前\",\"websiteUrl\":\"https://first.example.com/\"}', 'pending', 100, 3, 100, 100)");
+      const before = await previous.client.execute("SELECT * FROM member_spotlights");
+      const submissionsBefore = await previous.client.execute("SELECT * FROM member_spotlight_submissions");
+      await migrate(previous.db, { migrationsFolder: "db/migrations" });
+      const after = await previous.client.execute("SELECT * FROM member_spotlights");
+      expect(after.rows).toEqual(before.rows.map((row) => ({ ...row, website_url_2: null })));
+      expect((await previous.client.execute("SELECT * FROM member_spotlight_submissions")).rows).toEqual(submissionsBefore.rows);
     } finally {
       previous.client.close();
     }

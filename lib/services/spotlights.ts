@@ -27,7 +27,7 @@ export async function getSpotlight(db: Db, id: string): Promise<SpotlightRow> {
   return row;
 }
 
-function toColumns(data: SpotlightInput) {
+function toColumns(data: Omit<SpotlightInput, "websiteUrl2"> & { websiteUrl2?: string | null }) {
   return {
     companyName: data.companyName,
     personName: data.personName,
@@ -38,6 +38,7 @@ function toColumns(data: SpotlightInput) {
     tags: data.tags,
     contactEmail: data.contactEmail,
     websiteUrl: data.websiteUrl,
+    ...(data.websiteUrl2 === undefined ? {} : { websiteUrl2: data.websiteUrl2 }),
     photoMediaId: data.photoMediaId,
     logoMediaId: data.logoMediaId,
     enabled: data.enabled,

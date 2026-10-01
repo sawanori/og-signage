@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import type { InStatement } from "@libsql/client";
+import { createHash } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "../../db/index";
@@ -23,6 +24,41 @@ beforeEach(async () => {
 afterEach(() => { env.RESEND_API_KEY = undefined; vi.unstubAllGlobals(); vi.restoreAllMocks(); close(); });
 
 describe("本人申請の受付", () => {
+  it("以前のfingerprintとURL2の無いpending申請を再送・承認でき、payload削除後の再送も増殖しない", async () => {
+    const data = input();
+    const payload = { companyName: data.companyName, personName: data.personName, personNameKana: null, role: null, quote: null, bio: null, tags: [], websiteUrl: null };
+    const fingerprint = createHash("sha256").update(JSON.stringify({ payload, consent: true, email: data.email, photo: null, logo: null })).digest("hex");
+    await db.run(sql`INSERT INTO member_spotlight_submissions
+      (id, request_key, request_fingerprint, payload, contact_email, status, submitted_at, consented_at, consent_version, created_at, updated_at)
+      VALUES ('legacy', ${data.requestKey}, ${fingerprint}, ${JSON.stringify(payload)}, ${data.email}, 'pending', 100, 100, 3, 100, 100)`);
+    await expect(submitSpotlightSubmission(db, bucket, data, {})).resolves.toEqual({ accepted: true });
+    await expect(submitSpotlightSubmission(db, bucket, { ...data, websiteUrl2: null }, {})).resolves.toEqual({ accepted: true });
+    await db.insert(users).values(staff);
+    await approveSpotlightSubmission(db, bucket, staff, "legacy", 0);
+    expect((await db.select().from(memberSpotlights))[0]).toMatchObject({ websiteUrl: null, websiteUrl2: null });
+    expect((await db.select().from(memberSpotlightSubmissions))[0]).toMatchObject({ status: "approved", payload: null, requestFingerprint: fingerprint });
+    await expect(submitSpotlightSubmission(db, bucket, data, {})).resolves.toEqual({ accepted: true });
+    await expect(submitSpotlightSubmission(db, bucket, { ...data, websiteUrl2: "https://second.example.com/" }, {})).rejects.toMatchObject({ status: 409 });
+    expect(await db.select().from(memberSpotlights)).toHaveLength(1);
+    expect(await db.select().from(memberSpotlightSubmissions)).toHaveLength(1);
+  });
+
+  it("両URLを申請から承認へ引き継ぎ、2つ目だけの変更・削除も同じkeyなら409", async () => {
+    const data = { ...input(), websiteUrl: "https://first.example.com/", websiteUrl2: "https://second.example.com/" };
+    await submitSpotlightSubmission(db, bucket, data, {});
+    const [pending] = await db.select().from(memberSpotlightSubmissions);
+    expect(pending.payload).toMatchObject({ websiteUrl: data.websiteUrl, websiteUrl2: data.websiteUrl2 });
+    await expect(submitSpotlightSubmission(db, bucket, data, {})).resolves.toEqual({ accepted: true });
+    for (const websiteUrl2 of ["https://second.example.com/changed", null]) {
+      await expect(submitSpotlightSubmission(db, bucket, { ...data, websiteUrl2 }, {})).rejects.toMatchObject({ status: 409 });
+    }
+    await db.insert(users).values(staff);
+    await approveSpotlightSubmission(db, bucket, staff, pending.id, 0);
+    expect((await db.select().from(memberSpotlights))[0]).toMatchObject({ websiteUrl: data.websiteUrl, websiteUrl2: data.websiteUrl2 });
+    await expect(submitSpotlightSubmission(db, bucket, data, {})).resolves.toEqual({ accepted: true });
+    expect(await db.select().from(memberSpotlights)).toHaveLength(1);
+  });
+
   it("メールは専用列だけに保存し、受付では送信せず公開テーブルに入れない", async () => {
     expect(await submitSpotlightSubmission(db, bucket, input(), {})).toEqual({ accepted: true });
     expect(await db.select().from(memberSpotlightSubmissions)).toMatchObject([{ status: "pending", revision: 0, consentVersion: 3, contactEmail: "member@example.com", notificationStatus: null }]);
@@ -172,7 +208,7 @@ describe("申請画像の回収", () => {
   });
 
   it("期限切れの走査と回収はそれぞれ50件までで後続へ繰り越す", async () => {
-    const payload = { companyName: "所属", personName: "名前", personNameKana: null, role: null, quote: null, bio: null, tags: [], websiteUrl: null };
+    const payload = { companyName: "所属", personName: "名前", personNameKana: null, role: null, quote: null, bio: null, tags: [], websiteUrl: null, websiteUrl2: null };
     await db.insert(memberSpotlightSubmissions).values(Array.from({ length: 51 }, (_, i) => ({ id: `receiving-${i}`, requestKey: `receiving-${i}`, requestFingerprint: "a", payload, consentedAt: 100, consentVersion: 1, createdAt: 100, updatedAt: 100 })));
     expect(await cleanupSpotlightSubmissions(db, bucket, 100 + DAY)).toEqual({ expired: 50, completed: 50, failed: 0 });
     expect(await cleanupSpotlightSubmissions(db, bucket, 100 + DAY)).toEqual({ expired: 1, completed: 1, failed: 0 });

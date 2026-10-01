@@ -29,7 +29,8 @@ import { uploadMedia } from "@/lib/client/upload";
 const SAVED = "保存しました。サイネージには 30 秒以内に反映されます。";
 const PERSON_LABEL = "お名前（サイネージでは「さん」を付けて出します）";
 const EMAIL_LABEL = "メールアドレス（必須。管理用で、サイネージには表示しません）";
-const WEBSITE_LABEL = "ホームページのURL（任意。サイネージのカードの右下にQRコードで出します）";
+const WEBSITE_LABEL = "ホームページのURL 1（任意。サイネージのカードの右下にQRコードで出します）";
+const WEBSITE_2_LABEL = "ホームページのURL 2（任意）";
 const KANA_LABEL = "ふりがな（任意。一覧の あ行・か行… の絞り込みと名前順に使います）";
 const QUOTE_LABEL = "ひとこと（任意。サイネージでは写真の上に、手書き風の文字で出します）";
 const PHOTO_LABEL = "写真（任意。縦長の写真がきれいに出ます）";
@@ -41,6 +42,7 @@ const yamada: SpotlightRow = {
   personNameKana: "やまだ たろう",
   contactEmail: "yamada@example.com",
   websiteUrl: "https://example.com/yamada",
+  websiteUrl2: "https://example.com/yamada/profile",
   role: "デザイナー",
   quote: "毎日が実験です",
   bio: "映像と Web を作っています",
@@ -262,6 +264,7 @@ describe("SpotlightsView の追加・編集・削除", () => {
     fireEvent.change(screen.getByLabelText("タグ 1"), { target: { value: " 映像 " } });
     fireEvent.change(screen.getByLabelText("タグ 3"), { target: { value: "Web" } });
     fireEvent.change(screen.getByLabelText(WEBSITE_LABEL), { target: { value: "https://example.com/" } });
+    fireEvent.change(screen.getByLabelText(WEBSITE_2_LABEL), { target: { value: " https://example.com/profile " } });
     // 会社のロゴの欄は無い（サイネージに出さない。2026-10-01 ユーザー指示）
     expect(screen.queryByText("会社のロゴ（任意）")).toBeNull();
     fireEvent.click(screen.getByRole("switch", { name: "サイネージに出す" }));
@@ -274,6 +277,7 @@ describe("SpotlightsView の追加・編集・削除", () => {
       personNameKana: "やまだ たろう",
       contactEmail: "yamada@example.com",
       websiteUrl: "https://example.com/",
+      websiteUrl2: "https://example.com/profile",
       role: null,
       quote: "毎日が実験です",
       bio: null,
@@ -284,6 +288,23 @@ describe("SpotlightsView の追加・編集・削除", () => {
     });
     expect(await screen.findByText(SAVED)).toBeTruthy();
     expect(router.refresh).toHaveBeenCalled();
+  });
+
+  it.each([
+    { second: " https://example.com/profile ", expected: "https://example.com/profile" },
+    { second: " ", expected: null },
+  ])("URL 1が空でもURL 2を任意で保存できる（$expected）", async ({ second, expected }) => {
+    render(<SpotlightsView spotlights={[]} />);
+    fireEvent.click(screen.getByRole("button", { name: "メンバーを追加" }));
+    fireEvent.change(screen.getByLabelText("会社名"), { target: { value: "株式会社サンプル" } });
+    fireEvent.change(screen.getByLabelText(PERSON_LABEL), { target: { value: "山田 太郎" } });
+    fireEvent.change(screen.getByLabelText(EMAIL_LABEL), { target: { value: "yamada@example.com" } });
+    fireEvent.change(screen.getByLabelText(WEBSITE_LABEL), { target: { value: " " } });
+    fireEvent.change(screen.getByLabelText(WEBSITE_2_LABEL), { target: { value: second } });
+    expect(saveButton().disabled).toBe(false);
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(actions.createSpotlightAction).toHaveBeenCalledOnce());
+    expect(actions.createSpotlightAction.mock.calls[0][0]).toMatchObject({ websiteUrl: null, websiteUrl2: expected });
   });
 
   it("ひとことの文字数を出し、上限（30 文字）を超えると送らずに知らせる", async () => {
@@ -346,6 +367,7 @@ describe("SpotlightsView の追加・編集・削除", () => {
     expect((screen.getByLabelText("会社名") as HTMLInputElement).value).toBe("株式会社サンプル");
     expect((screen.getByLabelText(KANA_LABEL) as HTMLInputElement).value).toBe("やまだ たろう");
     expect((screen.getByLabelText(EMAIL_LABEL) as HTMLInputElement).value).toBe("yamada@example.com");
+    expect((screen.getByLabelText(WEBSITE_2_LABEL) as HTMLInputElement).value).toBe("https://example.com/yamada/profile");
     expect(screen.queryByText(/仮のアドレスです/)).toBeNull();
     expect((screen.getByLabelText("タグ 2") as HTMLInputElement).value).toBe("Web");
     expect((screen.getByLabelText("タグ 3") as HTMLInputElement).value).toBe("");
@@ -365,6 +387,7 @@ describe("SpotlightsView の追加・編集・削除", () => {
         personNameKana: null,
         contactEmail: "yamada@example.com",
         websiteUrl: "https://example.com/yamada",
+        websiteUrl2: "https://example.com/yamada/profile",
         role: null,
         quote: "毎日が実験です",
         bio: "映像と Web を作っています",
@@ -376,6 +399,18 @@ describe("SpotlightsView の追加・編集・削除", () => {
       },
     ]);
     expect(await screen.findByText(SAVED)).toBeTruthy();
+  });
+
+  it("編集でURL 2を空にすると、URL 1を保ったまま削除する", async () => {
+    render(<SpotlightsView spotlights={[yamada]} />);
+    fireEvent.click(screen.getByRole("button", { name: "編集" }));
+    fireEvent.change(screen.getByLabelText(WEBSITE_2_LABEL), { target: { value: " " } });
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(actions.updateSpotlightAction).toHaveBeenCalledOnce());
+    expect(actions.updateSpotlightAction.mock.calls[0]).toEqual([
+      yamada.id,
+      expect.objectContaining({ websiteUrl: yamada.websiteUrl, websiteUrl2: null, revision: yamada.revision }),
+    ]);
   });
 
   it("他の人が先に更新していた（conflict）ときは入力欄を開いたまま知らせ、一覧を読み込み直す", async () => {

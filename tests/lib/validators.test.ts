@@ -44,7 +44,7 @@ describe("メンバー本人登録の入力契約", () => {
   it("必須3項目と同意だけで申請でき、任意の空欄を正規化する", () => {
     expect(spotlightSubmissionInputSchema.parse(input)).toEqual({
       ...input, companyName: "株式会社サンプル", personName: "山田 陸",
-      personNameKana: null, role: null, quote: null, bio: null, tags: [], websiteUrl: null,
+      personNameKana: null, role: null, quote: null, bio: null, tags: [], websiteUrl: null, websiteUrl2: null,
     });
     expect(spotlightSubmissionInputSchema.parse({ ...input, role: "  " }).role).toBeNull();
   });
@@ -135,6 +135,23 @@ describe("メンバー本人登録の入力契約", () => {
     expect(spotlightInputSchema.parse({ ...base, contactEmail: " member@example.com " }).contactEmail).toBe("member@example.com");
     expect(spotlightInputSchema.parse({ ...base, contactEmail: SPOTLIGHT_PLACEHOLDER_EMAIL }).contactEmail).toBe("unregistered@example.invalid");
     expect(spotlightUpdateSchema.safeParse({ ...base, revision: 0 }).success).toBe(false);
+  });
+
+  it("2つ目のURLも独立した任意欄として同じ形式・長さを検証する", () => {
+    for (const schemaInput of [
+      { schema: spotlightSubmissionInputSchema, input },
+      { schema: spotlightInputSchema, input: { companyName: "所属", personName: "名前", contactEmail: "member@example.com", enabled: true } },
+    ]) {
+      expect(schemaInput.schema.parse({ ...schemaInput.input, websiteUrl2: " https://second.example.com/ " }))
+        .toMatchObject({ websiteUrl: null, websiteUrl2: "https://second.example.com/" });
+      expect(schemaInput.schema.parse({ ...schemaInput.input, websiteUrl: "https://first.example.com/", websiteUrl2: " " }))
+        .toMatchObject({ websiteUrl: "https://first.example.com/", websiteUrl2: null });
+      for (const bad of ["example.com", "javascript:alert(1)", "ftp://example.com/", `https://example.com/${"a".repeat(181)}`]) {
+        const result = schemaInput.schema.safeParse({ ...schemaInput.input, websiteUrl2: bad });
+        expect(result.success).toBe(false);
+        if (!result.success) expect(result.error.issues[0].path).toEqual(["websiteUrl2"]);
+      }
+    }
   });
 });
 

@@ -41,6 +41,7 @@ const submission: SpotlightSubmissionDetail = {
     bio: "映像とWebを作っています",
     tags: ["映像", "Web"],
     websiteUrl: "https://example.com/nonturn",
+    websiteUrl2: "https://example.com/nonturn/profile",
   },
 };
 const another: SpotlightSubmissionDetail = {
@@ -82,9 +83,27 @@ describe("確認待ちの審査", () => {
     expect(detail.getByRole("img", { name: "本人写真" }).getAttribute("src")).toBe(submission.photoUrl);
     // 会社のロゴはサイネージに出さないので確認にも出さない。ホームページは QR で出すので確認に出す（2026-10-01 ユーザー指示）
     expect(detail.queryByRole("img", { name: "会社ロゴ" })).toBeNull();
-    expect(detail.getByText("ホームページ（サイネージにQRコードで出します）")).toBeTruthy();
-    expect(preview).toHaveBeenLastCalledWith({ payload: submission.payload, photoUrl: submission.photoUrl });
+    expect(detail.getByText("ホームページのURL 1（サイネージにQRコードで出します）")).toBeTruthy();
+    expect(detail.getByText("ホームページのURL 2")).toBeTruthy();
+    expect(preview).toHaveBeenLastCalledWith({ payload: {
+      companyName: submission.payload.companyName,
+      personName: submission.payload.personName,
+      role: submission.payload.role,
+      quote: submission.payload.quote,
+      bio: submission.payload.bio,
+      tags: submission.payload.tags,
+      websiteUrl: submission.payload.websiteUrl,
+    }, photoUrl: submission.photoUrl });
+    expect(JSON.stringify(preview.mock.calls)).not.toContain(submission.payload.websiteUrl2!);
     expect(JSON.stringify(preview.mock.calls)).not.toContain("member@example.com");
+  });
+
+  it("URL 2だけの申請も確認でき、掲載イメージにはURLを渡さない", () => {
+    render(<SpotlightSubmissionsView submissions={[{ ...submission, payload: { ...submission.payload, websiteUrl: null } }]} />);
+    openFirst();
+    expect(screen.getByText(submission.payload.websiteUrl2!)).toBeTruthy();
+    expect(preview.mock.calls.at(-1)?.[0].payload.websiteUrl).toBeNull();
+    expect(preview.mock.calls.at(-1)?.[0].payload).not.toHaveProperty("websiteUrl2");
   });
 
   it("メールアドレスのない既存申請も詳細を開け、通知がないことを示す", () => {
