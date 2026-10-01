@@ -100,7 +100,6 @@ export function SpotlightCard({
         {/* ホームページの QR（任意。2026-10-01 ユーザー指示）。カードの右下に置き、右の文字の列は QR の分だけ下を空ける */}
         {isQrUrl(websiteUrl) ? (
           <div className={styles.lSpotQr}>
-            <span className={styles.lSpotQrLabel}>{COPY.spotlightWebsite}</span>
             <QrCode url={websiteUrl} size={72} label={COPY.spotlightWebsiteQrLabel} />
           </div>
         ) : null}

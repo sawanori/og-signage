@@ -453,12 +453,12 @@ describe("メンバー紹介（横型の右上。2026-09-26 ユーザー指示�
     expect(screen.queryByTestId("spotlight-dots")).toBeNull();
   });
 
-  it("ホームページの URL がある人は、カードの右下に QR と「ホームページ」を出す。http/https 以外は出さない（2026-10-01 ユーザー指示）", () => {
+  it("ホームページの URL がある人は、カードの右下に QR だけを出し「ホームページ」の文字は出さない。http/https 以外は出さない（2026-10-01 ユーザー指示）", () => {
     const withSite = { ...config, spotlights: [{ ...yamada, websiteUrl: "https://example.com/" }, sato] };
     renderScreen({ config: withSite, now: first, align: false }, "landscape");
     const card = screen.getByTestId("spotlight");
     expect(within(card).getByRole("img", { name: "ホームページの QR コード" })).toBeTruthy();
-    expect(within(card).getByText("ホームページ")).toBeTruthy();
+    expect(within(card).queryByText("ホームページ")).toBeNull();
     cleanup();
 
     const unsafe = { ...config, spotlights: [{ ...yamada, websiteUrl: "javascript:alert(1)" }, sato] };

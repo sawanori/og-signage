@@ -1795,7 +1795,7 @@
   padding-bottom: 92px;
 }
 
-/* ホームページの QR（カードの右下。2026-10-01 ユーザー指示）。左に小さく「ホームページ」と添える */
+/* ホームページの QR（カードの右下。2026-10-01 ユーザー指示）。文字は添えず QR だけを表示する */
 .lSpotQr {
   position: absolute;
   right: 14px;
@@ -1807,13 +1807,6 @@
 
 .lSpotQr > svg {
   display: block;
-}
-
-.lSpotQrLabel {
-  font-size: 11px;
-  line-height: 1;
-  letter-spacing: 0.06em;
-  color: #6b7480;
 }
 
 /* タグ。1 行に入らなければ次の行へ（切らない） */
