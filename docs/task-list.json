@@ -1939,7 +1939,7 @@
       "title": "永続配送と非公開受付",
       "goal": "再送に耐える非公開の予約配送を接続する",
       "scope": [
-        "Main1分Cron",
+        "成功した保存の応答後配送と既存30分Cronによる再送",
         "Service Binding受付",
         "event重複排除とrevision順序",
         "Worker非公開設定"
@@ -1965,7 +1965,9 @@
         "research/intake.ts",
         "research/wrangler.jsonc",
         "tests/worker/company-research-dispatch.test.ts",
-        "tests/research/intake.test.ts"
+        "tests/research/intake.test.ts",
+        "worker/company-research-after-save.ts",
+        "tests/worker/company-research-after-save.test.ts"
       ],
       "files_to_modify": [
         "worker/scheduled.ts",
@@ -1973,18 +1975,20 @@
         "types/cloudflare-workers.d.ts",
         ".dev.vars.example",
         ".gitignore",
-        "tests/worker/scheduled.test.ts"
+        "tests/worker/scheduled.test.ts",
+        "app/admin/_actions/spotlights.ts",
+        "app/admin/_actions/spotlight-submissions.ts"
       ],
       "dependencies": [
         "task_035",
         "task_036"
       ],
       "implementation_steps": [
-        "Mainの1分Cronは最大25件をlease付き取得し、Service Binding POSTの202をawaitしてから配送済みにする",
+        "成功したServer Actionのafter()は最大5件、既存30分Cronは最大25件をlease付き取得し、Service Binding POSTの202をawaitしてから配送済みにする",
         "受付はeventId/payload hashを検証し、event/subject/job予約を専用DBで一括確定して202を返す",
         "同一eventの再送は増殖せず、古いrevisionはACKして状態を戻さず、同じIDで異なるpayloadは409にする",
         "Mainへ分析DB/R2/Meta資格情報を渡さず、分析Workerの公開route/workers.dev/preview URLを無効にする",
-        "既存30分・日次処理が毎分実行されないようCron別の分岐を追加し、応答喪失とDB障害をテストする"
+        "既存30分・日次処理の頻度を維持し、天気・メール障害から再送を独立させる。成功Actionだけの登録、応答完了後の実行、応答喪失とDB障害をテストする"
       ],
       "done_definition": [
         "check_102/check_103/check_114の受付・配送範囲、check_126の設定分離、check_127のCron自動検証を満たす。実配備と匿名アクセスの確認はtask_043で行う",
@@ -2339,11 +2343,14 @@
       ],
       "risk_level": "high",
       "execution": {
-        "status": "in_progress",
+        "status": "completed",
         "evidence": [
           "docs/reviews/company-research-implementation.md",
-          "docs/reviews/company-research-acceptance-evidence.json"
-        ]
+          "docs/reviews/company-research-acceptance-evidence.json",
+          "https://github.com/sawanori/og-signage/actions/runs/36872512310",
+          "https://github.com/sawanori/og-signage/actions/runs/36880151862"
+        ],
+        "result": "commit 161bbe4のGitHub Actions 36880151862でweb/pi-agentの全ステップ成功。Vitest 67ファイル965件、Pi pytest106件。型/Lint/Main・研究・表示build/境界検査も成功。"
       }
     },
     {
@@ -2402,11 +2409,13 @@
       ],
       "risk_level": "high",
       "execution": {
-        "status": "in_progress",
+        "status": "completed",
         "evidence": [
-          "docs/reviews/company-research-implementation.md",
-          "docs/reviews/company-research-acceptance-evidence.json"
-        ]
+          "docs/reviews/company-research-deployment.json",
+          "docs/reviews/company-research-acceptance-evidence.json",
+          "docs/company-research-runbook.md"
+        ],
+        "result": "通常保存からの自動処理、実DB/R2への保存、usage、停止/URL解除/再開、秘密分離を本番確認後に通常有効化。検証用登録とfixture Workerを除去し、既存6件を維持。復旧対象はoutbox対応版に限定して記録し、Mainの実際の巻き戻し訓練は未実施と明記。"
       }
     }
   ],

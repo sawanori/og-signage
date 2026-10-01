@@ -1,6 +1,6 @@
 # 企業サイト分析の非公開運用手順
 
-更新日: 2026-10-01。対象は管理画面の通常保存後に最大2サイトを収集する機能。以下は現在の実装に対応する操作手順であり、**本番への配備・通常保存canaryの成功は現時点未検証**。
+更新日: 2026-10-02（JST）。対象は管理画面の通常保存後に最大2サイトを収集する機能。専用DB・R2・両WorkerとSQL migrationを本番へ反映し、通常UI保存から自動配送・巡回・非公開プロフィール保存まで確認した。**通常運用は有効、canary指定は空、運用pauseは解除済み。** 検証用メンバーと公開fixture Workerは削除済み。
 
 実Crawl・実Metaと一時libSQL・メモリー保管をつないだ2URLの抽出は成功し、プロフィール1件・オブジェクト6件・usage推計466 microUSDを確認した。[隔離統合の証拠](reviews/company-research-live-pipeline.json)は本番稼働確認とは分けて扱う。
 
@@ -8,7 +8,7 @@
 
 管理画面で作成・編集が成功すると、掲載行と配送イベントを同じMain DBトランザクションで保存する。本人申請は承認確定後だけが対象。両URLが空の新規登録では収集しない。保存リクエスト内でCrawlやMetaを待たない。
 
-Mainの1分Cronがoutboxを最大25件取得し、非公開Service Bindingで分析Workerへ配送する。分析DBへの永続化済み202を確認してから配送済みにする。分析Workerの1分Cronが、1つのジョブの1phaseを進める。処理状態はDBへ記録され、leaseの期限切れや応答喪失から回復する。既存の天気・メールは30分、既存の日次処理は従来の頻度を維持する。
+成功した保存・承認・削除のServer Actionが `after()` で応答後にoutboxを最大5件配送する。失敗した保存では配送を登録しない。未配送イベントは既存の30分Cronが最大25件取得し、天気・メールの成否と独立して再送する。いずれも非公開Service Bindingで分析Workerへ配送する。分析DBへの永続化済み202を確認してから配送済みにする。分析Workerの1分Cronが、1つのジョブの1phaseを進める。処理状態はDBへ記録され、leaseの期限切れや応答喪失から回復する。既存の天気・メールは30分、既存の日次処理は従来の頻度を維持する。
 
 同じURLで進行中の処理がある場合は再利用する。最後の成功巡回から30日以内の再保存でも再利用する。30日後の次の保存で再巡回し、本文hash・モデル・prompt versionが一致する結果はAI呼出しを再利用する。保存と無関係な定期全件再分析や既存全件のバックフィルは実行しない。
 
@@ -32,7 +32,7 @@ Mainの1分Cronがoutboxを最大25件取得し、非公開Service Bindingで分
 | `MODEL_API_KEY` | Meta API認証。 |
 | `CRAWL_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` | Crawl API専用の認証と対象account。 |
 | `RESEARCH_BUCKET` | 分析R2 binding。 |
-| `RESEARCH_PAID_ENABLED` | 文字列`true`のとき通常の有料処理対象を許可。既定は`false`。 |
+| `RESEARCH_PAID_ENABLED` | 文字列`true`のとき通常の有料処理対象を許可。本番設定は`true`。未指定時は許可しない。新規環境の配備検証中は明示的に`false`とする。 |
 | `RESEARCH_CANARY_SOURCE_IDS` | カンマ区切りのsourceId。通常フラグがfalseでも列挙したfixtureだけを許可。 |
 
 ローカル運用の資格情報はgitignore対象の `.dev.vars.research` またはプロセスの環境変数へ置く。分析migrationとCLIのnpm scriptはこのファイルが存在する場合に読み込む。Main用の `.dev.vars` と混同しない。無関係な `weworksignage` と `non-turn-signage` は操作対象外。
@@ -74,6 +74,8 @@ npm run research:ops -- usage
 ```
 
 `status`は直近50ジョブのID、sourceId、phase、status、attempts、nextRunAt、lastErrorCodeと運用controlを返す。原文・プロフィール本文は返さない。`usage`はUTC月・provider・状態ごとの件数、金額、入力・出力tokenを集計する。`chargedMicroUsd`を1,000,000で割るとドル推計額になる。
+
+初期設定の追加API費用枠はUTC暦月でMeta $5、Crawl $5を別々に管理し、Metaは1ジョブ$0.10まで。既存のWorker・DB・R2料金等はこの枠に含まれない。
 
 `reserved`、`started`、`unknown`の金額は安全側に確保した額を含む。請求が確定した額やprovider請求書との一致を意味しない。`settled`はAPIの実usageに基づく精算であり、`cancelled`はネットワーク呼出し前に取り消された予約。
 
@@ -142,7 +144,9 @@ npm run research:ops -- retry JOB_ID
 6. 通常保存、配送済み202、Crawl、Meta、専用DBのJSON、専用R2のMarkdown、実usage、匿名アクセス不可、公開/端末configへの非混入を確認する。
 7. 証拠を受け入れ記録へ反映してから通常の有料実行を有効化する。
 
-**現在は上記本番canaryの実証前であり、通常運用が有効になったとは記録しない。** 個人情報の完全検出やprovider内部SSRFの全挙動を証明したものではない点は、API実証記録に明示している。
+**上記の本番canaryを完了して通常運用を有効化済み。** 初回のMeta実抽出と、その後の通常UI保存からの自動再巡回・本文不変時のAI再利用を確認した。合計のAPI使用量からの推計は$0.000521で、請求書の実額ではない。[配備証拠](reviews/company-research-deployment.json)を参照。 個人情報の完全検出やprovider内部SSRFの全挙動を証明したものではない点は、API実証記録に明示している。
+
+現行Mainはバージョン `f6bd4d9e-2269-494e-9068-5aad7ac615e4`（ソース `161bbe4`）で、outbox対応済みの復旧対象として記録した。作成・更新・削除・承認の回帰、実際の通常保存とURL解除を確認済み。Mainを実際に旧バージョンへ巻き戻す訓練は未実施。分析Workerは有料処理pause下で前版bd7417a1へ戻し、通常版f7727cadへ復旧・再開する手順を実行確認済み。
 
 障害時は有料処理をpauseし、分析Workerを必要に応じて前版へ戻す。Mainを戻す場合もoutbox対応済み版に限る。対応前のMainへ戻すと保存・削除イベントが欠落するため、この運用の復旧先として使わない。追加DB表をdropせず、本文やモデルの結果をサイネージへ迂回表示しない。
 

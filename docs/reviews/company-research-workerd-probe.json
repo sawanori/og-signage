@@ -1,0 +1,59 @@
+{
+  "checkedAt": "2026-10-01T14:27:23Z",
+  "scope": "Local workerd preflight reproduction using the public synthetic canary host; no database connection, Crawl API request, or Meta API request",
+  "runtime": {
+    "workerdVersion": "1.20260921.1",
+    "miniflareVersion": "5.20260921.1-alpha",
+    "compatibilityDate": "2026-09-28",
+    "compatibilityFlags": ["nodejs_compat"],
+    "limitation": "The installed local binary rejected compatibility date 2026-10-01 because its maximum supported date was 2026-09-28. This local result is not a production deployment verification."
+  },
+  "probe": {
+    "command": "node /tmp/og-research-local-preflight.cjs",
+    "sourceModules": ["research/crawler.ts", "research/url-policy.ts"],
+    "target": "https://og-research-fixture.snp-inc-info.workers.dev/",
+    "stopBoundary": "beforePaidCall deliberately throws immediately after the DNS/public-IP checks succeed; it does not reserve usage or perform the paid HTTP request",
+    "reads": "Two public DNS-over-HTTPS queries only"
+  },
+  "before": {
+    "redirectMode": "error",
+    "urlNormalized": true,
+    "publicIpv4Check": true,
+    "publicIpv6Check": true,
+    "reachedBudgetCallback": false,
+    "dnsHttpStatuses": [],
+    "failureType": "TypeError",
+    "failureContainsRedirect": true,
+    "requestConstructorAcceptsErrorMode": false,
+    "fixedRuntimeErrorText": "Invalid redirect value, must be one of \"follow\" or \"manual\" (\"error\" won't be implemented since it does not make sense at the edge; use \"manual\" and check the response status code)."
+  },
+  "after": {
+    "redirectMode": "manual",
+    "urlNormalized": true,
+    "publicIpv4Check": true,
+    "publicIpv6Check": true,
+    "reachedBudgetCallback": true,
+    "dnsHttpStatuses": [200, 200],
+    "dnsResultStatuses": [0, 0],
+    "dnsAnswerCounts": [2, 2],
+    "stop": "Deliberate Error at the beforePaidCall callback; no paid request made"
+  },
+  "fix": {
+    "files": ["research/url-policy.ts", "research/crawler.ts", "research/meta.ts"],
+    "behavior": "All three outbound fetch paths use manual redirects. Existing non-2xx rejection rejects 3xx, so no redirect destination receives credentials or a DNS follow-up."
+  },
+  "regressionValidation": {
+    "command": "npx vitest run tests/research/provider-adapters.test.ts tests/research/content-safety.test.ts tests/research/jobs.test.ts tests/research/job-boundaries.test.ts",
+    "filesPassed": 4,
+    "testsPassed": 79,
+    "cases": [
+      "DNS uses manual redirects and rejects HTTP 302 without requesting its destination",
+      "Crawl and Meta use manual redirects and reject HTTP 301, 302, 303, 307, and 308 without requesting the destination",
+      "Existing job and cursor/budget boundary tests continue to pass"
+    ],
+    "typecheck": "passed",
+    "scopedEslint": "passed",
+    "gitDiffCheck": "passed"
+  },
+  "productionVerification": "Pending parent deployment and controlled resume; not performed by this probe"
+}

@@ -1042,7 +1042,7 @@
           "docs/reviews/company-research-provider-probe.json",
           "docs/reviews/company-research-extraction-probe.json"
         ],
-        "result": "実Muse Spark Contributorでstrict JSON・usageを確認。既定paid=false。",
+        "result": "実Muse Spark Contributorでstrict JSON・usageを確認。初期配備時はpaid=falseで限定検証し、実証後の現行本番はpaid=true/canary空。",
         "remaining": []
       }
     },
@@ -1583,18 +1583,19 @@
     {
       "id": "check_127",
       "target": "task_037 task_043 既存Cronの頻度",
-      "rule": "1分Cron追加で既存の天気・メール・回収頻度を変えない",
-      "expected_result": "1分イベントは配送専用。30分/日次の元の処理回数を維持する",
+      "rule": "保存応答後に配送を開始し、既存の天気・メール・回収頻度を変えずに再送する",
+      "expected_result": "成功したActionだけが応答後に最大5件を配送する。30分Cronは独立して最大25件を再送する。30分/日次の元の処理回数を維持する",
       "manual_or_automated": "automated",
-      "verification_method": "3種類のcron文字列をscheduledへ渡して呼出し先/回数を検査し、配備後設定も確認する",
+      "verification_method": "実vinext after()で応答前後の配送を検査し、失敗Actionでは登録しないこと、天気障害時にも再送すること、配備後の通常保存とCron設定を確認する",
       "verification": {
         "status": "passed",
         "evidence": [
           "tests/worker/scheduled.test.ts",
           "wrangler.jsonc",
-          "docs/reviews/company-research-deployment.json"
+          "docs/reviews/company-research-deployment.json",
+          "tests/worker/company-research-after-save.test.ts"
         ],
-        "result": "本番Main配備で1分/30分/日次の3Cronを確認。",
+        "result": "関連34テスト成功。本番Main f6bd4d9eで通常UI保存直後の自動配送を確認。Main Cronは30分/日次を維持し、研究1分Cronも維持。",
         "remaining": []
       }
     },
@@ -1626,16 +1627,18 @@
       "manual_or_automated": "automated",
       "verification_method": "各実コマンドと終了コードを記録する。専用script追加後に計画へ名前を追記し、Main buildだけで代用しない",
       "verification": {
-        "status": "pending",
+        "status": "passed",
         "evidence": [
           "eslint.config.mjs",
           "tests/db/schema.test.ts",
-          "scripts/check-research-bundle.ts"
+          "scripts/check-research-bundle.ts",
+          "tests/research/ops.test.ts",
+          ".github/workflows/ci.yml",
+          "https://github.com/sawanori/og-signage/actions/runs/36872512310",
+          "https://github.com/sawanori/og-signage/actions/runs/36880151862"
         ],
-        "result": "QA対象テストと全体lintは成功。親全体テストのTABLES期待1件失敗を修正しDB17テスト成功。",
-        "remaining": [
-          "最終コードに対する全体typecheck/lint/test/build/check:worker/build:display/check:display/build:research/check:researchの終了コードを追記する。"
-        ]
+        "result": "commit 161bbe4のGitHub Actions 36880151862でWeb全ステップとPi成功。67ファイル965 Vitest・106 Piテスト、型/Lint/Main・研究・表示buildと境界検査を通過。",
+        "remaining": []
       }
     },
     {
@@ -1646,17 +1649,15 @@
       "manual_or_automated": "manual",
       "verification_method": "配備/少数canary/停止/復旧の記録を残す。rollback対象のMain成果物で通常保存・URL削除・メンバー削除のoutbox記録が続くことを確認する",
       "verification": {
-        "status": "pending",
+        "status": "passed",
         "evidence": [
           "research/wrangler.jsonc",
-          "docs/reviews/company-research-live-pipeline.json"
+          "docs/reviews/company-research-deployment.json",
+          "docs/company-research-runbook.md",
+          "tests/worker/company-research-after-save.test.ts"
         ],
-        "result": "paid=falseの既定設定と限定fixtureによる実APIパイプライン成功を確認。",
-        "remaining": [
-          "本番private Worker/Main配備と通常保存canary。",
-          "停止/再開とoutbox対応rollback対象成果物を確認する。",
-          "Pi ZIP未公開、削除予約がrollback後も残ることを記録する。"
-        ]
+        "result": "専用SQL/Worker先行後、通常保存から自動配送・巡回・プロフィール保存を実証。pause中のURL解除と現行参照解除、再開、限定検証後の通常有効化を確認。Main f6bd4d9eはoutbox対応済み復旧対象で保存・URL解除の本番確認と削除/承認の回帰成功。検証用メンバー登録と公開fixture Workerを除去し既存6件維持、Pi ZIP未公開。Mainの実際の旧版への巻き戻し訓練は未実施。 分析Workerはpause下で検証済み前版へ実際にrollbackし、通常版100%へ復旧・再開・有効化変数を再確認した。",
+        "remaining": []
       }
     },
     {

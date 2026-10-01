@@ -33,7 +33,7 @@
     "spotlights": 6,
     "forbiddenValuesAbsent": true
   },
-  "canary": "awaiting_cron",
+  "canary": "normal_save_pipeline_succeeded",
   "schedules": {
     "sharehouse-signage": {
       "schedules": [
@@ -63,5 +63,345 @@
         }
       ]
     }
+  },
+  "ci": {
+    "initial": {
+      "commit": "ec1bbd5",
+      "run": 36871720898,
+      "result": "failure",
+      "reason": "CLI integration test exceeded default 5000ms"
+    },
+    "fixed": {
+      "commit": "13914d9",
+      "run": 36872512310,
+      "result": "success",
+      "url": "https://github.com/sawanori/og-signage/actions/runs/36872512310",
+      "vitestPassed": 946,
+      "piTestsPassed": 106
+    },
+    "runtimeFix": {
+      "commit": "aef69e8",
+      "run": 36876527372,
+      "result": "success",
+      "url": "https://github.com/sawanori/og-signage/actions/runs/36876527372",
+      "vitestPassed": 952,
+      "piTestsPassed": 106
+    },
+    "afterSave": {
+      "commit": "161bbe4",
+      "run": 36880151862,
+      "result": "success",
+      "url": "https://github.com/sawanori/og-signage/actions/runs/36880151862",
+      "vitestPassed": 965,
+      "piTestsPassed": 106
+    }
+  },
+  "mainFinalVersion": "f6bd4d9e-2269-494e-9068-5aad7ac615e4",
+  "researchLatestCanaryVersion": "cb15fea9-9095-4ffd-8ace-58fee1c673de",
+  "deployedCommit": "161bbe4",
+  "researchCronObserved": {
+    "at": "2026-10-01T14:09:59.554Z",
+    "cron": "* * * * *",
+    "outcome": "ok",
+    "exceptions": []
+  },
+  "mainCronReregister": {
+    "reason": "Due outbox remained pending with attempts=0 for over 30 minutes; research cron independently observed ok",
+    "removedOnly": "* * * * *",
+    "retainedDuringChange": [
+      {
+        "cron": "0 19 * * *",
+        "created_on": "2026-09-24T17:03:05.720454Z",
+        "modified_on": "2026-10-01T14:14:28.843266Z"
+      },
+      {
+        "cron": "*/30 * * * *",
+        "created_on": "2026-09-24T17:03:05.720454Z",
+        "modified_on": "2026-10-01T14:14:28.843266Z"
+      }
+    ],
+    "after": [
+      {
+        "cron": "* * * * *",
+        "created_on": "2026-10-01T14:14:29.14934Z",
+        "modified_on": "2026-10-01T14:14:29.14934Z"
+      },
+      {
+        "cron": "0 19 * * *",
+        "created_on": "2026-09-24T17:03:05.720454Z",
+        "modified_on": "2026-10-01T14:14:29.14934Z"
+      },
+      {
+        "cron": "*/30 * * * *",
+        "created_on": "2026-09-24T17:03:05.720454Z",
+        "modified_on": "2026-10-01T14:14:29.14934Z"
+      }
+    ]
+  },
+  "publicAfterLatestDeploy": {
+    "httpStatus": 200,
+    "build": "13914d9659ab",
+    "canaryAbsent": true,
+    "researchFieldsAbsent": true
+  },
+  "manualDispatchProbe": {
+    "exitCode": 0,
+    "records": [
+      {
+        "trigger": "manual",
+        "status": "dispatched",
+        "dueEvents": 1,
+        "delivered": 1,
+        "retried": 0,
+        "blocked": 0,
+        "unavailable": false
+      }
+    ],
+    "doesNotProveMainCron": true
+  },
+  "runtimeCanary": {
+    "jobId": "0f235884-769d-4aec-bcd2-9a8b6c266d88",
+    "firstTick": {
+      "at": "2026-10-01T14:19:59.552Z",
+      "phase": "crawl",
+      "status": "retry",
+      "attempts": 1,
+      "lastErrorCode": "research_processing_failed",
+      "progress": {},
+      "usageRows": 0
+    },
+    "pause": {
+      "atUnix": 1790864513,
+      "paused": true,
+      "observedScheduledTick": "2026-10-01T14:21:59.553Z",
+      "attemptsUnchanged": 1,
+      "usageRows": 0
+    },
+    "sameUrlSave": {
+      "sourceRevision": 1,
+      "outboxStatus": "pending",
+      "automaticDelivery": "not_yet_observed"
+    },
+    "runtimeFix": {
+      "redirectMode": "manual",
+      "redirectResponsesRejected": true,
+      "localVitestPassed": 952,
+      "evidence": "company-research-workerd-probe.json",
+      "resumedAt": "2026-10-01T14:28:29.858671+00:00"
+    },
+    "afterRuntimeFix": {
+      "phase": "crawl",
+      "status": "queued",
+      "attempts": 0,
+      "crawlCallsStarted": 1,
+      "reservedMicroUsd": 30000,
+      "isActualBilledCost": false
+    },
+    "completed": {
+      "phase": "complete",
+      "status": "succeeded",
+      "profileCount": 1,
+      "pageCount": 2,
+      "coverage": "partial",
+      "inputUrls": 2,
+      "crawlCallsSettled": 2,
+      "crawlMicroUsd": 17,
+      "metaCallsSettled": 1,
+      "metaMicroUsd": 485,
+      "metaInputTokens": 1810,
+      "metaOutputTokens": 1520,
+      "totalEstimatedMicroUsd": 502,
+      "isActualBilledCost": false,
+      "exportMode": "0600",
+      "r2Readback": {
+        "markdownBytes": 180,
+        "markdownSha256": "da09988939b43fdb0d69bd511b62a1c02847820d61cc6434152d3fb33ad9bf3a",
+        "htmlBytes": 352,
+        "htmlSha256": "adac40c397861645cb27e9a83307171dd6e72d713027301f20f69f6d8fdcebdf"
+      },
+      "coverageNote": "Provider completed with queued/disallowed records; skipped reasons retained. Do not claim every discovered page was read."
+    },
+    "sameUrlSaveAfterFix": {
+      "sourceRevision": 2,
+      "uiSuccess": true,
+      "automaticDelivery": true,
+      "outboxRevisionsDelivered": [
+        0,
+        1,
+        2
+      ],
+      "additionalApiCalls": 0,
+      "totalEstimatedMicroUsdUnchanged": 502,
+      "profileIdUnchanged": "34693175-2208-44b4-a974-3b9026f2ee20"
+    },
+    "revokeWhilePaused": {
+      "sourceRevision": 3,
+      "normalUiSave": true,
+      "automaticDelivery": true,
+      "subjectStatus": "revoked",
+      "currentProfileId": null
+    },
+    "reactivateViaNormalSave": {
+      "sourceRevision": 4,
+      "normalUiSave": true,
+      "automaticDelivery": true,
+      "jobId": "32450f6f-6bc7-4378-8d00-04e828e32ccc",
+      "status": "succeeded",
+      "manualDispatch": false,
+      "currentProfileIdAtIntake": null,
+      "crawlPagesStored": 2,
+      "crawlCallsSettled": 2,
+      "crawlEstimatedMicroUsd": 19,
+      "attempts": 0,
+      "lastErrorCode": null,
+      "phase": "complete",
+      "generation": 2,
+      "completedAt": "2026-10-01T15:09:02Z",
+      "profileCount": 1,
+      "readyPageCount": 2,
+      "metaAdditionalCalls": 0,
+      "extractionReused": true,
+      "reuseMatches": [
+        "contentHash",
+        "model",
+        "promptVersion",
+        "extractedAt"
+      ],
+      "estimatedMicroUsd": 19,
+      "sourceTotalEstimatedMicroUsd": 521,
+      "exportMode": "0600",
+      "r2Readback": {
+        "markdownBytes": 180,
+        "sha256": "da09988939b43fdb0d69bd511b62a1c02847820d61cc6434152d3fb33ad9bf3a",
+        "fixtureBodyPresent": true
+      },
+      "coverage": "partial"
+    },
+    "finalRevoke": {
+      "normalUiSave": true,
+      "sourceRevision": 5,
+      "automaticDelivery": true,
+      "subjectStatus": "revoked",
+      "currentProfileId": null
+    }
+  },
+  "researchRuntimeFixVersion": "bd7417a1-e731-4ef5-87c8-24071e9e349f",
+  "researchRuntimeFixCommit": "aef69e8",
+  "mainExistingWeatherCron": {
+    "at": "2026-10-01T14:30:36.513Z",
+    "cron": "*/30 * * * *",
+    "version": "624a474d-a057-43a0-b42e-6fd023d49507",
+    "outcome": "ok"
+  },
+  "deliveryAdjustment": {
+    "reason": "Main new 1-minute Cron did not execute during observation; root cause undetermined. Existing 30-minute Cron executed on current version.",
+    "accountPlan": "Workers Paid",
+    "registeredCronCountBefore": 5,
+    "paidAccountCronLimit": 250,
+    "initialDelivery": "after successful Server Action response, max 5",
+    "retryDelivery": "existing 30-minute Cron, max 25, independent of weather/mail errors",
+    "newMainOneMinuteCron": "remove",
+    "researchOneMinuteCron": "retain",
+    "status": "deployed_normal_save_delivery_verified",
+    "commit": "bb15bd0",
+    "targetedTestsPassed": 34
+  },
+  "mainAfterSaveVersion": "f6bd4d9e-2269-494e-9068-5aad7ac615e4",
+  "mainAfterSaveCommit": "161bbe4",
+  "publicAfterSaveDeploy": {
+    "httpStatus": 200,
+    "build": "161bbe4fb9fb",
+    "canaryAbsent": true,
+    "researchFieldsAbsent": true,
+    "url2Absent": true
+  },
+  "secretSeparationRecheck": {
+    "mainHasResearchDbOrMetaSecrets": false,
+    "researchHasMainDbOrMediaBinding": false,
+    "normalPaidAtRecheck": false,
+    "canaryAllowlistCount": 1
+  },
+  "rollbackArtifact": {
+    "mainVersion": "f6bd4d9e-2269-494e-9068-5aad7ac615e4",
+    "mainCommit": "161bbe4",
+    "outboxSupported": true,
+    "normalSaveAndRevokeProductionVerified": true,
+    "createUpdateDeleteApprovalActionsRegressionPassed": true,
+    "actualRollbackDrillPerformed": false
+  },
+  "mainRetryCronAfterFix": {
+    "at": "2026-10-01T15:00:36.593Z",
+    "cron": "*/30 * * * *",
+    "version": "f6bd4d9e-2269-494e-9068-5aad7ac615e4",
+    "outcome": "ok",
+    "delivered": 0,
+    "retried": 0,
+    "blocked": 0,
+    "unavailable": false,
+    "exceptions": []
+  },
+  "repositoryCredentialScan": {
+    "metaKeyAndJwtPatternMatches": 0,
+    "scope": "tracked files plus new workerd evidence; credential values not emitted"
+  },
+  "cleanup": {
+    "blockedFixtureWorkerDeleted": true,
+    "primaryFixtureWorkerDeleted": true,
+    "canaryMemberDeleted": true,
+    "memberCountAfter": 6,
+    "canaryMembersRemaining": 0,
+    "deleteRevision": 6,
+    "deleteDelivery": "manual_existing_dispatcher_for_cli_cleanup",
+    "subjectStatus": "deleted",
+    "currentJobId": null,
+    "currentProfileId": null,
+    "allOutboxRevisionsDelivered": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "retention": "Private test body/profile follows 7-day deleted-source retention; minimal tombstone/usage retained"
+  },
+  "normalActivationQuality": {
+    "commit": "e552479",
+    "targetedTests": 26,
+    "researchBuild": true,
+    "researchBoundaryCheckInputs": 275,
+    "paidFlagAndPrivateConfigAssertions": true
+  },
+  "normalActivation": {
+    "commit": "e552479",
+    "researchVersion": "f7727cad-822c-4b8f-b39b-638483179089",
+    "paidEnabled": true,
+    "canarySourceIds": "",
+    "liveVariablesVerified": true,
+    "paused": false,
+    "resumedAtUnix": 1790867587,
+    "anonymousHttp": 404,
+    "noExistingMemberBackfill": true
+  },
+  "mainPreviousVersionBeforeDeliveryAdjustment": "624a474d-a057-43a0-b42e-6fd023d49507",
+  "finalSchedules": {
+    "sharehouse-signage": [
+      "*/30 * * * *",
+      "0 19 * * *"
+    ],
+    "og-company-research": [
+      "* * * * *"
+    ]
+  },
+  "researchRollbackDrill": {
+    "pausedDuringDrill": true,
+    "rolledBackTo": "bd7417a1-e731-4ef5-87c8-24071e9e349f",
+    "rollbackPercent": 100,
+    "restoredTo": "f7727cad-822c-4b8f-b39b-638483179089",
+    "restorePercent": 100,
+    "restoredFlagsVerified": true,
+    "resumed": true,
+    "mainVersionUnchanged": true
   }
 }

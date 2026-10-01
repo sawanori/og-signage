@@ -1,7 +1,7 @@
 # Implementation Plan: 企業サイト2件の自動抽出と非公開蓄積
 
 - 作成日: 2026-10-01。調査対象: `e3f7e8c` の既存コード。
-- 状態: **実装・API検証中。Main migration 0015と分析専用migration 0000〜0002を実環境へ適用済み。本番有効化は少数の通常保存による検証後に行う。**
+- 状態: **実装・本番有効化済み（2026-10-02 JST）。Main migration 0015と分析専用migration 0000〜0002を適用し、通常保存からの自動配送・巡回・専用DB/R2への保存、結果再利用、URL解除を実証した。**
 - 今回の対象: `task_034`〜`task_043`、`check_096`〜`check_132`。
 - この冒頭の1〜15節が今回の有効な計画。末尾の旧計画とJSON内の既存タスク・検証結果は当時の履歴として保存し、今回再検証した扱いにはしない。
 
@@ -9,7 +9,7 @@
 
 既存の管理画面で通常の保存を完了すると、登録済みの任意URL最大2件をバックグラウンドで巡回する。Meta Muse Spark 1.3 Contributorで企業・サービス情報を構造化し、将来の企業検索サービスのために非公開で蓄積する。登録操作、入力欄、保存ボタンは変えない。
 
-既存アプリは保存と同じDBトランザクションで配送待ちイベントを記録する。定期処理が非公開の別Workerへ配送し、別Workerが専用DBに予約を確定してから巡回・抽出する。抽出本文を既存DB、表示用config、公開素材、Piへ返す経路は設けない。
+既存アプリは保存と同じDBトランザクションで配送待ちイベントを記録する。保存応答後の処理が非公開の別Workerへ配送し、失敗時は既存の30分定期処理で再送する。別Workerが専用DBに予約を確定してから巡回・抽出する。抽出本文を既存DB、表示用config、公開素材、Piへ返す経路は設けない。
 
 ## 2. Goal
 
@@ -28,7 +28,7 @@
 | `lib/services/spotlight-submissions.ts` | 本人申請の承認は通常の作成サービスを通らず、独自トランザクションで掲載行を作る。承認にも接続が必要。 |
 | `app/api/spotlight-submissions/route.ts` | 匿名申請はpending保存。承認前の申請から有料処理を開始しない。 |
 | `db/schema.ts` / `drizzle.config.ts` | Turso/libSQLとDrizzle。既存migrationは0014まで。既存の接続・migration履歴を分析DBに流用しない。 |
-| `worker/scheduled.ts` / `wrangler.jsonc` | 30分Cronと日次Cronがある。1分Cronを追加しても天気・メール・既存回収の頻度を変えない。Queueは未導入。 |
+| `worker/scheduled.ts` / `wrangler.jsonc` | 既存の30分Cronと日次Cronを維持。保存応答後に即時配送し、30分Cronに再送を加える。天気・メール・既存回収の頻度は変えない。Queueは未導入。 |
 | `lib/config-builder.ts` / `lib/public-signage.ts` | 公開Webと端末は共通のconfigを利用。表示項目を明示列挙し、URL2を除外している。分析項目を足さない。 |
 | `worker/public-signage-relay.ts` / `worker/device-relay.ts` | 表示対象の既存mediaとバンドルを配信。分析オブジェクトは既存media表・MEDIA_BUCKETへ登録しない。 |
 | インフラ | Worker・R2は `sharehouse-signage`、DBは `og-signage`。無関係な `weworksignage`・`non-turn-signage` は変更対象外。 |
@@ -84,11 +84,13 @@ Meta Contributorのstrict JSON、usage、Cloudflareの作成・巡回・ペー�
 
 - **Frontend**: 既存フォームと成功表示を維持。保存中に巡回やMetaの応答を待たない。
 - **Main backend**: 掲載行の保存と `company_research_outbox` の追加を同じwrite transactionにする。外部APIは呼ばない。ローカルDBの記録失敗は通常の保存失敗としてrollbackし、外部障害とは区別する。
-- **配送**: Mainの1分Cronが期限付きleaseで最大25件を取得し、`COMPANY_RESEARCH` Service Bindingをawaitして配送する。受付が専用DBへ永続化した202を確認して配送済みにする。応答喪失時は同じeventIdで再送する。
+- **配送**: 成功したServer Actionが `after()` で応答後に最大5件を配送する。既存の30分Cronは天気・メールと独立して最大25件を再送する。いずれも期限付きleaseで取得し、`COMPANY_RESEARCH` Service Bindingをawaitして配送する。受付が専用DBへ永続化した202を確認して配送済みにする。応答喪失時は同じeventIdで再送する。
 - **分析backend**: 別Worker `og-company-research` の1分Cronが、専用DBのジョブを少数ずつclaimする。初期値は同時実行1件。巡回ID、ページ処理位置、phaseを保存して複数回のCronで進める。DBのlease更新と期限切れ回収で中断から再開する。初期版はCloudflare Queuesを追加しない。
 - **DB**: Mainは配送イベントだけを持つ。本文・分析結果・利用量は新規Turso `og-company-research` へ保存する。
 - **Storage**: 新規R2 `og-company-research-private` を分析Workerだけにbindingする。r2.devと独自公開ドメインは無効。既存media表へ登録しない。
 - **Auth/Infra**: 分析Workerはworkers.dev・プレビューURL・公開routeを無効にし、Service Bindingの受付POSTだけを提供する。分析結果のGETは作らない。Mainに分析DB/R2の読取資格情報やMetaキーを与えず、分析WorkerにMain DBやMEDIA_BUCKETの資格情報を与えない。
+
+Mainへの1分Cron追加は本番で期限到来イベントの未配送が継続し、原因を特定できなかったため取りやめた。実行を確認した既存30分Cronを再送に使う。通常時の開始は成功した保存の応答直後とし、UI・DB契約・分析Workerの1分Cronは維持する。
 
 ### 巡回・サニタイズ・抽出
 
@@ -201,7 +203,8 @@ R2には `sources/{sourceId}/{generation}/{pageId}.md` と短期保存HTMLを置
 | `lib/services/spotlights.ts` | 変更 | 作成・更新・削除とoutboxの一括確定 | 高 |
 | `lib/services/spotlight-submissions.ts` | 変更 | 承認時だけoutboxを追加 | 高 |
 | `worker/company-research-dispatch.ts` | 新規 | Service Binding配送と再送 | 中 |
-| `worker/scheduled.ts` / `types/cloudflare-workers.d.ts` / `wrangler.jsonc` | 変更 | 1分Cronの分岐、型、private binding追加 | 高 |
+| `worker/company-research-after-save.ts` / 管理画面の保存・承認Actions | 新規・変更 | 成功した保存の応答後に最大5件を配送する | 高 |
+| `worker/scheduled.ts` / `types/cloudflare-workers.d.ts` / `wrangler.jsonc` | 変更 | 既存30分Cronで最大25件の再送、型、private binding追加 | 高 |
 | `research/worker.ts` / `research/env.ts` / `research/wrangler.jsonc` | 新規 | 非公開受付と分析Cron、専用secret・binding | 高 |
 | `research/db/schema.ts` / `research/db/client.ts` / `research/drizzle.config.ts` / `research/db/migrations/**` | 新規 | 分析専用DBと独立migration | 高 |
 | `research/intake.ts` / `research/jobs.ts` | 新規 | 冪等受付、状態機械、lease、版管理、再開 | 高 |

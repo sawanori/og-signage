@@ -6,10 +6,11 @@
 
 Meta Muse Spark Contributorのstrict JSON応答と、自作の公開企業サイトfixtureを取得して根拠付きプロフィールへ変換する経路を実APIで確認した。Cloudflare Crawlは公開HTMLの取得、robotsによる除外、Content Signalによる学習用途拒否、キャンセルを確認した。
 
-この記録はAPI能力の確認であり、本番の通常保存から専用DB/R2へ蓄積されること、本番の非公開設定、通常運用開始を証明するものではない。**本番canaryは現時点未検証**。`render:true`でも後述の私的宛先・redirect・ページ送りを追加確認したが、provider内部の全挙動の証明とは区別する。後続の配備・稼働証拠は別に記録する。
+初期のAPI単体検証と、その後の本番稼働確認は分けて記録する。本番では実WorkerのCronによる2URL取得、実Meta、専用DBへのプロフィール1件と実R2への保存が成功した。初回の配送は手動診断だったが、その後は通常UI保存から自動配送・再巡回・プロフィール保存まで自然なCronだけで完走した。`render:true`でも後述の私的宛先・redirect・ページ送りを追加確認したが、provider内部の全挙動の証明とは区別する。後続の配備・稼働証拠は別に記録する。
 
 一次証拠:
 
+- [本番配備・実行の証拠](reviews/company-research-deployment.json)と[Workers実行環境の修正検証](reviews/company-research-workerd-probe.json)
 - [接続・巡回・拒否・キャンセルの結果](reviews/company-research-provider-probe.json)
 - [企業情報抽出の入力・実応答・検証済み結果](reviews/company-research-extraction-probe.json)
 - [2登録URLの実API・一時DB・メモリー保管の統合結果](reviews/company-research-live-pipeline.json)
@@ -42,7 +43,17 @@ Meta Muse Spark Contributorのstrict JSON応答と、自作の公開企業サイ
 
 続いて同じ自作fixture内の2登録URLを使い、実Crawl・実Meta APIと一時libSQL、メモリー上のオブジェクト保管を接続した。12回のphase実行で`succeeded`となり、プロフィール1件とHTML/Markdownのオブジェクト6件を保存した。prompt versionはv2。Metaは入力1,783token・出力1,221tokenで推計423 microUSD、Crawlは35と8 microUSD、合計466 microUSD（$0.000466）だった。
 
-これは保存した処理履歴と実usageに基づく確認である。phaseの時計を進めたローカル実行であり、本番Cronの経過時間や本番R2への保存の証拠ではない。最終coverageはrobots等の理由を持つpartialで、完全取得とは扱わない。本番の通常保存・Service Binding・実R2を含むcanaryは別途確認する。
+これは保存した処理履歴と実usageに基づく確認である。phaseの時計を進めたローカル実行であり、本番Cronの経過時間や本番R2への保存の証拠ではない。最終coverageはrobots等の理由を持つpartialで、完全取得とは扱わない。その後の本番実証は下記に分けて記録する。
+
+### 本番Worker・専用DB・実R2での抽出
+
+本番の2URL検証はprompt v3で成功し、プロフィール1件とページ2件を専用DBへ保存した。R2のMarkdown（180 bytes）とHTML（352 bytes）を取得し、検証用企業の本文が存在することも確認した。CLIの現行プロフィール出力も成功した。Meta入力1,810token・出力1,520tokenで推計485 microUSD、Crawl2件の精算が合計17 microUSD、合計502 microUSD（$0.000502）だった。
+
+providerが完了応答内にqueued/disallowedのページ記録を含めたため、coverageは未取得理由付きのpartialである。サイト全ページを取得したとは扱わない。最初のMain配送は診断用の手動実行だったため、この初回結果だけでは通常保存後の自動配送を証明しない。
+
+追加の本番検証では、通常UIで両URLを解除してから同じ2URLを再登録した。保存応答後の自動配送と自然な研究Cronだけで世代2が成功し、2ページ・現行プロフィール1件を保存した。新世代のR2 Markdownも取得確認済み。本文hash・モデル・promptが同じだったため前回のAI結果を再利用し、Metaの追加呼出しは0、Crawl2件の追加費用は推計19 microUSDだった。本番検証の累計は521 microUSD（$0.000521）。同URL再保存で追加費用がないこと、pause中のURL解除でも現行プロフィールが無効になることも確認した。
+
+初回の本番研究Cronでは `redirect: "error"` がWorkersランタイムで拒否され、APIを呼ぶ前に失敗した。ローカルworkerdで同じエラーを再現し、`manual` と3xx拒否へ変更した後、本番で上記の取得・抽出が成功した。プロバイダーキーをredirect先へ転送しない契約は維持している。
 
 ### 別会社と相反する料金の保持
 

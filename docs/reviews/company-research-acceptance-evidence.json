@@ -2,7 +2,7 @@
   "feature": "company_research_auto_extraction",
   "preparedAt": "2026-10-01T13:40:50.706784+00:00",
   "preparedBy": "quality_checks",
-  "scope": "実装中の証拠対応表。passedは記載した自動検証/コードレビューの範囲。実配備・手動項目と追加試験はpendingを維持し、親担当が最終結果を追記する。",
+  "scope": "実装・本番配備・通常有効化の証拠対応表。初期の失敗と当時の未検証事項は履歴として保持し、checksは最新の確認結果を示す。Mainの実際の巻き戻し訓練など残る限界は明記する。",
   "testRuns": [
     {
       "id": "qa-main-isolation",
@@ -45,6 +45,153 @@
       "command": "git diff --check",
       "result": "passed",
       "exitCode": 0
+    },
+    {
+      "id": "ci-final-13914d9",
+      "url": "https://github.com/sawanori/og-signage/actions/runs/36872512310",
+      "commit": "13914d9659ab61e486cb7e36bc222adb66e14e10",
+      "conclusion": "success",
+      "commands": [
+        {
+          "command": "npm run typecheck",
+          "exitCode": 0
+        },
+        {
+          "command": "npm run lint",
+          "exitCode": 0
+        },
+        {
+          "command": "npm test",
+          "exitCode": 0
+        },
+        {
+          "command": "npm run build",
+          "exitCode": 0
+        },
+        {
+          "command": "npm run check:worker",
+          "exitCode": 0
+        },
+        {
+          "command": "npm run build:research",
+          "exitCode": 0
+        },
+        {
+          "command": "npm run check:research",
+          "exitCode": 0
+        },
+        {
+          "command": "npm run build:display",
+          "exitCode": 0
+        },
+        {
+          "command": "npm run check:display",
+          "exitCode": 0
+        },
+        {
+          "command": "python -m pytest raspberry-pi/tests",
+          "exitCode": 0
+        }
+      ],
+      "result": "web/pi-agent全ステップ成功。Vitest 66 files / 946 passed、pytest 106 passed。ops.test.tsは2ケース成功（2947ms / 2827ms）。",
+      "warnings": [
+        "npm run buildは終了コード0。フォント出力のFILE_NAME_CONFLICT警告を記録しており、警告ゼロとは扱わない。"
+      ]
+    },
+    {
+      "id": "qa-workerd-redirect-fix-local",
+      "baseCommit": "13914d9659ab61e486cb7e36bc222adb66e14e10",
+      "scope": "未コミットのresearch outbound redirect修正3モジュールと回帰テスト2ファイルに対するローカル品質ゲート。前回13914d9のCI成功とは別の検証。",
+      "changedCode": [
+        "research/url-policy.ts",
+        "research/crawler.ts",
+        "research/meta.ts",
+        "tests/research/content-safety.test.ts",
+        "tests/research/provider-adapters.test.ts"
+      ],
+      "commands": [
+        {
+          "command": "npm test",
+          "exitCode": 0,
+          "result": "66 files / 952 passed; 12.13s"
+        },
+        {
+          "command": "npm run typecheck",
+          "exitCode": 0
+        },
+        {
+          "command": "npm run lint",
+          "exitCode": 0
+        },
+        {
+          "command": "npm run build:research",
+          "exitCode": 0,
+          "result": "dry-run; 1175.87 KiB / gzip 204.36 KiB"
+        },
+        {
+          "command": "npm run check:research",
+          "exitCode": 0,
+          "result": "275 inputs; no signage DB/media imports or literal API key"
+        },
+        {
+          "command": "git diff --check",
+          "exitCode": 0
+        }
+      ],
+      "evidence": [
+        "docs/reviews/company-research-workerd-probe.json"
+      ],
+      "result": "全品質コマンド成功。DNSの302、Crawl/Metaの301/302/303/307/308をmanualモードで拒否し、転送先を呼ばない回帰を含む。backend担当のlocal workerd試験はDoH 200を2件取得し、課金前callbackで意図停止。",
+      "limitations": [
+        "修正後の本番Workerでの実行は親担当のcanary確認待ち。",
+        "local workerdの最大対応日が2026-09-28のため、その互換日での実行。",
+        "MainコードとPiコードは変更しておらず、Main build/Pi pytestはこの検証では再実行していない。"
+      ]
+    },
+    {
+      "id": "qa-main-after-save",
+      "commit": "161bbe4",
+      "commands": [
+        {
+          "command": "npm test",
+          "exitCode": 0,
+          "result": "67 files / 965 passed; 11.86s"
+        },
+        {
+          "command": "npm run typecheck",
+          "exitCode": 0
+        },
+        {
+          "command": "npm run lint",
+          "exitCode": 0
+        },
+        {
+          "command": "npm run build && npm run check:worker",
+          "exitCode": 0
+        },
+        {
+          "command": "npm run build:research && npm run check:research",
+          "exitCode": 0
+        },
+        {
+          "command": "git diff --check",
+          "exitCode": 0
+        }
+      ],
+      "review": {
+        "independentTargetedTestsPassed": 34,
+        "finding": "No major issue; actual vinext after()/response completion/waitUntil verified"
+      },
+      "productionVerification": "passed: normal UI save → automatic private delivery → scheduled crawl → profile generation/reuse; see deployment evidence"
+    },
+    {
+      "id": "qa-normal-activation",
+      "commit": "e552479",
+      "targetedTestsPassed": 26,
+      "researchBuildExitCode": 0,
+      "researchBoundaryCheckInputs": 275,
+      "paidAndCanaryGateAssertionsPassed": true,
+      "privateConfigAssertionsPassed": true
     }
   ],
   "failureHistory": [
@@ -60,11 +207,35 @@
       "command": "npm run lint",
       "issue": "研究Worker生成物2ディレクトリに対する12 errorsと多数warnings。",
       "resolution": "eslint.config.mjsで2つの生成物出力だけを除外し、全体lint終了コード0。"
+    },
+    {
+      "reportedBy": "GitHub Actions log verified by quality_checks",
+      "url": "https://github.com/sawanori/og-signage/actions/runs/36871720898",
+      "commit": "ec1bbd56293cfb8ecff00b7f266dd65e554370f9",
+      "command": "npm test",
+      "result": "939 passed / 1 failed",
+      "issue": "tests/research/ops.test.tsの最初のケースは5回のNode/tsx実CLI起動を含み、5161msでVitest既定5000ms上限を超過。同ファイルの2番目は3989msで成功。ログにSQLITE_BUSY/SQLITE_LOCKED/ETIMEDOUTの記録はなかった。",
+      "resolution": "commit 13914d9でops.test.tsの2ケースだけ30秒上限へ変更。各CLIの20秒kill上限、全assertion、グローバルtimeout設定は維持。後続CI run 36872512310で全946件と全ビルド検査が成功。",
+      "resolutionEvidence": "https://github.com/sawanori/og-signage/actions/runs/36872512310"
+    },
+    {
+      "reportedBy": "backend_and_security local workerd reproduction",
+      "evidence": "docs/reviews/company-research-workerd-probe.json",
+      "issue": "NodeベースのCI成功後、workerdではfetch redirect:errorが未対応のため最初のDoHリクエスト前にTypeErrorとなることを再現。前回CI成功はWorkers実環境での開始成功を証明していなかった。",
+      "resolution": "DNS/Crawl/Metaの3経路をredirect:manualへ変更し、既存の非2xx拒否で3xxを拒否する。local workerdでDoH 200×2と課金前callback到達を確認し、全952テストと型/Lint/研究Worker専用build・bundle検査に成功。",
+      "productionVerification": "passed: production job succeeded, profile=1, pages=2, estimated usage=502 microUSD; initial Main delivery was manual"
+    },
+    {
+      "issue": "Existing review UI test observed alert before transition completed, then failed to find the still-disabled approval control. Unconsumed mock response affected the next test.",
+      "output": "Unable to find button name 掲載する; alert=ログインしてください; button=処理中… disabled",
+      "resolution": "Wait for the approval button to reappear and be enabled before queueing the next mock response; all existing assertions retained. Full 965 tests passed.",
+      "commit": "161bbe4"
     }
   ],
   "knownLimitations": [
     "ローカル規則によるPIIスクリーニングは未知氏名の完全検知を保証しない。",
-    "モデルの根拠検査は引用存在を確認する。任意の自然言語主張の意味的正確性を数学的に保証するものではない。"
+    "モデルの根拠検査は引用存在を確認する。任意の自然言語主張の意味的正確性を数学的に保証するものではない。",
+    "Mainのoutbox対応済み復旧対象の保存・URL解除と削除/承認回帰を確認したが、Mainの実際の旧版への巻き戻し訓練は未実施。"
   ],
   "checks": [
     {
@@ -75,7 +246,7 @@
         "docs/reviews/company-research-provider-probe.json",
         "docs/reviews/company-research-extraction-probe.json"
       ],
-      "verified": "実Muse Spark Contributorでstrict JSON・usageを確認。既定paid=false。",
+      "verified": "実Muse Spark Contributorでstrict JSON・usageを確認。初期配備時はpaid=falseで限定検証し、実証後の現行本番はpaid=true/canary空。",
       "remaining": []
     },
     {
@@ -439,9 +610,10 @@
       "evidence": [
         "tests/worker/scheduled.test.ts",
         "wrangler.jsonc",
-        "docs/reviews/company-research-deployment.json"
+        "docs/reviews/company-research-deployment.json",
+        "tests/worker/company-research-after-save.test.ts"
       ],
-      "verified": "本番Main配備で1分/30分/日次の3Cronを確認。",
+      "verified": "関連34テスト成功。本番Main f6bd4d9eで通常UI保存直後の自動配送を確認。Main Cronは30分/日次を維持し、研究1分Cronも維持。",
       "remaining": []
     },
     {
@@ -461,31 +633,31 @@
     {
       "id": "check_129",
       "target": "task_042 品質と専用Worker検査",
-      "status": "pending",
+      "status": "passed",
       "evidence": [
         "eslint.config.mjs",
         "tests/db/schema.test.ts",
-        "scripts/check-research-bundle.ts"
+        "scripts/check-research-bundle.ts",
+        "tests/research/ops.test.ts",
+        ".github/workflows/ci.yml",
+        "https://github.com/sawanori/og-signage/actions/runs/36872512310",
+        "https://github.com/sawanori/og-signage/actions/runs/36880151862"
       ],
-      "verified": "QA対象テストと全体lintは成功。親全体テストのTABLES期待1件失敗を修正しDB17テスト成功。",
-      "remaining": [
-        "最終コードに対する全体typecheck/lint/test/build/check:worker/build:display/check:display/build:research/check:researchの終了コードを追記する。"
-      ]
+      "verified": "commit 161bbe4のGitHub Actions 36880151862でWeb全ステップとPi成功。67ファイル965 Vitest・106 Piテスト、型/Lint/Main・研究・表示buildと境界検査を通過。",
+      "remaining": []
     },
     {
       "id": "check_130",
       "target": "task_043 配備順序と停止",
-      "status": "pending",
+      "status": "passed",
       "evidence": [
         "research/wrangler.jsonc",
-        "docs/reviews/company-research-live-pipeline.json"
+        "docs/reviews/company-research-deployment.json",
+        "docs/company-research-runbook.md",
+        "tests/worker/company-research-after-save.test.ts"
       ],
-      "verified": "paid=falseの既定設定と限定fixtureによる実APIパイプライン成功を確認。",
-      "remaining": [
-        "本番private Worker/Main配備と通常保存canary。",
-        "停止/再開とoutbox対応rollback対象成果物を確認する。",
-        "Pi ZIP未公開、削除予約がrollback後も残ることを記録する。"
-      ]
+      "verified": "専用SQL/Worker先行後、通常保存から自動配送・巡回・プロフィール保存を実証。pause中のURL解除と現行参照解除、再開、限定検証後の通常有効化を確認。Main f6bd4d9eはoutbox対応済み復旧対象で保存・URL解除の本番確認と削除/承認の回帰成功。検証用メンバー登録と公開fixture Workerを除去し既存6件維持、Pi ZIP未公開。Mainの実際の旧版への巻き戻し訓練は未実施。 分析Workerはpause下で検証済み前版へ実際にrollbackし、通常版100%へ復旧・再開・有効化変数を再確認した。",
+      "remaining": []
     },
     {
       "id": "check_131",
@@ -512,5 +684,6 @@
       "verified": "非公開JSONL exportを再parse可能。JSONとMarkdown根拠を保存し、チャット/embedding/検索APIの追加なしをコードレビューで確認。",
       "remaining": []
     }
-  ]
+  ],
+  "updatedAt": "2026-10-02"
 }
