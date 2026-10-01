@@ -28,6 +28,7 @@ import { spotlightSubmissionInputSchema } from "../../lib/spotlight-submissions"
 import { createAdmin } from "../../scripts/create-admin";
 
 const TABLES = [
+  "company_research_outbox",
   "device_logs",
   "devices",
   "display_bundles",

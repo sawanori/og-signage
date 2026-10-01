@@ -1,3 +1,295 @@
+# Implementation Plan: 企業サイト2件の自動抽出と非公開蓄積
+
+- 作成日: 2026-10-01。調査対象: `e3f7e8c` の既存コード。
+- 状態: **実装・API検証中。Main migration 0015と分析専用migration 0000〜0002を実環境へ適用済み。本番有効化は少数の通常保存による検証後に行う。**
+- 今回の対象: `task_034`〜`task_043`、`check_096`〜`check_132`。
+- この冒頭の1〜15節が今回の有効な計画。末尾の旧計画とJSON内の既存タスク・検証結果は当時の履歴として保存し、今回再検証した扱いにはしない。
+
+## 1. Overview
+
+既存の管理画面で通常の保存を完了すると、登録済みの任意URL最大2件をバックグラウンドで巡回する。Meta Muse Spark 1.3 Contributorで企業・サービス情報を構造化し、将来の企業検索サービスのために非公開で蓄積する。登録操作、入力欄、保存ボタンは変えない。
+
+既存アプリは保存と同じDBトランザクションで配送待ちイベントを記録する。定期処理が非公開の別Workerへ配送し、別Workerが専用DBに予約を確定してから巡回・抽出する。抽出本文を既存DB、表示用config、公開素材、Piへ返す経路は設けない。
+
+## 2. Goal
+
+- 通常保存だけで処理が予約される。URLがなければAI・巡回APIを呼ばない。
+- 両URLを独立した情報源として扱い、企業概要、サービス、対象顧客、対応地域、実績、強み、明示された制約を根拠付きで保存する。
+- 将来の「こんな企業を探している」という検索に利用できるJSONと、根拠を再確認できるMarkdownを残す。
+- AIや巡回サービスの障害が、登録・編集・掲載・サイネージ配信の成功を妨げない。
+- 利用量、費用、未取得理由を追跡し、上限に達したら追加課金処理を止める。
+
+## 3. Current State
+
+| 実ファイル・構成 | 確認内容と変更への影響 |
+|---|---|
+| `components/admin/spotlight-form.tsx` / `components/admin/spotlights-view.tsx` | 任意URL2件と通常の保存が実装済み。画面追加は不要。 |
+| `app/admin/_actions/spotlights.ts` / `lib/services/spotlights.ts` | Staff権限の確認、作成、revision付き更新、削除がある。サービスで保存とイベント記録を一括確定する。URL2が省略された更新では既存値を保持する。 |
+| `lib/services/spotlight-submissions.ts` | 本人申請の承認は通常の作成サービスを通らず、独自トランザクションで掲載行を作る。承認にも接続が必要。 |
+| `app/api/spotlight-submissions/route.ts` | 匿名申請はpending保存。承認前の申請から有料処理を開始しない。 |
+| `db/schema.ts` / `drizzle.config.ts` | Turso/libSQLとDrizzle。既存migrationは0014まで。既存の接続・migration履歴を分析DBに流用しない。 |
+| `worker/scheduled.ts` / `wrangler.jsonc` | 30分Cronと日次Cronがある。1分Cronを追加しても天気・メール・既存回収の頻度を変えない。Queueは未導入。 |
+| `lib/config-builder.ts` / `lib/public-signage.ts` | 公開Webと端末は共通のconfigを利用。表示項目を明示列挙し、URL2を除外している。分析項目を足さない。 |
+| `worker/public-signage-relay.ts` / `worker/device-relay.ts` | 表示対象の既存mediaとバンドルを配信。分析オブジェクトは既存media表・MEDIA_BUCKETへ登録しない。 |
+| インフラ | Worker・R2は `sharehouse-signage`、DBは `og-signage`。無関係な `weworksignage`・`non-turn-signage` は変更対象外。 |
+
+公式資料は2026-10-01に確認した。Context7はこの環境では利用可能なツールとして見つからず、公式資料を参照した。
+
+- [Metaのモデル](https://dev.meta.ai/docs/models)、[料金とレート制限](https://dev.meta.ai/docs/pricing-rate-limits)、[Chat Completions](https://dev.meta.ai/docs/protocols/chat-completions)、[構造化出力](https://dev.meta.ai/docs/structured-output)。モデルIDは `muse-spark-1.3-contributor`。入力100万トークン$0.10、出力$0.20、キャッシュ入力$0.002。Contributorは従量課金のモデルティアで、月額契約ではない。
+- [Meta利用規約](https://dev.meta.ai/legal/terms-of-service)。Contributorの入出力は学習利用対象であり、公開サイトでも個人情報を入力してよいという意味ではない。入力に必要な権利の条件もある。
+- [Cloudflare Crawl API](https://developers.cloudflare.com/browser-run/quick-actions/crawl-endpoint/)、[Browser Run料金](https://developers.cloudflare.com/browser-run/pricing/)、[Service Bindings](https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/http/)、[Cron](https://developers.cloudflare.com/workers/configuration/cron-triggers/)。Crawl APIは非同期ジョブとして取得できる。Service Binding自体は永続キューではないため、受付のDB確定までawaitする。
+
+Meta Contributorのstrict JSON、usage、Cloudflareの作成・巡回・ページ送り・キャンセルを実APIで確認した。料金は返却された使用量と公開単価による推定で、請求書の実額確認ではない。実証は `docs/research-provider-validation.md` と `docs/reviews/company-research-*-probe.json` に記録する。
+
+## 4. Scope
+
+1. 通常の作成・更新、本人申請の承認から、登録済みURLに基づく永続イベントを作る。
+2. 最大2サイトの公開HTML本文を巡回し、取得範囲と未取得理由を記録する。
+3. 個人情報を除去した企業・サービス本文だけをContributorへ送り、根拠付きJSONを生成する。
+4. 専用DBと非公開R2へ、JSON、Markdown、取得履歴、ジョブ状態、利用量を保存する。
+5. 再送、URL変更・削除、予算停止、再試行、障害回復、保持期間を扱う。
+6. 公開・端末・プレビューへの非混入と、従来のURL1だけのQR表示を確認する。
+
+## 5. Non-Scope
+
+- チャット画面、企業推薦、ランキング、ベクトルDB、embedding、検索API、別サービスの画面。
+- 抽出ボタン、入力項目、進捗表示など管理画面の追加。既存の紹介文・ひとこと・タグへのAI書き戻し。
+- 未承認・却下申請の分析、既存全件の一括分析、保存と無関係な定期的な全件再分析。
+- ログインが必要なページ、CAPTCHA回避、SNS全巡回、外部ドメインの無制限追跡。
+- 初期版でのPDF本文、画像OCR、動画・音声の解析。発見した資料URLと未対応理由は保存するが、読んだ扱いにはしない。
+- Pi Agent・サイネージ描画の変更、表示バンドルの新規公開。
+- 計画作成中は実装しない制約を守った。2026-10-01の実装・API検証・SQL適用の依頼により実行段階へ移行した。
+
+## 6. Assumptions
+
+次はユーザー指定値ではなく、変更可能な初期設定案とする。
+
+| 項目 | 初期案 |
+|---|---|
+| 発火対象 | 管理者・スタッフによる成功した保存と、本人申請の承認確定。未承認申請は対象外。 |
+| 再利用 | URL不変で最後に成功した巡回から30日以内なら再利用。30日経過後の次の保存で再巡回し、本文ハッシュ不変ならAIを再利用。無操作での定期再分析はしない。 |
+| 巡回範囲 | 登録した各サイトの同一ホスト内、深さ5まで、1サイト50ページ・1企業100ページまで。サイトマップと内部リンクを使用。登録URL自体を優先する。 |
+| 実行時間 | 巡回1ジョブはアプリ側20分を目安に打ち切り、それまでの取得をpartialとして扱う。provider側の終了・キャンセル動作はtask_034で確認する。 |
+| AI上限 | 1企業の1回の抽出で入力合計50万・出力合計5万トークン、費用$0.10まで。UTC暦月の全体上限$5。予約時点で超過する呼出しを開始しない。 |
+| 巡回費 | AI費とは別勘定。月の追加利用予算目安$5、起動前に保守的な利用枠を予約する。既存プラン料金・ストレージ・DB費は別。providerの最低課金単位と停止遅延が未検証なので合計請求の厳密な上限とは呼ばない。 |
+| 再試行 | 一時障害は初回を含め最大3回。恒久エラーと予算停止は自動連続再試行しない。 |
+| 保持 | 取得した生HTMLは最長7日。サニタイズ済みMarkdownと現行JSONは登録が有効な間保持。旧版は90日。削除・両URL削除後は7日以内に本文・プロフィールを消し、最小の削除記録を残す。削除済みsourceIdを別の登録に再使用しない。 |
+| 処理単位 | 掲載メンバーIDを単位とする。別メンバーの企業同一性を推定して結合しない。表示OFFは掲載制御であり、分析停止とはしない。 |
+
+「網羅的」は到達可能な対象ページを設定上限内で収集する意味とする。上限・robots・個人情報除去・未対応形式などによる欠落をcoverageへ記録し、完全取得と誤表示しない。PDFを初期版へ含める必要が生じた場合は、費用・抽出方式・検証範囲を計画へ追加してから実装する。
+
+## 7. Architecture Impact
+
+### 保存と非公開連携
+
+- **Frontend**: 既存フォームと成功表示を維持。保存中に巡回やMetaの応答を待たない。
+- **Main backend**: 掲載行の保存と `company_research_outbox` の追加を同じwrite transactionにする。外部APIは呼ばない。ローカルDBの記録失敗は通常の保存失敗としてrollbackし、外部障害とは区別する。
+- **配送**: Mainの1分Cronが期限付きleaseで最大25件を取得し、`COMPANY_RESEARCH` Service Bindingをawaitして配送する。受付が専用DBへ永続化した202を確認して配送済みにする。応答喪失時は同じeventIdで再送する。
+- **分析backend**: 別Worker `og-company-research` の1分Cronが、専用DBのジョブを少数ずつclaimする。初期値は同時実行1件。巡回ID、ページ処理位置、phaseを保存して複数回のCronで進める。DBのlease更新と期限切れ回収で中断から再開する。初期版はCloudflare Queuesを追加しない。
+- **DB**: Mainは配送イベントだけを持つ。本文・分析結果・利用量は新規Turso `og-company-research` へ保存する。
+- **Storage**: 新規R2 `og-company-research-private` を分析Workerだけにbindingする。r2.devと独自公開ドメインは無効。既存media表へ登録しない。
+- **Auth/Infra**: 分析Workerはworkers.dev・プレビューURL・公開routeを無効にし、Service Bindingの受付POSTだけを提供する。分析結果のGETは作らない。Mainに分析DB/R2の読取資格情報やMetaキーを与えず、分析WorkerにMain DBやMEDIA_BUCKETの資格情報を与えない。
+
+### 巡回・サニタイズ・抽出
+
+1. HTTP/HTTPSのみを許可し、ユーザー情報付きURL、ローカル・プライベート・リンクローカル宛先、IP直指定、非標準ポートを拒否する。DNS再解決・redirect先を含む保護がCrawl APIで成立するかtask_034で検証する。成立しない方式を本番に出さない。
+2. Cloudflare Browser Runの非同期 `/crawl` を利用し、HTML/Markdownを取得する。Meta以外のAIによるCrawl JSON抽出機能は使わない。robotsとContent Signalsを尊重し、用途は `search` / `ai-input` / `ai-train` を正直に指定する。学習用途を拒否したサイトは対象外として記録する。
+3. 会社概要、事業、サービス、実績、料金、対応地域を優先する。同じページ・本文を重複排除する。意味を持つqueryは勝手に削らない。www等へのホスト移動は安全検証した正規サイトへの移動だけを許可し、無関係な外部サイトへ追跡しない。
+4. 個人の氏名・経歴・メール・電話など、個人情報を含む部分を除去する。管理画面の氏名・連絡先・写真・紹介文は送信対象にしない。本文以外のタイトル・引用・URLにも同じ送信判定を行い、モデルへの根拠参照は内部sourceIdを基本とする。判別が曖昧なページは `privacy_review_required` としてMetaへの送信を保留する。単純な正規表現だけで全件安全と断定しない。実装可能な検出範囲と取りこぼしをtask_034のfixtureで評価する。
+5. サイト本文は命令ではなく資料として渡す。サイト内のプロンプト、外部ツール呼出し要求、秘密情報要求を実行しない。モデルにDB更新権限や外部ツールを与えない。
+6. サニタイズ済み本文をページsourceId付きでまとめ、1回の構造化抽出で企業単位へ統合する。本文450,000 UTF-8 bytesを上限に会社・サービスページを優先し、超過はcoverage.partialへ記録する。ページごとのAI呼出しは追加しない。各主張はsourceIdと根拠箇所を持ち、保存前に実際のMarkdownとの対応を検証する。JSON形式に合うだけでは採用しない。
+
+### 変更・削除と古い処理
+
+URLがある成功した保存ごとにupsertイベントを残す。ただし同じfingerprintの進行中ジョブや最後の成功巡回から30日以内の結果を再利用し、bio等の編集で新規AI処理を作らない。URL2省略時には入力値ではなく保存後の値を使う。
+
+受付は最大sourceRevisionを保持し、到着順が逆でも状態を戻さない。実行有効性は `currentJobId + urlFingerprint + leaseToken + 未削除` で比較更新する。sourceRevisionだけの一致を要求して、URL不変の編集で正常ジョブを失効させない。
+
+鮮度はURL集合単位の `lastSuccessfulCrawlAt` で判定し、AIを実行した `extractedAt` と分ける。本文不変でも巡回が正常完了すれば前者だけを更新する。失敗・中断は成功日時を更新せず、再試行上限と次回時刻を適用する。
+
+URL変更・片方削除では新しい収集対象を作り、受付時点で旧プロフィールを現行ポインタから外す。新結果の完成まで旧結果を現行として扱わない。両URL削除はrevoke、メンバー削除は削除前revisionより大きい版のdeleteイベントとする。削除イベントは元行と同時確定し、元行削除で消える外部キーを付けない。削除記録によって遅延イベントや旧ジョブからの復活を防ぐ。
+
+## 8. UI Plan
+
+画面変更なし。2つのURLは引き続き独立した任意入力とし、通常の保存だけで完結する。抽出の状態・失敗・費用は既存のサイネージ画面へ表示しない。
+
+QRはURL1だけを使用し、URL1空欄ならURL2への繰上げをしない。小さい「ホームページ」の文言も復活させない。紹介文、ひとこと、表示タグ、写真、ロゴ、並び順をAIが更新しない。本人登録・審査・端末プレビューも同じ境界を維持する。
+
+## 9. API Plan
+
+### 非公開イベント受付
+
+`POST /internal/sources` をService Binding経由で呼ぶ。公開ルートは持たず、任意の外部URLやブラウザから呼べない配備を受入条件とする。
+
+```json
+{
+  "schemaVersion": 1,
+  "eventId": "opaque-event-id",
+  "sourceId": "member-spotlight-id",
+  "sourceRevision": 4,
+  "eventType": "upsert",
+  "urls": [{"slot": 1, "url": "https://example.com/"}],
+  "urlFingerprint": "sha256-of-canonical-urls",
+  "occurredAt": "2026-10-01T00:00:00Z"
+}
+```
+
+- eventTypeは `upsert / revoke / delete`。revoke/deleteはurlsが空。upsertは1〜2件、slotは1/2で重複不可。ID、revision、日時、bodyサイズ、URLをZodで検証する。
+- 202は `{ "eventId": "...", "status": "accepted" }`。同じeventIdの再送、古いrevisionの受信も安全にACKし、本文や分析結果は返さない。同じeventIdで異なるpayloadは409。
+- 不正bodyは400、未知path/methodは404/405、受付DBの一時障害は503。202前に永続化を完了する。配送側はネットワーク失敗・503を再試行し、400/409は理由を記録して運用確認待ちにする。
+
+### 巡回・Meta API
+
+- Crawl APIの作成・状態取得・結果ページ送り・キャンセルは公式仕様をtask_034で固定する。APIトークンは分析Workerだけのsecretにする。
+- Metaは `POST https://api.meta.ai/v1/chat/completions`、`Authorization: Bearer $MODEL_API_KEY`、モデル `muse-spark-1.3-contributor` をnative fetchで呼ぶ。キーの実値はコード・計画・ログに書かない。
+- `response_format` のstrict JSON Schemaを使い、root object、全キーrequired、各objectのadditionalProperties=falseなどMetaの対応範囲に合わせる。未取得項目はnull/空配列と理由で表す。Contributorで使えないreasoning=maxは指定しない。
+- 401/403/課金設定エラーは設定停止。429はRetry-Afterに従って上限付き再試行。5xx/timeoutは最大試行数以内に限定。形式・個人情報検証失敗はfailedにする。根拠引用不一致のみ予算枠内の最大3回へ含めて再試行し、本文を含まない理由コードを残す。無制限の修復呼出しをしない。
+- 応答後・保存前の停止では二重課金を完全には排除できない。呼出し予約とattemptを先に記録し、結果不明時は費用予約を解放せず、上限内でのみ再試行する。
+
+### 保存するJSON契約
+
+`schemaVersion`, `sourceId`, `generation`, `company`, `services[]`, `strengths[]`, `limitations[]`, `unknowns[]`, `sourceConflicts[]`, `coverage`, `sources[]`, `model`, `promptVersion`, `extractedAt` を保持する。
+
+companyには会社・事業概要、業種、対応地域を置く。servicesには名称、内容、対象顧客、解決する課題、提供方法、価格情報がある場合の条件を置く。各事実・主張には `kind`（fact/site_claim/inference）、`sourceIds`、`evidenceText` を持たせる。未記載はunknownとし、「料金未掲載だから高い」等の弱みを捏造しない。推定は事実から分離し、推奨判断の根拠に直接昇格させない。
+
+URL2件が異なる会社を示す場合は、情報源ごとの主張と衝突を保存し、単一企業の事実として混ぜない。coverageには入力URL、取得数、処理数、スキップ理由、上限到達、最終取得時刻、complete/partial/blockedを持たせる。completeは設定された対象範囲内の意味に限定する。
+
+## 10. Database Plan
+
+### Main DBへの追加
+
+`company_research_outbox`: event_id主キー、source_id、source_revision、event_type、urls_json、url_fingerprint、occurred_at、status、attempts、next_attempt_at、lease_token、lease_expires_at、last_error_code、delivered_at。
+
+- `(source_id, source_revision, event_type)` を一意にする。配送取得用に `(status, next_attempt_at, lease_expires_at)` の索引。
+- 元メンバー削除に連動する外部キーは付けない。配送済みイベントは30日後に削除可。未配送と失敗は配送または明示処理まで保持する。
+- 既存の0014の次のmigrationを生成する。ファイル名は `db/migrations/0015_glossy_sharon_carter.sql` と対応meta。既存表の破壊変更はしない。
+
+### 分析専用DB
+
+| テーブル | 用途・主な制約 |
+|---|---|
+| `research_events` | event_id一意とpayload hash、受付日時。再送の重複排除。原文・個人情報なし。 |
+| `research_subjects` | source_id主キー、最大source_revision、url_fingerprint、last_successful_crawl_at、current_job_id、current_profile_id、active/revoked/deleted。削除状態を旧イベントが戻せない。 |
+| `research_jobs` | job_id、generation、対象URL、phase、status、lease、attempt、next_run_at、provider crawl ID、進行位置、coverage。subject内generation一意。 |
+| `research_pages` | job_id、source_id、正規化URL、本文hash、R2 key、fetched_at、処理状態と除外理由。job内canonical URL一意。 |
+| `research_profiles` | source_id・generation一意、schema/model/prompt version、構造化JSON、extracted_at。過去版を現行ポインタと分離。 |
+| `research_usage` | 呼出し単位の予約・確定・結果不明、provider、job_id、入力/出力/キャッシュtoken、料金表version、費用、月別集計。開始時leaseと外部crawl IDも保持し、URL削除と開始応答が競合しても取消可能にする。 |
+| `research_controls` | pause、provider設定停止を専用DBで永続管理する。 |
+
+分析DB専用の `research/db/schema.ts`, `research/db/client.ts`, `research/drizzle.config.ts`, `research/db/migrations/` を作る。Mainとmigration journal・接続変数を分離し、分析用設定は接続先未指定なら即失敗する。Mainのデフォルト接続へフォールバックしない。
+
+実migrationは専用の `0000_graceful_tempest.sql`、`0001_curvy_wonder_man.sql`、`0002_living_colleen_wing.sql`。`npm run research:db:generate` / `npm run research:db:migrate` は `.dev.vars.research` の接続だけを使う。専用ビルドは `npm run build:research`、境界検査は `npm run check:research`。通常運用CLIは `npm run research:ops -- status` で開始する。
+
+R2には `sources/{sourceId}/{generation}/{pageId}.md` と短期保存HTMLを置く。DBのJSON列が正本となり、運用CLIから `.json` または `.jsonl` で出力できる。R2 key、本文、根拠の全文を通常ログに出さない。
+
+### 費用の予約
+
+各有料呼出し前に、月額残高・job残高をDBトランザクションで確認し、入力上限と最大出力から保守的に費用を予約する。トークン見積方式はtask_034で確認する。正確なtokenizerがなければ安全側の上限を採用し、文字数割り算による過少見積をしない。actual usageが返れば差額を精算し、結果不明は予約を維持する。並列Cronでも残高を二重使用できないよう条件付き更新する。
+
+料金例: 入力10万・出力1万tokenならAI料金は約$0.012、同条件1,000社で約$12（キャッシュ割引・再試行なし）。これは想定token数による計算で、実サイトの平均料金ではない。巡回費・DB・R2・Worker・税等は含まない。料金表と計算時点を利用履歴に保存する。
+
+## 11. File-by-File Plan
+
+下記は実装時の変更予定であり、今回作成するファイルではない。
+
+| ファイル | 区分 | 目的・変更 | リスク |
+|---|---|---|---|
+| `docs/research-provider-validation.md` | 新規 | API・巡回・PII fixture・価格見積の実証結果と開始条件 | 高 |
+| `lib/company-research-contract.ts` | 新規 | 最小イベント、URL fingerprint、Zod契約。UIからimportしない | 中 |
+| `db/schema.ts` / `db/migrations/0015_*.sql` / 対応meta | 変更・新規 | Main outbox追加 | 中 |
+| `lib/services/company-research-outbox.ts` | 新規 | 同一transaction記録、lease、配送状態 | 高 |
+| `lib/services/spotlights.ts` | 変更 | 作成・更新・削除とoutboxの一括確定 | 高 |
+| `lib/services/spotlight-submissions.ts` | 変更 | 承認時だけoutboxを追加 | 高 |
+| `worker/company-research-dispatch.ts` | 新規 | Service Binding配送と再送 | 中 |
+| `worker/scheduled.ts` / `types/cloudflare-workers.d.ts` / `wrangler.jsonc` | 変更 | 1分Cronの分岐、型、private binding追加 | 高 |
+| `research/worker.ts` / `research/env.ts` / `research/wrangler.jsonc` | 新規 | 非公開受付と分析Cron、専用secret・binding | 高 |
+| `research/db/schema.ts` / `research/db/client.ts` / `research/drizzle.config.ts` / `research/db/migrations/**` | 新規 | 分析専用DBと独立migration | 高 |
+| `research/intake.ts` / `research/jobs.ts` | 新規 | 冪等受付、状態機械、lease、版管理、再開 | 高 |
+| `research/crawler.ts` / `research/url-policy.ts` / `research/sanitize.ts` | 新規 | 巡回、送信範囲、安全な本文、coverage | 高 |
+| `research/meta.ts` / `research/profile-schema.ts` / `research/evidence.ts` | 新規 | Contributor抽出、schemaと根拠検証 | 高 |
+| `research/budget.ts` / `research/retention.ts` | 新規 | 利用枠予約、費用集計、保持・削除 | 高 |
+| `scripts/company-research-ops.ts` / `docs/company-research-runbook.md` | 新規 | 専用資格情報で状態・費用確認、限定再試行、JSON出力、配備・停止手順 | 中 |
+| `.dev.vars.example` / `.gitignore` | 変更 | 変数名のみ例示、分析用ローカル秘密情報・生成物を除外 | 中 |
+| `package.json` / `package-lock.json` / `.github/workflows/ci.yml` | 変更 | 分析用migration・ビルド検査scriptを検証後に追加。依存追加は必要性が実証されたものだけ | 中 |
+| `tests/research/**` / `tests/services/company-research-outbox.test.ts` / `tests/worker/company-research-dispatch.test.ts` | 新規 | 境界・ジョブ・費用・非公開構成テスト | 高 |
+| `tests/services/spotlights.test.ts` / `tests/services/spotlight-submissions.test.ts` / `tests/worker/scheduled.test.ts` / `tests/api/spotlight-registration-flow.test.ts` / `tests/api/public-signage.test.ts` / `tests/api/device.test.ts` / 既存フォーム・審査テスト | 変更 | 保存・承認・配信の回帰 | 高 |
+
+`components/signage/**`, `display/**`, `lib/config-schema.ts`, Piコードは変更しない。`lib/config-builder.ts` は既存の明示列挙を維持し、分析参照を足さない。
+
+## 12. Implementation Order
+
+1. **task_034: 外部APIと送信条件の実証。** Contributorの有効化・strict JSON・usage、Crawl APIの安全性・目的指定・キャンセル・課金単位、PII除去fixtureを確認する。実測不能なら未検証とし、有料本番処理の有効化を止める。モデルを勝手に切り替えない。
+2. **task_035: 契約とDB。** イベント・JSON契約、Main outbox、専用分析DBと別migrationを作る。
+3. **task_036: 保存・承認・削除。** 外部通信なしでイベントを一括確定し、既存の入力・権限・競合動作を維持する。
+4. **task_037: 配送と非公開受付。** 既存Cronを保ったまま永続予約までを接続する。
+5. **task_038: 巡回とサニタイズ。** 範囲制限、coverage、重複除去、Markdown保管を実装する。
+6. **task_039: Meta構造化抽出。** 模擬応答を中心に、事実・主張・推定・不明と根拠を保存する。
+7. **task_040: 実行制御。** 分割実行、再送、lease回収、URL差替え、削除を接続する。有料処理のフラグはまだOFF。
+8. **task_041: 費用・保持・運用。** 予約型の予算制御と停止機能を接続した後にだけ、有料呼出しを有効化可能にする。
+9. **task_042: 統合と非混入。** 故障・競合・既存画面・サイネージ配信を検証する。
+10. **task_043: 配備。** 専用リソースとmigration、分析Worker、Main migration/Workerの順に、有料処理OFFで配備する。送信・分離・予算の開始条件を確認後、secretではない設定 `RESEARCH_CANARY_SOURCE_IDS` に列挙したfixtureのsourceIdだけを限定的に有効化し、実usageと非公開性を確認する。その後に通常運用を有効化する。コード変更をコミット・プッシュする場合は実装依頼の範囲で行い、この計画作成には含めない。
+
+停止時は新しい有料呼出しを止め、Mainの保存とoutboxを維持する。進行中の巡回は確認済みの方法で停止し、状態不明の費用を残す。pause・予算停止中もdelete/revoke受付と期限回収は継続し、削除されていない現行JSON・Markdownは保持する。rollbackは有料処理OFFと分析Workerの前版への切替を基本とし、Mainを戻す場合もoutbox対応済み版に限定する。outbox非対応の旧Mainへ戻すと保存・削除イベントが欠落するため、その版へのrollbackはこの運用手順では行わない。Mainのoutbox対応済み成果物を配備時に保管し、追加表はdropしない。Pi表示ZIPの公開は不要。
+
+## 13. Verification Commands
+
+以下は現在のpackage.jsonに存在するコマンド。**今回の計画作成では実行していない。** 新機能のコードが存在する段階で対象テストを実行し、最終統合で全体を確認する。
+
+```sh
+npm run typecheck
+npm run lint
+npm test
+npm run build
+npm run check:worker
+npm run build:display
+npm run check:display
+```
+
+`npm run test:visual` も既存だが、UI非変更の今回は既存フォームの操作テストを基本とし、描画差分が生じた場合に実行する。スマートフォン幅で既存登録・保存・QR挙動を隔離環境で確認する。
+
+現行のbuild/check:workerはMain Worker用であり、これだけでは新規分析Workerのビルド・秘密情報非混入を検証したことにならない。task_035で専用migration script、task_042で専用Workerのdry-run・bundle検査scriptを追加し、その時点で確認した実コマンドをこの節とタスクへ追記する。存在しないscriptを実行済み・利用可能として扱わない。
+
+## 14. Acceptance Criteria
+
+詳細は `docs/acceptance-checks.json` のcheck_096〜132を正本とし、すべて未検証から開始する。複数タスクにまたがるチェックは、前段では担当範囲の自動検証だけを完了条件とし、チェック全体の合格はtask_042の統合とtask_043の実配備確認で判定する。
+
+- 0/1/2個の任意URL、通常保存、承認、削除が追加操作なしで正しく動く。
+- 保存失敗・権限不足・revision競合・承認再送・未承認申請で不要なジョブを作らない。
+- 外部障害・重複配送・順序逆転・プロセス停止・URL変更でも、処理が失われず旧結果が現行を上書きしない。
+- JSONとMarkdownが根拠・取得時刻・version・coverageを持ち、未取得や推定を事実と混ぜない。
+- Contributorへ個人情報・管理登録の秘密情報を送らず、サイトの指示を実行しない。除去不能な資料は送信保留する。
+- AI料金の予約・実測・結果不明を追跡し、予算超過呼出しを開始しない。巡回費を別集計する。
+- 分析結果・URL2専用の値・原文・R2 keyが公開config、端末config、プレビュー、素材配信、Piへ出ない。分析だけの更新では同じ時刻・表示データでconfig version/ETagが変わらない。
+- 新しい分析WorkerとR2に公開経路がなく、Mainと分析の資格情報が相互に分離される。
+- 既存QRはURL1のみ。文言とフォームに意図しない変更がなく、必要な品質検証と隔離実環境確認の証拠が残る。
+
+## 15. Repair Loop
+
+失敗した検証の出力・対象check/task・再現条件を記録する。該当する契約または実装だけを修正し、まず失敗した境界テストを再実行する。影響範囲に応じて関連テストと品質コマンドを実行し、成功した証拠だけをチェック結果へ反映する。テストを通すために弱い期待値へ変えない。
+
+API・料金・実行基盤の前提が実証と違った場合は、3つの計画ファイルを先に同期する。個人情報除去、非公開分離、費用上限の開始条件を満たせない場合は有料処理をOFFのままにし、モデルや外部送信先を無断で変更しない。未実施の実機・実クラウド確認を成功扱いにしない。
+
+### 計画レビュー記録（2026-10-01）
+
+登録・UI、バックエンド・費用、表示・公開境界の3観点で読み取りレビューを実施した。重複を除いた指摘6件を修正し、各担当の再レビューで指摘範囲に未解消項目がないことを確認した。
+
+| 指摘 | 修正と対応確認 |
+|---|---|
+| P1: outbox非対応の旧Mainへのrollbackでイベントが欠落する | Mainの復旧先をoutbox対応済みに限定し、保存・削除の予約継続をcheck_130へ追加。 |
+| P2: 前段タスクが後段の実装・配備まで完了条件にしている | task_035〜039は担当範囲の自動検証、全体合格はtask_042/043と明記。 |
+| P2: 本文不変時に再巡回の起算日が更新されない | lastSuccessfulCrawlAtとextractedAtを分離し、翌日の保存で追加巡回ゼロをcheck_112へ追加。 |
+| P2: 有料処理OFFのまま実usageを測る順序になっている | 開始条件確認、許可fixtureだけ限定有効化、実usage確認、通常運用の順に統一。 |
+| P2: 巡回費の予算予約・停止が受入条件にない | check_119/120へ枠不足時の開始禁止、同時予約、結果不明時の枠保持を追加。 |
+| P2: 停止中の回収と両URL削除後の消去が受入条件にない | check_121/122へdelete/revoke、停止中回収、有効データ保持、遅延完了拒否を追加。 |
+
+機械確認はJSON解析、ID一意性、依存関係の参照・循環、タスクと受入項目の対応、既存または作成予定の参照ファイル、既存npmコマンドとの照合、旧計画と既存JSON項目の保持、差分が指定3ファイルだけであることを対象とした。新規タスク・受入項目はすべてpendingのまま保持する。これは**計画のレビュー結果**であり、コードのテスト成功や実API・本番配備の確認を意味しない。
+
+---
+
+# 過去の計画（履歴として原文を保存）
+
+以下の状態・対象コミット・検証結果は各計画作成時点の記録であり、今回の機能の完了状態ではない。
+
 # Implementation Plan: メンバー紹介の本人登録・承認掲載
 
 - 作成日: 2026-09-30

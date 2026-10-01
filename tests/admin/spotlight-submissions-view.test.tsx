@@ -66,6 +66,20 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("確認待ちの審査", () => {
+  it("将来申請データへ非表示項目が加わっても、掲載プレビューには表示項目だけを渡す", () => {
+    const marker = "research-only-preview-marker";
+    const extended = { ...submission, payload: { ...submission.payload,
+      companyResearch: { services: [marker], strengths: [marker] },
+      markdownKey: `research/${marker}/source.md`,
+    } };
+    render(<SpotlightSubmissionsView submissions={[extended]} />);
+    openFirst();
+    const props = preview.mock.calls.at(-1)?.[0];
+    expect(props.payload).toEqual({ companyName: "NonTurn", personName: "山田 太郎", role: "デザイナー", quote: "毎日が実験です", bio: "映像とWebを作っています", tags: ["映像", "Web"], websiteUrl: "https://example.com/nonturn" });
+    expect(JSON.stringify(props)).not.toContain(marker);
+    expect(JSON.stringify(props)).not.toContain(submission.payload.websiteUrl2!);
+  });
+
   it("古い順に並べ、全入力とStaff専用画像を確認して共通プレビューへ渡せる", () => {
     render(<SpotlightSubmissionsView submissions={[another, submission]} />);
     const rows = within(screen.getByRole("region", { name: "確認待ち一覧" })).getAllByRole("listitem");

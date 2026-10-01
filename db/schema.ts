@@ -11,6 +11,7 @@ import { sql } from "drizzle-orm";
 import { check, index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import type { SpotlightSubmissionFile, SpotlightSubmissionPayload } from "../lib/spotlight-submissions";
 import { SPOTLIGHT_PLACEHOLDER_EMAIL } from "../lib/validators";
+import type { CompanyResearchEvent, CompanyResearchUrl } from "../lib/company-research-contract";
 
 const id = () =>
   text("id")
@@ -24,6 +25,34 @@ const updatedAt = () => integer("updated_at").notNull().$defaultFn(nowSeconds);
 /** 楽観ロック。更新のたびに 1 増やし、送られた値と一致しなければ 409 */
 const revision = () => integer("revision").notNull().default(0);
 const bool = (name: string) => integer(name, { mode: "boolean" });
+
+// ------------------------------------------------------------ 非公開企業分析への配送予約
+
+/** 本文・個人情報は保持しない。削除イベントを残すため member_spotlights への FK は付けない。 */
+export const companyResearchOutbox = sqliteTable("company_research_outbox", {
+  eventId: text("event_id").primaryKey(),
+  sourceId: text("source_id").notNull(),
+  sourceRevision: integer("source_revision").notNull(),
+  eventType: text("event_type").$type<CompanyResearchEvent["eventType"]>().notNull(),
+  urls: text("urls_json", { mode: "json" }).$type<CompanyResearchUrl[]>().notNull(),
+  urlFingerprint: text("url_fingerprint").notNull(),
+  occurredAt: text("occurred_at").notNull(),
+  status: text("status", { enum: ["pending", "delivering", "delivered", "blocked"] }).notNull().default("pending"),
+  attempts: integer("attempts").notNull().default(0),
+  nextAttemptAt: integer("next_attempt_at").notNull(),
+  leaseToken: text("lease_token"),
+  leaseExpiresAt: integer("lease_expires_at"),
+  lastErrorCode: text("last_error_code"),
+  deliveredAt: integer("delivered_at"),
+}, (t) => [
+  uniqueIndex("company_research_outbox_source_revision_type_idx").on(t.sourceId, t.sourceRevision, t.eventType),
+  index("company_research_outbox_delivery_idx").on(t.status, t.nextAttemptAt, t.leaseExpiresAt),
+  check("company_research_outbox_event_type_check", sql`${t.eventType} IN ('upsert', 'revoke', 'delete')`),
+  check("company_research_outbox_status_check", sql`${t.status} IN ('pending', 'delivering', 'delivered', 'blocked')`),
+  check("company_research_outbox_revision_check", sql`${t.sourceRevision} >= 0`),
+  check("company_research_outbox_attempts_check", sql`${t.attempts} >= 0`),
+  check("company_research_outbox_urls_check", sql`json_valid(${t.urls}) AND json_type(${t.urls}) = 'array' AND (( ${t.eventType} = 'upsert' AND json_array_length(${t.urls}) BETWEEN 1 AND 2) OR (${t.eventType} IN ('revoke', 'delete') AND json_array_length(${t.urls}) = 0))`),
+]);
 
 // ---------------------------------------------------------------- 管理ユーザー
 

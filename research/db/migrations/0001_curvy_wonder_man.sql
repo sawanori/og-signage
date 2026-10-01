@@ -1,0 +1,1 @@
+ALTER TABLE `research_jobs` ADD `purge_after` integer;

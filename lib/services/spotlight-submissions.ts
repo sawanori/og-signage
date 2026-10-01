@@ -20,6 +20,7 @@ import {
 import { SPOTLIGHT_PLACEHOLDER_EMAIL } from "../validators";
 import { assertRole } from "./notices";
 import { notifySpotlightSubmission } from "./spotlight-notifications";
+import { enqueueSpotlightResearch } from "./company-research-outbox";
 
 export class SpotlightSubmissionError extends Error {
   constructor(readonly status: 400 | 404 | 409 | 410 | 413 | 415 | 503, readonly code: string, message: string) {
@@ -209,7 +210,8 @@ export async function approveSpotlightSubmission(db: Db, bucket: MediaBucket, us
       imageIds[kind] = image.id;
     }
     // 申請のメールアドレスを掲載メンバーに引き継ぐ（管理画面で見るだけ）。メール欄の無い頃の申請は届かない仮のアドレス
-    const [spotlight] = await tx.insert(memberSpotlights).values({ ...row.payload, contactEmail: row.contactEmail ?? SPOTLIGHT_PLACEHOLDER_EMAIL, photoMediaId: imageIds.photo ?? null, logoMediaId: imageIds.logo ?? null, enabled: true }).returning({ id: memberSpotlights.id });
+    const [spotlight] = await tx.insert(memberSpotlights).values({ ...row.payload, contactEmail: row.contactEmail ?? SPOTLIGHT_PLACEHOLDER_EMAIL, photoMediaId: imageIds.photo ?? null, logoMediaId: imageIds.logo ?? null, enabled: true }).returning();
+    await enqueueSpotlightResearch(tx, spotlight);
     await tx.update(memberSpotlightSubmissions).set({ approvedSpotlightId: spotlight.id }).where(eq(memberSpotlightSubmissions.id, id));
     return { spotlightId: spotlight.id };
   }, { behavior: "immediate" }));

@@ -18,7 +18,12 @@
     "build:display": "vite build --config display/vite.config.ts",
     "check:display": "tsx scripts/check-display-bundle.ts dist-display",
     "publish:display": "tsx scripts/publish-display-bundle.ts",
-    "check:worker": "tsx scripts/check-worker-bundle.ts dist/server"
+    "check:worker": "tsx scripts/check-worker-bundle.ts dist/server",
+    "research:db:generate": "node --env-file-if-exists=.dev.vars.research node_modules/drizzle-kit/bin.cjs generate --config research/drizzle.config.ts",
+    "research:db:migrate": "node --env-file-if-exists=.dev.vars.research node_modules/drizzle-kit/bin.cjs migrate --config research/drizzle.config.ts",
+    "build:research": "wrangler deploy --config research/wrangler.jsonc --dry-run --outdir ../dist-research --metafile dist-research/meta.json",
+    "check:research": "tsx scripts/check-research-bundle.ts",
+    "research:ops": "node --env-file-if-exists=.dev.vars.research --import tsx scripts/company-research-ops.ts"
   },
   "dependencies": {
     "@fontsource-variable/geist": "5.3.0",

@@ -1,0 +1,281 @@
+{
+  "at": "2026-10-01T13:35:13.364Z",
+  "environment": "temporary libSQL and in-memory object storage, actual Crawl and Meta APIs",
+  "history": [
+    {
+      "iteration": 0,
+      "phase": "crawl",
+      "status": "queued",
+      "error": null,
+      "attempts": 0
+    },
+    {
+      "iteration": 1,
+      "phase": "crawl",
+      "status": "queued",
+      "error": null,
+      "attempts": 0
+    },
+    {
+      "iteration": 2,
+      "phase": "crawl",
+      "status": "queued",
+      "error": null,
+      "attempts": 0
+    },
+    {
+      "iteration": 3,
+      "phase": "crawl",
+      "status": "queued",
+      "error": null,
+      "attempts": 0
+    },
+    {
+      "iteration": 4,
+      "phase": "crawl",
+      "status": "queued",
+      "error": null,
+      "attempts": 0
+    },
+    {
+      "iteration": 5,
+      "phase": "crawl",
+      "status": "queued",
+      "error": null,
+      "attempts": 0
+    },
+    {
+      "iteration": 6,
+      "phase": "crawl",
+      "status": "queued",
+      "error": null,
+      "attempts": 0
+    },
+    {
+      "iteration": 7,
+      "phase": "crawl",
+      "status": "queued",
+      "error": null,
+      "attempts": 0
+    },
+    {
+      "iteration": 8,
+      "phase": "crawl",
+      "status": "queued",
+      "error": null,
+      "attempts": 0
+    },
+    {
+      "iteration": 9,
+      "phase": "crawl",
+      "status": "queued",
+      "error": null,
+      "attempts": 0
+    },
+    {
+      "iteration": 10,
+      "phase": "extract",
+      "status": "queued",
+      "error": null,
+      "attempts": 0
+    },
+    {
+      "iteration": 11,
+      "phase": "complete",
+      "status": "succeeded",
+      "error": null,
+      "attempts": 0
+    }
+  ],
+  "objects": 6,
+  "profiles": [
+    {
+      "company": {
+        "name": {
+          "text": "Alpha Studio",
+          "kind": "fact",
+          "sourceIds": [
+            "page-f9fff50f0b687f65f750ebd5e651d16f"
+          ],
+          "evidenceText": "Alpha Studio"
+        },
+        "summary": {
+          "text": "企業向けにWebサイト制作と映像制作を提供する会社",
+          "kind": "fact",
+          "sourceIds": [
+            "page-f9fff50f0b687f65f750ebd5e651d16f"
+          ],
+          "evidenceText": "Alpha Studioは企業向けにWebサイト制作と映像制作を提供します。"
+        },
+        "industries": [],
+        "regions": [
+          {
+            "text": "東京と横浜",
+            "kind": "fact",
+            "sourceIds": [
+              "page-564a22b27152aa37c16f3212f5fe2f8e"
+            ],
+            "evidenceText": "対応地域は東京と横浜です。"
+          }
+        ]
+      },
+      "services": [
+        {
+          "name": {
+            "text": "Webサイト制作",
+            "kind": "fact",
+            "sourceIds": [
+              "page-564a22b27152aa37c16f3212f5fe2f8e"
+            ],
+            "evidenceText": "Webサイト制作では企業サイトの企画、デザイン、実装に対応します。"
+          },
+          "description": {
+            "text": "企業サイトの企画、デザイン、実装に対応する",
+            "kind": "fact",
+            "sourceIds": [
+              "page-564a22b27152aa37c16f3212f5fe2f8e"
+            ],
+            "evidenceText": "Webサイト制作では企業サイトの企画、デザイン、実装に対応します。"
+          },
+          "targetCustomers": [
+            {
+              "text": "企業向け",
+              "kind": "fact",
+              "sourceIds": [
+                "page-f9fff50f0b687f65f750ebd5e651d16f"
+              ],
+              "evidenceText": "Alpha Studioは企業向けにWebサイト制作と映像制作を提供します。"
+            }
+          ],
+          "problemsSolved": [],
+          "delivery": [],
+          "pricing": []
+        },
+        {
+          "name": {
+            "text": "映像制作",
+            "kind": "fact",
+            "sourceIds": [
+              "page-564a22b27152aa37c16f3212f5fe2f8e"
+            ],
+            "evidenceText": "映像制作ではプロモーション動画の企画、撮影、編集に対応します。"
+          },
+          "description": {
+            "text": "プロモーション動画の企画、撮影、編集に対応する",
+            "kind": "fact",
+            "sourceIds": [
+              "page-564a22b27152aa37c16f3212f5fe2f8e"
+            ],
+            "evidenceText": "映像制作ではプロモーション動画の企画、撮影、編集に対応します。"
+          },
+          "targetCustomers": [
+            {
+              "text": "企業向け",
+              "kind": "fact",
+              "sourceIds": [
+                "page-f9fff50f0b687f65f750ebd5e651d16f"
+              ],
+              "evidenceText": "Alpha Studioは企業向けにWebサイト制作と映像制作を提供します。"
+            }
+          ],
+          "problemsSolved": [],
+          "delivery": [],
+          "pricing": []
+        }
+      ],
+      "strengths": [
+        {
+          "text": "企業サイトと企業紹介動画を同時に制作するワンストップサービスを提供している",
+          "kind": "site_claim",
+          "sourceIds": [
+            "page-40e2fe1db0686c9e80d6bbbeecd6bce7"
+          ],
+          "evidenceText": "企業サイトと企業紹介動画を同時に制作するワンストップサービスを提供しています。"
+        }
+      ],
+      "limitations": [
+        {
+          "text": "撮影のみの依頼には対応していない",
+          "kind": "fact",
+          "sourceIds": [
+            "page-564a22b27152aa37c16f3212f5fe2f8e"
+          ],
+          "evidenceText": "撮影のみの依頼には対応していません。"
+        }
+      ],
+      "unknowns": [
+        "料金条件",
+        "提供方法の詳細",
+        "対応地域以外の事業概要"
+      ],
+      "sourceConflicts": [],
+      "schemaVersion": 1,
+      "sourceId": "synthetic-live-local",
+      "generation": 1,
+      "model": "muse-spark-1.3-contributor",
+      "promptVersion": "company-research-v2",
+      "extractedAt": "2026-10-01T13:46:28.000Z",
+      "sources": [
+        {
+          "sourceId": "page-f9fff50f0b687f65f750ebd5e651d16f",
+          "url": "https://og-research-fixture.snp-inc-info.workers.dev/",
+          "contentHash": "da09988939b43fdb0d69bd511b62a1c02847820d61cc6434152d3fb33ad9bf3a",
+          "markdownKey": "sources/synthetic-live-local/1/ecc7cf25-c61a-4b2b-9b04-3acaab3341ea.md",
+          "fetchedAt": "2026-10-01T13:38:53.000Z"
+        },
+        {
+          "sourceId": "page-564a22b27152aa37c16f3212f5fe2f8e",
+          "url": "https://og-research-fixture.snp-inc-info.workers.dev/services",
+          "contentHash": "1e945c7f92910fb386a5ad1be79f4cf6a0d6f71bcaa031487777ca70c3da872f",
+          "markdownKey": "sources/synthetic-live-local/1/5f6c4068-973a-498c-ad2a-fa135873675c.md",
+          "fetchedAt": "2026-10-01T13:42:08.000Z"
+        },
+        {
+          "sourceId": "page-40e2fe1db0686c9e80d6bbbeecd6bce7",
+          "url": "https://og-research-fixture.snp-inc-info.workers.dev/cases",
+          "contentHash": "ed13093d04d9a57b70d6b4a28f34928793f603184bb0abe4bb90137e9803e144",
+          "markdownKey": "sources/synthetic-live-local/1/62379d65-5122-4d5b-b297-493e092fb79e.md",
+          "fetchedAt": "2026-10-01T13:42:08.000Z"
+        }
+      ],
+      "coverage": {
+        "inputUrls": [
+          "https://og-research-fixture.snp-inc-info.workers.dev/",
+          "https://og-research-fixture.snp-inc-info.workers.dev/services"
+        ],
+        "fetched": 3,
+        "processed": 3,
+        "skipped": [],
+        "reasons": [
+          "crawl_record_queued",
+          "crawl_record_disallowed"
+        ],
+        "status": "partial",
+        "lastFetchedAt": "2026-10-01T13:45:23.000Z"
+      }
+    }
+  ],
+  "usage": [
+    {
+      "provider": "crawl",
+      "status": "settled",
+      "costMicroUsd": 35,
+      "inputTokens": null,
+      "outputTokens": null
+    },
+    {
+      "provider": "crawl",
+      "status": "settled",
+      "costMicroUsd": 8,
+      "inputTokens": null,
+      "outputTokens": null
+    },
+    {
+      "provider": "meta",
+      "status": "settled",
+      "costMicroUsd": 423,
+      "inputTokens": 1783,
+      "outputTokens": 1221
+    }
+  ]
+}

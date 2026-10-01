@@ -1,6 +1,6 @@
 {
-  "feature": "share_house_signage_mvp_and_member_spotlight_self_registration",
-  "version": 3,
+  "feature": "share_house_signage_and_private_company_research",
+  "version": 4,
   "tasks": [
     {
       "task_id": "task_001",
@@ -1747,6 +1747,680 @@
         "result": "統合・全体品質・build・visual・HTTPモックなし実ブラウザー確認と運用記録を完了。実機/実クラウド/本番配備の未実施を記録。",
         "evidence": "docs/reviews/member-registration-implementation-2026-10-01.md"
       }
+    },
+    {
+      "task_id": "task_034",
+      "title": "Meta・巡回・送信条件の実証",
+      "goal": "採用済みモデルを用いた自動抽出の成立条件と費用を隔離環境で確定する",
+      "scope": [
+        "Meta Contributor接続とstrict JSON/usage",
+        "Crawl APIの範囲・redirect・robots・課金・停止",
+        "個人情報除去の評価用fixtureと開始条件"
+      ],
+      "non_scope": [
+        "本番全件巡回",
+        "アプリへの接続",
+        "モデル変更",
+        "秘密情報の文書記載"
+      ],
+      "files_to_read": [
+        "docs/implementation-plan.md",
+        "docs/task-list.json",
+        "docs/acceptance-checks.json",
+        "package.json",
+        "wrangler.jsonc",
+        "types/cloudflare-workers.d.ts"
+      ],
+      "files_to_create": [
+        "docs/research-provider-validation.md",
+        "tests/research/provider-contract.test.ts"
+      ],
+      "files_to_modify": [],
+      "dependencies": [],
+      "implementation_steps": [
+        "公式API・利用規約を再確認し確認日とリンクを記録する。秘密情報は実値を出力しない",
+        "実装段階に限り、専用の公開テストサイトと個人情報のない本文で疎通する。検証枠はMeta $0.10・巡回 $0.10以内を初期上限とし、超えそうなら止める",
+        "Crawl作成・poll・pagination・キャンセルと、同一ホスト制限、私的宛先へのredirect/DNS、robotsとai-train拒否を確認する。安全性を確認できない設定で本番有効化しない",
+        "Contributorのモデル利用可否、strict schema、最大出力、usageのreasoning/cache計上を確認し、token見積と費用予約方式を決める",
+        "氏名・個人連絡先・スタッフ紹介・曖昧な文章を含むfixtureで除去または送信保留を評価する。未知ページを安全と断定しない",
+        "実証結果と未検証事項、HTMLのみ・PDF未対応という初期範囲を記録する。仕様差分があれば3計画を同期する"
+      ],
+      "done_definition": [
+        "check_096/check_104/check_105/check_107の成立条件と実証記録がある",
+        "実証未了・PII除去不能・安全な巡回不能なら有料本番機能を有効化しない",
+        "モデル、課金見積、schema対応範囲が具体的に確定している"
+      ],
+      "verify_commands": [
+        "npm test"
+      ],
+      "risk_level": "high",
+      "execution": {
+        "status": "completed",
+        "evidence": [
+          "docs/reviews/company-research-implementation.md",
+          "docs/reviews/company-research-acceptance-evidence.json"
+        ]
+      }
+    },
+    {
+      "task_id": "task_035",
+      "title": "イベント契約と独立した保存先",
+      "goal": "Mainの配送記録と分析専用DB・R2の契約を分離する",
+      "scope": [
+        "イベントとプロフィールschema",
+        "Main outbox migration",
+        "分析専用DB/migration/接続",
+        "専用migration script"
+      ],
+      "non_scope": [
+        "既存表示schemaへの分析追加",
+        "本番migration適用"
+      ],
+      "files_to_read": [
+        "docs/implementation-plan.md",
+        "docs/task-list.json",
+        "docs/acceptance-checks.json",
+        "db/schema.ts",
+        "drizzle.config.ts",
+        "db/index.ts",
+        "lib/runtime.ts",
+        "package.json",
+        "tests/helpers/temp-db.ts"
+      ],
+      "files_to_create": [
+        "lib/company-research-contract.ts",
+        "research/profile-schema.ts",
+        "research/db/schema.ts",
+        "research/db/client.ts",
+        "research/drizzle.config.ts",
+        "research/db/migrations/**",
+        "db/migrations/0015_*.sql",
+        "tests/research/schema.test.ts"
+      ],
+      "files_to_modify": [
+        "db/schema.ts",
+        "db/migrations/meta/**",
+        "package.json",
+        "package-lock.json"
+      ],
+      "dependencies": [
+        "task_034"
+      ],
+      "implementation_steps": [
+        "イベントはID/revision/URL/操作種別に限定し、プロフィールに根拠・coverage・versionを定義する",
+        "削除に連動しないoutbox、unique制約と配送用indexを追加する",
+        "分析用のevents/subjects/jobs/pages/profiles/usageを別schema・別journalで作る。未設定の分析接続がMainへfallbackしないことを保証する",
+        "公式Drizzle/CLI仕様を確認して専用migration scriptを追加し、実コマンドを計画へ追記する",
+        "空の一時DBへの適用と既存fixtureへのMain追加migration、制約、indexを確認する"
+      ],
+      "done_definition": [
+        "check_110/check_131のうちDB schema・制約・一時DB migrationに関する自動検証を満たす。抽出データの統合確認はtask_042、実配備確認はtask_043で行う",
+        "Main DBには分析本文が入らず、既存掲載行は維持される",
+        "分析migrationがMain用journal/接続を使用しない"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm run lint",
+        "npm test"
+      ],
+      "risk_level": "high",
+      "execution": {
+        "status": "completed",
+        "evidence": [
+          "docs/reviews/company-research-implementation.md",
+          "docs/reviews/company-research-acceptance-evidence.json"
+        ]
+      }
+    },
+    {
+      "task_id": "task_036",
+      "title": "保存・承認・削除への予約接続",
+      "goal": "成功した通常操作と永続イベントを一括確定する",
+      "scope": [
+        "掲載作成/更新/削除",
+        "本人申請の承認",
+        "URL2省略互換とrevision競合"
+      ],
+      "non_scope": [
+        "フォーム変更",
+        "保存中の外部API通信",
+        "未承認申請の分析"
+      ],
+      "files_to_read": [
+        "docs/implementation-plan.md",
+        "docs/task-list.json",
+        "docs/acceptance-checks.json",
+        "lib/services/spotlights.ts",
+        "lib/services/spotlight-submissions.ts",
+        "app/admin/_actions/spotlights.ts",
+        "lib/validators.ts"
+      ],
+      "files_to_create": [
+        "lib/services/company-research-outbox.ts",
+        "tests/services/company-research-outbox.test.ts"
+      ],
+      "files_to_modify": [
+        "lib/services/spotlights.ts",
+        "lib/services/spotlight-submissions.ts",
+        "tests/services/spotlights.test.ts",
+        "tests/services/spotlight-submissions.test.ts"
+      ],
+      "dependencies": [
+        "task_035"
+      ],
+      "implementation_steps": [
+        "作成/更新をwrite transactionにし、保存後のURLからイベントを作る。両URL空の初回保存はイベントも有料呼出しも不要",
+        "URLありの成功保存ではupsertを記録する。再利用判定は分析側で行い、同じURLのbio編集で新規AI処理を生じさせない",
+        "承認の既存transaction内にも同じ予約関数を接続し、承認再送と却下は増殖させない",
+        "両URL削除はrevoke、メンバー削除は現行revisionより大きいdeleteイベントを同じtransactionで記録する",
+        "権限/validation/revision失敗、outbox失敗でのrollback、URL2省略時保持をテストする"
+      ],
+      "done_definition": [
+        "check_097〜check_101とcheck_113の保存/削除イベント記録に関する自動検証を満たす。旧ジョブ排除を含むcheck_113全体はtask_040/042で確認する",
+        "正常保存がMeta/Crawl応答を待たない",
+        "bio/quote/タグを分析から上書きする経路がない"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm run lint",
+        "npm test"
+      ],
+      "risk_level": "high",
+      "execution": {
+        "status": "completed",
+        "evidence": [
+          "docs/reviews/company-research-implementation.md",
+          "docs/reviews/company-research-acceptance-evidence.json"
+        ]
+      }
+    },
+    {
+      "task_id": "task_037",
+      "title": "永続配送と非公開受付",
+      "goal": "再送に耐える非公開の予約配送を接続する",
+      "scope": [
+        "Main1分Cron",
+        "Service Binding受付",
+        "event重複排除とrevision順序",
+        "Worker非公開設定"
+      ],
+      "non_scope": [
+        "保存リクエスト内の分析",
+        "Cloudflare Queues導入",
+        "結果GET API"
+      ],
+      "files_to_read": [
+        "docs/implementation-plan.md",
+        "docs/task-list.json",
+        "docs/acceptance-checks.json",
+        "worker/scheduled.ts",
+        "worker/index.ts",
+        "wrangler.jsonc",
+        "types/cloudflare-workers.d.ts"
+      ],
+      "files_to_create": [
+        "worker/company-research-dispatch.ts",
+        "research/worker.ts",
+        "research/env.ts",
+        "research/intake.ts",
+        "research/wrangler.jsonc",
+        "tests/worker/company-research-dispatch.test.ts",
+        "tests/research/intake.test.ts"
+      ],
+      "files_to_modify": [
+        "worker/scheduled.ts",
+        "wrangler.jsonc",
+        "types/cloudflare-workers.d.ts",
+        ".dev.vars.example",
+        ".gitignore",
+        "tests/worker/scheduled.test.ts"
+      ],
+      "dependencies": [
+        "task_035",
+        "task_036"
+      ],
+      "implementation_steps": [
+        "Mainの1分Cronは最大25件をlease付き取得し、Service Binding POSTの202をawaitしてから配送済みにする",
+        "受付はeventId/payload hashを検証し、event/subject/job予約を専用DBで一括確定して202を返す",
+        "同一eventの再送は増殖せず、古いrevisionはACKして状態を戻さず、同じIDで異なるpayloadは409にする",
+        "Mainへ分析DB/R2/Meta資格情報を渡さず、分析Workerの公開route/workers.dev/preview URLを無効にする",
+        "既存30分・日次処理が毎分実行されないようCron別の分岐を追加し、応答喪失とDB障害をテストする"
+      ],
+      "done_definition": [
+        "check_102/check_103/check_114の受付・配送範囲、check_126の設定分離、check_127のCron自動検証を満たす。実配備と匿名アクセスの確認はtask_043で行う",
+        "202は永続化後のみで、再送でも分析予約が増殖しない",
+        "外部から受付・分析結果にアクセスできる公開routeを設けない"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm run lint",
+        "npm test"
+      ],
+      "risk_level": "high",
+      "execution": {
+        "status": "completed",
+        "evidence": [
+          "docs/reviews/company-research-implementation.md",
+          "docs/reviews/company-research-acceptance-evidence.json"
+        ]
+      }
+    },
+    {
+      "task_id": "task_038",
+      "title": "範囲を制限した巡回と本文保管",
+      "goal": "2サイトの対象HTMLを取得し安全な根拠Markdownとして保存する",
+      "scope": [
+        "Crawl API非同期adapter",
+        "URL安全性と範囲制御",
+        "優先ページ/重複除去/coverage",
+        "個人情報除去と保留"
+      ],
+      "non_scope": [
+        "PDF本文/OCR/動画",
+        "CAPTCHA回避",
+        "外部サイト無制限巡回",
+        "CrawlのAI JSON抽出"
+      ],
+      "files_to_read": [
+        "docs/implementation-plan.md",
+        "docs/task-list.json",
+        "docs/acceptance-checks.json",
+        "docs/research-provider-validation.md",
+        "lib/company-research-contract.ts",
+        "research/db/schema.ts"
+      ],
+      "files_to_create": [
+        "research/crawler.ts",
+        "research/url-policy.ts",
+        "research/sanitize.ts",
+        "tests/research/crawler.test.ts",
+        "tests/research/sanitize.test.ts"
+      ],
+      "files_to_modify": [],
+      "dependencies": [
+        "task_034",
+        "task_035"
+      ],
+      "implementation_steps": [
+        "検証済みAPIパラメータでHTML/Markdownを取得し、job IDと取得位置を永続化する",
+        "0/1/2サイト、同一URL重複、正規化、私的宛先とredirect、学習拒否、ページ/深さ/時間上限を扱う",
+        "企業・サービス・実績・料金ページを優先し、robots・未対応形式・上限による未取得をcoverageへ記録する",
+        "送信可能な企業本文だけを抽出し、曖昧な個人情報はprivacy_review_requiredで保留する",
+        "生HTMLとサニタイズ済みMarkdownを専用R2へ分け、日時/hash/原URLとDB参照を保存する"
+      ],
+      "done_definition": [
+        "check_104〜check_108の巡回・送信判定範囲とcheck_110のMarkdown保管を満たす。Meta統合・プロフィール照合はtask_039/042で確認する",
+        "取得できないページを読んだ扱いにせず、partial/blocked理由を残す",
+        "無害化前の本文をMetaへ渡さない"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm run lint",
+        "npm test"
+      ],
+      "risk_level": "high",
+      "execution": {
+        "status": "completed",
+        "evidence": [
+          "docs/reviews/company-research-implementation.md",
+          "docs/reviews/company-research-acceptance-evidence.json"
+        ]
+      }
+    },
+    {
+      "task_id": "task_039",
+      "title": "Contributorによる根拠付きJSON抽出",
+      "goal": "企業・サービス情報を検証可能な構造で生成する",
+      "scope": [
+        "native fetchのMeta adapter",
+        "strict JSON Schema",
+        "ページsourceId付き本文の一括抽出と企業統合",
+        "根拠照合とunknown/conflict"
+      ],
+      "non_scope": [
+        "検索用embedding",
+        "チャット/推薦",
+        "自動モデル切替",
+        "公開データへの書戻し"
+      ],
+      "files_to_read": [
+        "docs/implementation-plan.md",
+        "docs/task-list.json",
+        "docs/acceptance-checks.json",
+        "docs/research-provider-validation.md",
+        "research/profile-schema.ts",
+        "research/sanitize.ts"
+      ],
+      "files_to_create": [
+        "research/meta.ts",
+        "research/evidence.ts",
+        "tests/research/meta.test.ts",
+        "tests/research/evidence.test.ts"
+      ],
+      "files_to_modify": [
+        "research/profile-schema.ts"
+      ],
+      "dependencies": [
+        "task_034",
+        "task_035",
+        "task_038"
+      ],
+      "implementation_steps": [
+        "muse-spark-1.3-contributorを設定し、secretから認証する。サイト本文に権限やツールを与えない",
+        "Meta対応範囲のstrict JSONを要求し、必要キー・型・文字列長・配列上限をローカル検証する",
+        "企業・サービス・強み・明示的制約を、site_claim/fact/inference/unknownに分けて抽出する",
+        "sourceIdとevidenceTextを保存済みMarkdownへ照合し、根拠不成立の出力を採用しない",
+        "異なる会社を指す2サイト、価格未掲載、情報不足、本文内命令、壊れたJSON、拒否応答をfixtureで確認する"
+      ],
+      "done_definition": [
+        "check_109/check_110/check_118の抽出・schema・根拠照合に関する自動検証を満たす。実行経路全体はtask_042で確認する",
+        "弱みを捏造せず、サイト自身の主張と推定を分離する",
+        "有料の自動実行は予算制御接続前には有効化しない"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm run lint",
+        "npm test"
+      ],
+      "risk_level": "high",
+      "execution": {
+        "status": "completed",
+        "evidence": [
+          "docs/reviews/company-research-implementation.md",
+          "docs/reviews/company-research-acceptance-evidence.json"
+        ]
+      }
+    },
+    {
+      "task_id": "task_040",
+      "title": "ジョブの再開・再利用・版管理",
+      "goal": "中断やURL変更で処理と最新結果が壊れないようにする",
+      "scope": [
+        "Cron phase実行",
+        "lease/CAS",
+        "30日再利用と本文hash",
+        "差替え/削除/再送の順序制御"
+      ],
+      "non_scope": [
+        "全件バックフィル",
+        "保存に無関係な定期再抽出",
+        "無制限再試行"
+      ],
+      "files_to_read": [
+        "docs/implementation-plan.md",
+        "docs/task-list.json",
+        "docs/acceptance-checks.json",
+        "research/intake.ts",
+        "research/crawler.ts",
+        "research/meta.ts",
+        "research/db/schema.ts"
+      ],
+      "files_to_create": [
+        "research/jobs.ts",
+        "tests/research/jobs.test.ts"
+      ],
+      "files_to_modify": [
+        "research/worker.ts",
+        "research/intake.ts"
+      ],
+      "dependencies": [
+        "task_037",
+        "task_038",
+        "task_039"
+      ],
+      "implementation_steps": [
+        "少数jobをclaimし、crawl開始/poll/本文処理/AI抽出/統合/保存のphaseを永続化してCron間で再開する",
+        "lease更新と期限切れ回収、最大3attempt、Retry-After、設定停止を実装する",
+        "URL不変で進行中またはlastSuccessfulCrawlAtから30日以内なら再利用し、期限後の保存で再巡回する。本文hash不変時はAI出力を再利用しlastSuccessfulCrawlAtだけを更新する。extractedAtは実際のAI実行時刻を維持する",
+        "currentJobId/fingerprint/lease/未削除のCASで現行profileを確定する。URL不変のsourceRevision増加だけで無効化しない",
+        "URL差替え/両URL削除/メンバー削除で古いジョブの以後の課金と現行結果更新を止める。有料フラグはOFFを維持する"
+      ],
+      "done_definition": [
+        "check_111〜check_117を満たす",
+        "旧URL結果や遅延イベントから削除済み分析が復活しない",
+        "provider完了とDB保存の間の不確実性をattemptとして追える"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm run lint",
+        "npm test"
+      ],
+      "risk_level": "high",
+      "execution": {
+        "status": "completed",
+        "evidence": [
+          "docs/reviews/company-research-implementation.md",
+          "docs/reviews/company-research-acceptance-evidence.json"
+        ]
+      }
+    },
+    {
+      "task_id": "task_041",
+      "title": "予算・利用量・保持期間・非公開運用",
+      "goal": "支出上限を守り蓄積データを管理できるようにする",
+      "scope": [
+        "月額/job予算の予約と精算",
+        "料金表versionとtoken/巡回集計",
+        "pause/resumeと限定retry",
+        "保持・削除",
+        "CLIによるJSON出力"
+      ],
+      "non_scope": [
+        "管理画面の追加",
+        "公開の分析取得API",
+        "請求額の無根拠な保証"
+      ],
+      "files_to_read": [
+        "docs/implementation-plan.md",
+        "docs/task-list.json",
+        "docs/acceptance-checks.json",
+        "research/jobs.ts",
+        "research/meta.ts",
+        "research/crawler.ts",
+        "research/db/schema.ts"
+      ],
+      "files_to_create": [
+        "research/budget.ts",
+        "research/retention.ts",
+        "scripts/company-research-ops.ts",
+        "docs/company-research-runbook.md",
+        "tests/research/budget.test.ts",
+        "tests/research/retention.test.ts"
+      ],
+      "files_to_modify": [
+        "research/jobs.ts",
+        "research/meta.ts",
+        "research/crawler.ts",
+        "research/worker.ts",
+        "research/env.ts"
+      ],
+      "dependencies": [
+        "task_040"
+      ],
+      "implementation_steps": [
+        "有料呼出しの前に月額/job/token枠を一括予約する。費用不明時は予約維持、成功時はusageで精算する",
+        "AIと巡回の費用を別集計し、双方とも起動前に枠を予約する。巡回枠不足なら新規Crawlを開始せず、キャンセル/結果不明の枠は課金状態が確定するまで維持する。UTC月替りと同時予約をテストする",
+        "停止フラグとbudget_exhaustedを実装し、保存・配送受付は維持する。開始条件確認後の少数検証用にRESEARCH_CANARY_SOURCE_IDSで有料実行対象を限定できるようにする。再開は専用CLIとsecretのある運用環境だけに限定する",
+        "raw7日/旧版90日、deleteと両URL削除revokeの後7日以内のpurgeを実装し、最小tombstoneを保持する。pause/予算停止中もdelete/revoke受付と期限回収は続け、削除されていない現行JSON/Markdownは保持する。purge失敗は再試行し旧jobによる再保存を拒否する",
+        "本文や秘密を含まない状態/利用量ログと専用JSON/JSONL exportを実装し、費用確認・停止・限定retry手順を書く"
+      ],
+      "done_definition": [
+        "check_119〜check_123/check_132を満たす",
+        "budget制御を経ない有料呼出し経路がない",
+        "データをサイネージに出さず運用者だけが状態/費用/JSONを確認できる"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm run lint",
+        "npm test"
+      ],
+      "risk_level": "high",
+      "execution": {
+        "status": "completed",
+        "evidence": [
+          "docs/reviews/company-research-implementation.md",
+          "docs/reviews/company-research-acceptance-evidence.json"
+        ]
+      }
+    },
+    {
+      "task_id": "task_042",
+      "title": "保存から蓄積までの統合と配信非混入",
+      "goal": "主経路・障害・情報分離・既存表示を実証する",
+      "scope": [
+        "統合/故障注入/非混入テスト",
+        "既存フォームとQR回帰",
+        "品質コマンド",
+        "分析Worker専用bundle検査/CI"
+      ],
+      "non_scope": [
+        "未関連Pi修正",
+        "本番データでの試験",
+        "表示ZIP公開"
+      ],
+      "files_to_read": [
+        "docs/implementation-plan.md",
+        "docs/task-list.json",
+        "docs/acceptance-checks.json",
+        "package.json",
+        ".github/workflows/ci.yml",
+        "tests/helpers/temp-db.ts",
+        "tests/api/spotlight-registration-flow.test.ts",
+        "tests/api/public-signage.test.ts",
+        "tests/api/device.test.ts",
+        "lib/config-builder.ts",
+        "worker/public-signage-relay.ts",
+        "worker/device-relay.ts"
+      ],
+      "files_to_create": [
+        "tests/research/flow.test.ts",
+        "tests/research/isolation.test.ts",
+        "scripts/check-research-bundle.ts"
+      ],
+      "files_to_modify": [
+        "tests/api/spotlight-registration-flow.test.ts",
+        "tests/api/public-signage.test.ts",
+        "tests/api/device.test.ts",
+        "tests/admin/spotlights-view.test.tsx",
+        "tests/public/spotlight-registration-form.test.tsx",
+        "tests/admin/spotlight-submissions-view.test.tsx",
+        "package.json",
+        ".github/workflows/ci.yml"
+      ],
+      "dependencies": [
+        "task_036",
+        "task_037",
+        "task_038",
+        "task_039",
+        "task_040",
+        "task_041"
+      ],
+      "implementation_steps": [
+        "一時Main/分析DBと偽R2/外部APIを使い保存・配送・巡回・抽出・JSON/Markdown保存を通す",
+        "応答喪失、lease期限切れ、予算同時予約、URL変更、削除を注入し、結果と呼出し数を確認する",
+        "公開/端末config・素材・各プレビューへURL2/分析JSON/原文/R2keyが混入しないことを生レスポンスで検査する",
+        "分析だけの更新で固定時刻のconfig/version/ETagが変わらず、URL1だけのQRと既存フォーム操作が維持されることを確認する",
+        "公式CLI仕様と現在のwrangler helpを確認後、分析Workerの専用dry-runとbundle検査scriptを追加し、実コマンドを計画に追記する",
+        "既存品質コマンドと専用検査を実行し、スマートフォン幅の操作も隔離環境で確認する"
+      ],
+      "done_definition": [
+        "check_124〜check_129を満たす",
+        "check_096〜check_132の自動検証に証拠があり、実環境項目の未実施は明示される",
+        "Main buildだけで分析Workerも検証した扱いにしない"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm run lint",
+        "npm test",
+        "npm run build",
+        "npm run check:worker",
+        "npm run build:display",
+        "npm run check:display"
+      ],
+      "risk_level": "high",
+      "execution": {
+        "status": "in_progress",
+        "evidence": [
+          "docs/reviews/company-research-implementation.md",
+          "docs/reviews/company-research-acceptance-evidence.json"
+        ]
+      }
+    },
+    {
+      "task_id": "task_043",
+      "title": "分離した本番配備と運用記録",
+      "goal": "通常登録を維持して少数確認から自動蓄積を有効にする",
+      "scope": [
+        "専用DB/R2/Workerとsecretの配備",
+        "migration先行",
+        "少数canary",
+        "停止/rollback手順と証拠"
+      ],
+      "non_scope": [
+        "無関係DB/R2の変更",
+        "既存全件の有料処理",
+        "Piバンドル発行"
+      ],
+      "files_to_read": [
+        "docs/implementation-plan.md",
+        "docs/task-list.json",
+        "docs/acceptance-checks.json",
+        "docs/research-provider-validation.md",
+        "docs/company-research-runbook.md",
+        "wrangler.jsonc",
+        "research/wrangler.jsonc",
+        ".github/workflows/ci.yml"
+      ],
+      "files_to_create": [
+        "docs/reviews/company-research-implementation.md"
+      ],
+      "files_to_modify": [
+        "docs/company-research-runbook.md",
+        "docs/implementation-plan.md",
+        "docs/task-list.json",
+        "docs/acceptance-checks.json"
+      ],
+      "dependencies": [
+        "task_042"
+      ],
+      "implementation_steps": [
+        "リソース名・接続先・公開無効・secretの配置を確認し、既存無関係リソースを対象から外す",
+        "専用DB migrationと分析Workerを先に配備し、次にMainの追加migrationとMain Workerを配備する。有料処理はOFFを維持し、outbox対応済みMain成果物をrollback用に保管する",
+        "送信・秘密分離・予算の開始条件を確認し、RESEARCH_CANARY_SOURCE_IDSに指定した公開fixtureだけ有料処理を限定有効化する。通常保存から専用DB/R2への蓄積、実usage、非公開境界を確認する",
+        "少数検証の証拠を確認してから通常運用を有効化する。停止/再開と分析Worker前版への復旧を確認する。Mainのrollback先はoutbox対応済み版だけとし、対応前の版には戻さない",
+        "成果物と実行結果を記録する。既存全件バックフィルとPi ZIP公開は行わず、未検証はそのまま記す"
+      ],
+      "done_definition": [
+        "check_096/check_126/check_127/check_130/check_131の実環境証拠がある",
+        "check_096〜check_132が証拠付きで合格、または未検証と開始阻害条件が明記される",
+        "秘密情報・抽出内容が公開されず、費用上限と停止手順が運用できる"
+      ],
+      "verify_commands": [
+        "npm run typecheck",
+        "npm run lint",
+        "npm test"
+      ],
+      "risk_level": "high",
+      "execution": {
+        "status": "in_progress",
+        "evidence": [
+          "docs/reviews/company-research-implementation.md",
+          "docs/reviews/company-research-acceptance-evidence.json"
+        ]
+      }
     }
+  ],
+  "active_feature": "private_company_research",
+  "active_task_ids": [
+    "task_034",
+    "task_035",
+    "task_036",
+    "task_037",
+    "task_038",
+    "task_039",
+    "task_040",
+    "task_041",
+    "task_042",
+    "task_043"
   ]
 }

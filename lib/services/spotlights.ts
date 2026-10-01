@@ -14,6 +14,7 @@ import { memberSpotlights, nowSeconds } from "../../db/schema";
 import type { AuthUser } from "../auth";
 import { spotlightInputSchema, spotlightUpdateSchema, type SpotlightInput, type SpotlightUpdate } from "../validators";
 import { ServiceError, assertActiveImage, assertRole, parseInput } from "./notices";
+import { enqueueSpotlightResearch, enqueueSpotlightResearchDeletion } from "./company-research-outbox";
 
 export type SpotlightRow = typeof memberSpotlights.$inferSelect;
 
@@ -50,8 +51,11 @@ export async function createSpotlight(db: Db, user: AuthUser, input: unknown): P
   const data: SpotlightInput = parseInput(spotlightInputSchema, input);
   await assertActiveImage(db, data.photoMediaId);
   await assertActiveImage(db, data.logoMediaId);
-  const [row] = await db.insert(memberSpotlights).values(toColumns(data)).returning();
-  return row;
+  return db.transaction(async (tx) => {
+    const [row] = await tx.insert(memberSpotlights).values(toColumns(data)).returning();
+    await enqueueSpotlightResearch(tx, row);
+    return row;
+  }, { behavior: "immediate" });
 }
 
 export async function updateSpotlight(db: Db, user: AuthUser, id: string, input: unknown): Promise<SpotlightRow> {
@@ -60,20 +64,25 @@ export async function updateSpotlight(db: Db, user: AuthUser, id: string, input:
   await assertActiveImage(db, data.photoMediaId);
   await assertActiveImage(db, data.logoMediaId);
 
-  const updated = await db
-    .update(memberSpotlights)
-    .set({ ...toColumns(data), revision: sql`${memberSpotlights.revision} + 1`, updatedAt: nowSeconds() })
-    .where(and(eq(memberSpotlights.id, id), eq(memberSpotlights.revision, revision)))
-    .returning();
-  if (updated.length > 0) return updated[0];
-
-  // 0 件だったのは「そもそも無い」か「revision がずれている」かのどちらか
-  await getSpotlight(db, id);
-  throw new ServiceError(409, "conflict", "他の人が先に更新しました");
+  return db.transaction(async (tx) => {
+    const [before] = await tx.select().from(memberSpotlights).where(eq(memberSpotlights.id, id));
+    if (!before) throw new ServiceError(404, "not_found", "メンバー紹介が見つかりません");
+    const [updated] = await tx.update(memberSpotlights)
+      .set({ ...toColumns(data), revision: sql`${memberSpotlights.revision} + 1`, updatedAt: nowSeconds() })
+      .where(and(eq(memberSpotlights.id, id), eq(memberSpotlights.revision, revision))).returning();
+    if (!updated) throw new ServiceError(409, "conflict", "他の人が先に更新しました");
+    // old client が websiteUrl2 を省略した場合も保存後の値から作る。
+    await enqueueSpotlightResearch(tx, updated, before);
+    return updated;
+  }, { behavior: "immediate" });
 }
 
 export async function deleteSpotlight(db: Db, user: AuthUser, id: string): Promise<void> {
   assertRole(user, "staff");
-  await getSpotlight(db, id);
-  await db.delete(memberSpotlights).where(eq(memberSpotlights.id, id));
+  await db.transaction(async (tx) => {
+    const [row] = await tx.select().from(memberSpotlights).where(eq(memberSpotlights.id, id));
+    if (!row) throw new ServiceError(404, "not_found", "メンバー紹介が見つかりません");
+    await enqueueSpotlightResearchDeletion(tx, row);
+    await tx.delete(memberSpotlights).where(eq(memberSpotlights.id, id));
+  }, { behavior: "immediate" });
 }

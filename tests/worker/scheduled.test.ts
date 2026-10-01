@@ -5,7 +5,9 @@ import { eq } from "drizzle-orm";
 import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "../../db/index";
-import { deviceLogs, devices, events, media, memberSpotlightSubmissions, uploads, users } from "../../db/schema";
+import { companyResearchOutbox, deviceLogs, devices, events, media, memberSpotlightSubmissions, uploads, users } from "../../db/schema";
+import { buildCompanyResearchEvent } from "../../lib/company-research-contract";
+import { enqueueCompanyResearchEvent } from "../../lib/services/company-research-outbox";
 import type { MediaBucket, R2Multipart, R2Part } from "../../lib/r2";
 import { openTempDb } from "../helpers/temp-db";
 
@@ -81,7 +83,7 @@ vi.mock("../../lib/r2", async (importOriginal) => {
 });
 vi.mock("../../lib/weather", () => ({ refreshWeather: vi.fn(async () => {}) }));
 
-const { abortStaleUploads, purgeOldDeviceLogs, scheduled, WEATHER_CRON, DAILY_CRON } = await import("../../worker/scheduled");
+const { abortStaleUploads, purgeOldDeviceLogs, scheduled, WEATHER_CRON, DAILY_CRON, COMPANY_RESEARCH_CRON } = await import("../../worker/scheduled");
 const { refreshWeather } = await import("../../lib/weather");
 
 const DAY = 24 * 60 * 60;
@@ -98,7 +100,7 @@ beforeEach(async () => {
   vi.clearAllMocks();
 });
 
-afterEach(() => { env.RESEND_API_KEY = undefined; vi.restoreAllMocks(); close(); });
+afterEach(() => { env.RESEND_API_KEY = undefined; env.COMPANY_RESEARCH = undefined; vi.restoreAllMocks(); close(); });
 
 async function addUser(): Promise<string> {
   const [row] = await db.insert(users).values({ email: `${crypto.randomUUID()}@example.com`, role: "staff" }).returning({ id: users.id });
@@ -171,6 +173,19 @@ describe("abortStaleUploads", () => {
     const [row] = await db.select().from(uploads).where(eq(uploads.id, stale.id));
     expect(row.state).toBe("aborted");
   });
+});
+
+it("1分Cronは分析イベントだけを配送し、30分天気と日次掃除を増やさない", async () => {
+  const event = await buildCompanyResearchEvent({ sourceId: "scheduled-source", sourceRevision: 0, eventType: "upsert", urls: [{ slot: 1, url: "https://example.com/" }] });
+  await enqueueCompanyResearchEvent(db, event, 100);
+  await db.insert(media).values({ name: "pending deletion", type: "image", r2Key: "pending-deletion", state: "deleting", deleteAfter: 100 });
+  const fetch = vi.fn(async () => Response.json({ eventId: event.eventId, status: "accepted" }, { status: 202 }));
+  env.COMPANY_RESEARCH = { fetch };
+  await scheduled(COMPANY_RESEARCH_CRON);
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(refreshWeather).not.toHaveBeenCalled();
+  expect(await db.select().from(media)).toHaveLength(1);
+  expect((await db.select().from(companyResearchOutbox))[0].status).toBe("delivered");
 });
 
 describe("purgeOldDeviceLogs", () => {

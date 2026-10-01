@@ -3,11 +3,13 @@ node_modules/
 .next/
 /dist/
 /dist-display/
+dist-research/
 .vinext/
 .wrangler/
 .dev.vars
 .dev.vars.*
 !.dev.vars.example
+!.dev.vars.research.example
 .env
 .env.*
 *.tsbuildinfo

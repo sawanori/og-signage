@@ -1,0 +1,37 @@
+{
+  "sourceId": "f39f6daf-cef0-4357-b5e8-ff65931196f2",
+  "mainInitialVersion": "c74a08ca-87fc-4232-a5c0-71314685a4ec",
+  "researchPaidOffVersion": "ed9e4c72-5651-4223-a4f2-90cde653ac43",
+  "researchCanaryVersion": "483439fc-2862-48cc-9e32-3b4c38bd5087",
+  "sql": {
+    "main": "0015",
+    "research": [
+      "0000",
+      "0001",
+      "0002"
+    ]
+  },
+  "r2": {
+    "bucket": "og-company-research-private",
+    "r2DevEnabled": false,
+    "customDomains": 0
+  },
+  "privateWorkerAnonymousHttp": 404,
+  "normalAdminSave": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "urls": 2,
+    "enabled": false,
+    "uiSuccess": true,
+    "outboxObserved": "pending"
+  },
+  "publicBefore": {
+    "status": 200,
+    "sha256": "1d747297c0edd01f96d4fc707a2f2fe0fe015da114509430664146fc1f823230",
+    "spotlights": 6,
+    "forbiddenValuesAbsent": true
+  },
+  "canary": "awaiting_cron"
+}

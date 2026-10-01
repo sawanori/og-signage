@@ -1,0 +1,7 @@
+# Copy to .dev.vars.research (gitignored). Research-only credentials.
+# Never place the Main signage DB token or MEDIA_BUCKET binding here.
+RESEARCH_DATABASE_URL=
+RESEARCH_AUTH_TOKEN=
+MODEL_API_KEY=
+CRAWL_API_TOKEN=
+CLOUDFLARE_ACCOUNT_ID=

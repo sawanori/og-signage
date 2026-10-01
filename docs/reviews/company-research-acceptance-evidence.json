@@ -1,0 +1,516 @@
+{
+  "feature": "company_research_auto_extraction",
+  "preparedAt": "2026-10-01T13:40:50.706784+00:00",
+  "preparedBy": "quality_checks",
+  "scope": "実装中の証拠対応表。passedは記載した自動検証/コードレビューの範囲。実配備・手動項目と追加試験はpendingを維持し、親担当が最終結果を追記する。",
+  "testRuns": [
+    {
+      "id": "qa-main-isolation",
+      "command": "npm test -- tests/research/isolation.test.ts tests/api/spotlight-registration-flow.test.ts tests/api/public-signage.test.ts tests/api/device.test.ts tests/services/company-research-outbox.test.ts tests/worker/company-research-dispatch.test.ts tests/worker/scheduled.test.ts",
+      "result": "7 files, 88 passed",
+      "exitCode": 0
+    },
+    {
+      "id": "qa-ui-display",
+      "command": "npm test -- tests/admin/spotlights-view.test.tsx tests/admin/spotlight-submissions-view.test.tsx tests/public/spotlight-registration-form.test.tsx tests/admin/preview-orientation.test.tsx tests/signage tests/display",
+      "result": "12 files, 183 passed",
+      "exitCode": 0
+    },
+    {
+      "id": "qa-research-final-at-review",
+      "command": "npm test -- tests/research/jobs.test.ts tests/research/budget.test.ts tests/research/retention.test.ts tests/research/intake.test.ts tests/research/isolation.test.ts tests/research/content-safety.test.ts tests/research/provider-adapters.test.ts",
+      "result": "7 files, 82 passed",
+      "exitCode": 0
+    },
+    {
+      "id": "qa-ops-and-save-services",
+      "command": "npm test -- tests/research/ops.test.ts tests/services/spotlights.test.ts tests/services/spotlight-submissions.test.ts",
+      "result": "3 files, 42 passed",
+      "exitCode": 0
+    },
+    {
+      "id": "qa-main-schema-fix",
+      "command": "npm test -- tests/db/schema.test.ts",
+      "result": "1 file, 17 passed",
+      "exitCode": 0
+    },
+    {
+      "id": "qa-lint",
+      "command": "npm run lint",
+      "result": "passed without diagnostics",
+      "exitCode": 0
+    },
+    {
+      "id": "qa-diff",
+      "command": "git diff --check",
+      "result": "passed",
+      "exitCode": 0
+    }
+  ],
+  "failureHistory": [
+    {
+      "reportedBy": "parent",
+      "command": "npm test",
+      "result": "918 passed / 1 failed",
+      "issue": "tests/db/schema.test.ts の全TABLES期待にcompany_research_outboxがなかった。",
+      "resolution": "期待へ新テーブルを追加、対象17テスト成功。最終全体再実行は親担当。"
+    },
+    {
+      "reportedBy": "parent",
+      "command": "npm run lint",
+      "issue": "研究Worker生成物2ディレクトリに対する12 errorsと多数warnings。",
+      "resolution": "eslint.config.mjsで2つの生成物出力だけを除外し、全体lint終了コード0。"
+    }
+  ],
+  "knownLimitations": [
+    "ローカル規則によるPIIスクリーニングは未知氏名の完全検知を保証しない。",
+    "モデルの根拠検査は引用存在を確認する。任意の自然言語主張の意味的正確性を数学的に保証するものではない。"
+  ],
+  "checks": [
+    {
+      "id": "check_096",
+      "target": "task_034 task_043 モデルの実利用条件",
+      "status": "passed",
+      "evidence": [
+        "docs/reviews/company-research-provider-probe.json",
+        "docs/reviews/company-research-extraction-probe.json"
+      ],
+      "verified": "実Muse Spark Contributorでstrict JSON・usageを確認。既定paid=false。",
+      "remaining": []
+    },
+    {
+      "id": "check_097",
+      "target": "task_036 任意URLと通常保存",
+      "status": "passed",
+      "evidence": [
+        "tests/services/company-research-outbox.test.ts",
+        "tests/admin/spotlights-view.test.tsx",
+        "tests/public/spotlight-registration-form.test.tsx",
+        "tests/api/spotlight-registration-flow.test.ts"
+      ],
+      "verified": "任意URL・通常保存・外部fetchなし・URL2単独・フォーム回帰を確認。",
+      "remaining": []
+    },
+    {
+      "id": "check_098",
+      "target": "task_036 保存と予約の原子性",
+      "status": "passed",
+      "evidence": [
+        "tests/services/company-research-outbox.test.ts",
+        "tests/services/spotlight-submissions.test.ts"
+      ],
+      "verified": "INSERT失敗時の作成/更新/削除/承認rollbackを実libSQLで確認。",
+      "remaining": []
+    },
+    {
+      "id": "check_099",
+      "target": "task_036 本人申請と承認",
+      "status": "passed",
+      "evidence": [
+        "tests/api/spotlight-registration-flow.test.ts",
+        "tests/services/spotlight-submissions.test.ts"
+      ],
+      "verified": "未承認/却下は予約ゼロ、承認時は個人情報を除いたURLイベントを1件記録。",
+      "remaining": []
+    },
+    {
+      "id": "check_100",
+      "target": "task_036 権限・入力・競合",
+      "status": "passed",
+      "evidence": [
+        "tests/services/company-research-outbox.test.ts",
+        "tests/services/spotlights.test.ts"
+      ],
+      "verified": "実認可で匿名/無効/旧session/削除アカウントを拒否しMain本体とoutbox不変。",
+      "remaining": []
+    },
+    {
+      "id": "check_101",
+      "target": "task_036 URL2省略互換",
+      "status": "passed",
+      "evidence": [
+        "tests/services/company-research-outbox.test.ts",
+        "tests/services/spotlights.test.ts"
+      ],
+      "verified": "旧clientのURL2省略は保持。明示null/変更は保存後の値と一致。",
+      "remaining": []
+    },
+    {
+      "id": "check_102",
+      "target": "task_037 外部障害と永続配送",
+      "status": "passed",
+      "evidence": [
+        "tests/services/company-research-outbox.test.ts",
+        "tests/worker/company-research-dispatch.test.ts"
+      ],
+      "verified": "保存時外部fetchゼロ、受付停止/応答喪失時のoutbox保持と再送を確認。",
+      "remaining": []
+    },
+    {
+      "id": "check_103",
+      "target": "task_037 応答喪失と受付再送",
+      "status": "passed",
+      "evidence": [
+        "tests/research/intake.test.ts",
+        "tests/worker/company-research-dispatch.test.ts",
+        "tests/research/isolation.test.ts"
+      ],
+      "verified": "実DBの受付rollback、再送重複排除、異なる同一eventIdの409とMainからの実受付接続を確認。",
+      "remaining": []
+    },
+    {
+      "id": "check_104",
+      "target": "task_034 task_038 URL安全性",
+      "status": "passed",
+      "evidence": [
+        "tests/research/content-safety.test.ts",
+        "docs/reviews/company-research-provider-probe.json"
+      ],
+      "verified": "URL/混在DNS/IPv6別表記を拒否。実render=trueの危険IP・redirect・private DNS redirectで本文取得なし。",
+      "remaining": []
+    },
+    {
+      "id": "check_105",
+      "target": "task_034 task_038 取得範囲と用途",
+      "status": "passed",
+      "evidence": [
+        "tests/research/provider-adapters.test.ts",
+        "docs/reviews/company-research-provider-probe.json",
+        "docs/reviews/company-research-live-pipeline.json",
+        "tests/research/jobs.test.ts"
+      ],
+      "verified": "2URLと100件保存上限、用途、非対応資料、PII、robots、取得失敗を統合fixtureで確認。",
+      "remaining": []
+    },
+    {
+      "id": "check_106",
+      "target": "task_038 取得の欠落と重複",
+      "status": "passed",
+      "evidence": [
+        "tests/research/content-safety.test.ts",
+        "tests/research/jobs.test.ts"
+      ],
+      "verified": "103候補から100件保存・99件モデル送信。未対応リンクと全skipのURL/理由を保持しpartial。",
+      "remaining": []
+    },
+    {
+      "id": "check_107",
+      "target": "task_034 task_038 Contributorへの送信範囲",
+      "status": "passed",
+      "evidence": [
+        "tests/research/content-safety.test.ts",
+        "tests/research/provider-adapters.test.ts",
+        "tests/research/isolation.test.ts",
+        "docs/research-provider-validation.md",
+        "docs/company-research-runbook.md"
+      ],
+      "verified": "検出対象の人物/連絡先は除去または保留、モデル出力も再検査。未知氏名の完全検出は保証せず、本文外の管理情報を送らない・曖昧なら保留・停止CLIを用意する条件で運用する。",
+      "remaining": []
+    },
+    {
+      "id": "check_108",
+      "target": "task_038 task_039 本文内の命令",
+      "status": "passed",
+      "evidence": [
+        "tests/research/content-safety.test.ts",
+        "tests/research/provider-adapters.test.ts",
+        "research/meta.ts"
+      ],
+      "verified": "本文内命令除去、untrusted資料のsystem指示、固定API宛先、モデルへのツール提供なしをテストとコードレビューで確認。",
+      "remaining": []
+    },
+    {
+      "id": "check_109",
+      "target": "task_039 構造・根拠・不明",
+      "status": "passed",
+      "evidence": [
+        "tests/research/content-safety.test.ts",
+        "tests/research/provider-adapters.test.ts",
+        "docs/reviews/company-research-extraction-probe.json"
+      ],
+      "verified": "strict構造・存在するsource/引用・空白根拠拒否・推定弱み拒否を確認。実応答fixtureは根拠照合を通過。",
+      "remaining": []
+    },
+    {
+      "id": "check_110",
+      "target": "task_035 task_038 task_039 保存形式",
+      "status": "passed",
+      "evidence": [
+        "tests/research/jobs.test.ts",
+        "docs/reviews/company-research-live-pipeline.json"
+      ],
+      "verified": "実APIと一時DB/メモリーR2でprofile・JSON・Markdown/hash/URL・版・日時・coverageの対応を確認。",
+      "remaining": []
+    },
+    {
+      "id": "check_111",
+      "target": "task_040 URL不変の再利用",
+      "status": "passed",
+      "evidence": [
+        "tests/research/intake.test.ts",
+        "tests/research/jobs.test.ts"
+      ],
+      "verified": "同じURL集合のrevision更新で進行jobを維持し、30日以内は再利用。",
+      "remaining": []
+    },
+    {
+      "id": "check_112",
+      "target": "task_040 期限後の保存と本文差分",
+      "status": "passed",
+      "evidence": [
+        "tests/research/jobs.test.ts"
+      ],
+      "verified": "期限後の同本文再巡回で追加Metaなし、extractedAt維持、翌日の再保存で再巡回なしを確認。",
+      "remaining": []
+    },
+    {
+      "id": "check_113",
+      "target": "task_036 task_040 URL変更と削除",
+      "status": "passed",
+      "evidence": [
+        "tests/services/company-research-outbox.test.ts",
+        "tests/research/intake.test.ts",
+        "tests/research/jobs.test.ts"
+      ],
+      "verified": "差替え/無効化/delete、旧job完了拒否、開始応答と削除の競合時もprovider IDを追跡して取消。",
+      "remaining": []
+    },
+    {
+      "id": "check_114",
+      "target": "task_037 task_040 イベント順序",
+      "status": "passed",
+      "evidence": [
+        "tests/research/intake.test.ts"
+      ],
+      "verified": "逆順イベントと再送で最新source/current jobが戻らずdelete tombstoneを維持。",
+      "remaining": []
+    },
+    {
+      "id": "check_115",
+      "target": "task_040 中断回復とlease",
+      "status": "passed",
+      "evidence": [
+        "tests/research/jobs.test.ts",
+        "tests/research/budget.test.ts",
+        "tests/services/company-research-outbox.test.ts"
+      ],
+      "verified": "複数接続claim、期限切れ再取得、旧token拒否、I/O後の実時刻再確認を実SQLで確認。",
+      "remaining": []
+    },
+    {
+      "id": "check_116",
+      "target": "task_040 Cronの有界実行",
+      "status": "passed",
+      "evidence": [
+        "tests/research/jobs.test.ts",
+        "docs/reviews/company-research-provider-probe.json",
+        "docs/reviews/company-research-live-pipeline.json",
+        "tests/research/job-boundaries.test.ts"
+      ],
+      "verified": "DB再接続後にcursorから再開し、20分境界の取消後も取得済み本文をpartialとして保持。",
+      "remaining": []
+    },
+    {
+      "id": "check_117",
+      "target": "task_040 再試行と設定停止",
+      "status": "passed",
+      "evidence": [
+        "tests/research/jobs.test.ts",
+        "tests/research/provider-adapters.test.ts"
+      ],
+      "verified": "Retry-After上限、timeout等の3attempt、認証/設定不備停止とusage保持を確認。",
+      "remaining": []
+    },
+    {
+      "id": "check_118",
+      "target": "task_039 異なる企業の情報",
+      "status": "passed",
+      "evidence": [
+        "research/meta.ts",
+        "tests/research/provider-adapters.test.ts",
+        "docs/reviews/company-research-conflict-probe.json",
+        "docs/reviews/company-research-conflict-retest.json"
+      ],
+      "verified": "異なる2社と料金矛盾の実Meta再試験8条件成功。別企業の主張をsourceConflictsへ出典付きで保持。",
+      "remaining": []
+    },
+    {
+      "id": "check_119",
+      "target": "task_041 予算の一括予約",
+      "status": "passed",
+      "evidence": [
+        "tests/research/budget.test.ts",
+        "tests/research/provider-adapters.test.ts"
+      ],
+      "verified": "同時予約をSQL transactionで直列化。Meta月/job/token上限とCrawl別残高、予約失敗時APIゼロを確認。",
+      "remaining": []
+    },
+    {
+      "id": "check_120",
+      "target": "task_041 結果不明と料金集計",
+      "status": "passed",
+      "evidence": [
+        "tests/research/budget.test.ts",
+        "tests/research/jobs.test.ts",
+        "tests/research/provider-adapters.test.ts",
+        "docs/reviews/company-research-live-pipeline.json"
+      ],
+      "verified": "unknown予約を保持、欠落browser usageは0精算しない。cache/reasoningを重複せず計算、超過実費は記録してpause。",
+      "remaining": []
+    },
+    {
+      "id": "check_121",
+      "target": "task_041 停止と再開",
+      "status": "passed",
+      "evidence": [
+        "tests/research/budget.test.ts",
+        "tests/research/jobs.test.ts",
+        "tests/research/ops.test.ts",
+        "research/worker.ts"
+      ],
+      "verified": "pauseとprovider blockを課金直前にも再確認。限定source、UTC月境界、停止時取消と回収順序を確認。",
+      "remaining": []
+    },
+    {
+      "id": "check_122",
+      "target": "task_041 保持と削除",
+      "status": "passed",
+      "evidence": [
+        "tests/research/retention.test.ts",
+        "tests/research/jobs.test.ts"
+      ],
+      "verified": "raw7日、現行根拠の保持、失敗後再回収、再登録後も旧版削除期限維持、protected jobのLIMIT飢餓防止を確認。",
+      "remaining": []
+    },
+    {
+      "id": "check_123",
+      "target": "task_041 運用の可視性",
+      "status": "passed",
+      "evidence": [
+        "tests/research/ops.test.ts",
+        "scripts/company-research-ops.ts"
+      ],
+      "verified": "実CLIのstatus/usage/pause/resume/retry/export、0600出力、停止済み/削除済み制約と本文非出力を確認。生DB例外は固定文へ置換。",
+      "remaining": []
+    },
+    {
+      "id": "check_124",
+      "target": "task_042 公開・端末config非混入",
+      "status": "passed",
+      "evidence": [
+        "tests/research/isolation.test.ts",
+        "tests/api/spotlight-registration-flow.test.ts",
+        "tests/admin/spotlight-submissions-view.test.tsx",
+        "tests/public/spotlight-registration-form.test.tsx"
+      ],
+      "verified": "研究DBの目印本文更新前後で公開/端末raw JSON不変。URL2と研究キー/本文はconfig・審査/登録プレビューへ渡らない。",
+      "remaining": []
+    },
+    {
+      "id": "check_125",
+      "target": "task_042 素材配信の非混入",
+      "status": "passed",
+      "evidence": [
+        "tests/research/isolation.test.ts",
+        "tests/api/public-signage.test.ts",
+        "tests/api/device.test.ts"
+      ],
+      "verified": "研究page/profile/R2 keyの公開/認証端末素材取得は404。Pi素材参照へ追加なし。",
+      "remaining": []
+    },
+    {
+      "id": "check_126",
+      "target": "task_037 task_043 非公開と秘密分離",
+      "status": "passed",
+      "evidence": [
+        "research/wrangler.jsonc",
+        "wrangler.jsonc",
+        "scripts/check-research-bundle.ts",
+        "tests/research/isolation.test.ts",
+        "docs/reviews/company-research-deployment.json"
+      ],
+      "verified": "専用Worker匿名404。R2公開URL無効/ドメイン0、Mainと研究のsecret名・binding一覧の分離を実環境確認。",
+      "remaining": []
+    },
+    {
+      "id": "check_127",
+      "target": "task_037 task_043 既存Cronの頻度",
+      "status": "passed",
+      "evidence": [
+        "tests/worker/scheduled.test.ts",
+        "wrangler.jsonc",
+        "docs/reviews/company-research-deployment.json"
+      ],
+      "verified": "本番Main配備で1分/30分/日次の3Cronを確認。",
+      "remaining": []
+    },
+    {
+      "id": "check_128",
+      "target": "task_042 表示内容・QR・版の維持",
+      "status": "passed",
+      "evidence": [
+        "tests/research/isolation.test.ts",
+        "tests/signage/signage-screen.test.tsx",
+        "tests/admin/spotlights-view.test.tsx",
+        "tests/public/spotlight-registration-form.test.tsx",
+        "docs/reviews/company-research-deployment.json"
+      ],
+      "verified": "既存自動回帰に加え390x844で2URL入力・表示OFF・通常保存成功、一覧に表示しない状態を確認。",
+      "remaining": []
+    },
+    {
+      "id": "check_129",
+      "target": "task_042 品質と専用Worker検査",
+      "status": "pending",
+      "evidence": [
+        "eslint.config.mjs",
+        "tests/db/schema.test.ts",
+        "scripts/check-research-bundle.ts"
+      ],
+      "verified": "QA対象テストと全体lintは成功。親全体テストのTABLES期待1件失敗を修正しDB17テスト成功。",
+      "remaining": [
+        "最終コードに対する全体typecheck/lint/test/build/check:worker/build:display/check:display/build:research/check:researchの終了コードを追記する。"
+      ]
+    },
+    {
+      "id": "check_130",
+      "target": "task_043 配備順序と停止",
+      "status": "pending",
+      "evidence": [
+        "research/wrangler.jsonc",
+        "docs/reviews/company-research-live-pipeline.json"
+      ],
+      "verified": "paid=falseの既定設定と限定fixtureによる実APIパイプライン成功を確認。",
+      "remaining": [
+        "本番private Worker/Main配備と通常保存canary。",
+        "停止/再開とoutbox対応rollback対象成果物を確認する。",
+        "Pi ZIP未公開、削除予約がrollback後も残ることを記録する。"
+      ]
+    },
+    {
+      "id": "check_131",
+      "target": "task_035 task_043 migration対象",
+      "status": "passed",
+      "evidence": [
+        "tests/db/schema.test.ts",
+        "tests/research/intake.test.ts",
+        "research/drizzle.config.ts",
+        "docs/reviews/company-research-deployment.json"
+      ],
+      "verified": "Main0015と研究0000〜0002を各対象DBへ適用。Main既存6件維持、無関係DB/R2への操作なし。",
+      "remaining": []
+    },
+    {
+      "id": "check_132",
+      "target": "task_041 将来利用可能な保管",
+      "status": "passed",
+      "evidence": [
+        "tests/research/ops.test.ts",
+        "tests/research/jobs.test.ts",
+        "docs/reviews/company-research-live-pipeline.json"
+      ],
+      "verified": "非公開JSONL exportを再parse可能。JSONとMarkdown根拠を保存し、チャット/embedding/検索APIの追加なしをコードレビューで確認。",
+      "remaining": []
+    }
+  ]
+}

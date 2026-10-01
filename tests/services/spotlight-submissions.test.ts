@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "../../db/index";
-import { media, memberSpotlights, memberSpotlightSubmissions, users } from "../../db/schema";
+import { companyResearchOutbox, media, memberSpotlights, memberSpotlightSubmissions, users } from "../../db/schema";
 import type { AuthUser } from "../../lib/auth";
 import { approveSpotlightSubmission, cleanupSpotlightSubmissions, countPendingSpotlightSubmissions, getSpotlightSubmissionImage, listSpotlightSubmissions, rejectSpotlightSubmission, submitSpotlightSubmission } from "../../lib/services/spotlight-submissions";
 import { SpotlightBucket } from "../helpers/spotlight-bucket";
@@ -48,6 +48,7 @@ describe("本人申請の受付", () => {
     await submitSpotlightSubmission(db, bucket, data, {});
     const [pending] = await db.select().from(memberSpotlightSubmissions);
     expect(pending.payload).toMatchObject({ websiteUrl: data.websiteUrl, websiteUrl2: data.websiteUrl2 });
+    expect(await db.select().from(companyResearchOutbox)).toHaveLength(0);
     await expect(submitSpotlightSubmission(db, bucket, data, {})).resolves.toEqual({ accepted: true });
     for (const websiteUrl2 of ["https://second.example.com/changed", null]) {
       await expect(submitSpotlightSubmission(db, bucket, { ...data, websiteUrl2 }, {})).rejects.toMatchObject({ status: 409 });
@@ -55,8 +56,29 @@ describe("本人申請の受付", () => {
     await db.insert(users).values(staff);
     await approveSpotlightSubmission(db, bucket, staff, pending.id, 0);
     expect((await db.select().from(memberSpotlights))[0]).toMatchObject({ websiteUrl: data.websiteUrl, websiteUrl2: data.websiteUrl2 });
+    await approveSpotlightSubmission(db, bucket, staff, pending.id, 0);
+    const researchEvents = await db.select().from(companyResearchOutbox);
+    expect(researchEvents).toHaveLength(1);
+    expect(researchEvents[0]).toMatchObject({ sourceRevision: 0, eventType: "upsert", urls: [{ slot: 1, url: data.websiteUrl }, { slot: 2, url: data.websiteUrl2 }] });
+    expect(JSON.stringify(researchEvents)).not.toContain(data.email);
+    expect(JSON.stringify(researchEvents)).not.toContain(data.personName);
     await expect(submitSpotlightSubmission(db, bucket, data, {})).resolves.toEqual({ accepted: true });
     expect(await db.select().from(memberSpotlights)).toHaveLength(1);
+  });
+
+  it("承認時のoutbox記録失敗は承認・掲載行をrollbackし、却下からは予約しない", async () => {
+    const data = { ...input(), websiteUrl: "https://example.com/" };
+    await submitSpotlightSubmission(db, bucket, data, {});
+    const [pending] = await db.select().from(memberSpotlightSubmissions);
+    await db.insert(users).values(staff);
+    await db.run(sql`CREATE TRIGGER reject_research BEFORE INSERT ON company_research_outbox BEGIN SELECT RAISE(ABORT, 'simulated outbox failure'); END`);
+    await expect(approveSpotlightSubmission(db, bucket, staff, pending.id, 0)).rejects.toThrow();
+    expect(await db.select().from(memberSpotlights)).toHaveLength(0);
+    expect(await db.select().from(companyResearchOutbox)).toHaveLength(0);
+    expect((await db.select().from(memberSpotlightSubmissions))[0]).toMatchObject({ status: "pending", revision: 0, payload: pending.payload });
+    expect(fetch).not.toHaveBeenCalled();
+    await rejectSpotlightSubmission(db, staff, pending.id, 0);
+    expect(await db.select().from(companyResearchOutbox)).toHaveLength(0);
   });
 
   it("メールは専用列だけに保存し、受付では送信せず公開テーブルに入れない", async () => {

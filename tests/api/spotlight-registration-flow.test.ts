@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@/db/index";
-import { displayBundles, media, memberSpotlights, memberSpotlightSubmissions, users } from "@/db/schema";
+import { companyResearchOutbox, displayBundles, media, memberSpotlights, memberSpotlightSubmissions, users } from "@/db/schema";
 import { seed } from "@/db/seed";
 import type { AuthUser } from "@/lib/auth";
 import { signageConfigSchema, type SignageConfig } from "@/lib/config-schema";
@@ -140,6 +140,7 @@ describe("本人申請から既存サイネージ配信まで", () => {
     expect(pending.payload).toMatchObject({ websiteUrl: data.websiteUrl, websiteUrl2: data.websiteUrl2 });
     expect(JSON.stringify(pending.payload)).not.toContain(EMAIL);
     expect(pending.payload).not.toHaveProperty("email");
+    expect(await db.select().from(companyResearchOutbox)).toHaveLength(0);
     await expectUnpublished(pending.id, before.version);
     expect((await privateImage(pending.id)).status).toBe(401);
     state.session = session;
@@ -156,6 +157,14 @@ describe("本人申請から既存サイネージ配信まで", () => {
     // 申請のアドレスは掲載メンバーに引き継ぐ（管理画面で見るだけ）。公開・端末の config には出さない（下で確かめる）
     expect(row.contactEmail).toBe(EMAIL);
     expect(row).not.toHaveProperty("email");
+    const queued = await db.select().from(companyResearchOutbox);
+    expect(queued).toHaveLength(1);
+    expect(queued[0]).toMatchObject({ sourceId: id, sourceRevision: 0, eventType: "upsert", status: "pending", urls: [
+      { slot: 1, url: data.websiteUrl }, { slot: 2, url: data.websiteUrl2 },
+    ] });
+    for (const privateValue of [EMAIL, data.personName, data.personNameKana, data.bio, data.quote, row.photoMediaId!, row.logoMediaId!]) {
+      expect(JSON.stringify(queued)).not.toContain(privateValue);
+    }
     expect(await listMedia(db)).toHaveLength(2);
     expect(JSON.stringify(await listMedia(db))).not.toContain(EMAIL);
     expect(await listSpotlightSubmissions(db, staff)).toHaveLength(0);
@@ -178,6 +187,7 @@ describe("本人申請から既存サイネージ配信まで", () => {
     expect(await db.select().from(memberSpotlightSubmissions)).toHaveLength(1);
     expect(await db.select().from(memberSpotlights)).toHaveLength(2);
     expect(await db.select().from(media)).toHaveLength(2);
+    expect(await db.select().from(companyResearchOutbox)).toHaveLength(1);
   });
 
   it("1つ目が空で2つ目だけ登録しても公開・端末configへURLを出さない", async () => {
@@ -187,6 +197,7 @@ describe("本人申請から既存サイネージ配信まで", () => {
     const approved = await approveSpotlightSubmissionAction(pending.id, pending.revision);
     const [row] = await db.select().from(memberSpotlights).where(eq(memberSpotlights.id, approved.data!.spotlightId!));
     expect(row).toMatchObject({ websiteUrl: null, websiteUrl2: "https://management-only.example.com/" });
+    expect((await db.select().from(companyResearchOutbox))[0]).toMatchObject({ sourceId: row.id, urls: [{ slot: 2, url: row.websiteUrl2 }] });
     for (const config of [await publicConfig(), await deviceConfig()]) {
       expect(config.spotlights!.find((item) => item.id === row.id)).toMatchObject({ websiteUrl: null });
     }
@@ -202,6 +213,7 @@ describe("本人申請から既存サイネージ配信まで", () => {
     expect((await post(input(), true)).status).toBe(503);
     const [receiving] = await db.select().from(memberSpotlightSubmissions);
     expect(receiving.status).toBe("receiving");
+    expect(await db.select().from(companyResearchOutbox)).toHaveLength(0);
     expect(bucket.objects.has(receiving.photoFile!.r2Key)).toBe(true);
     await expectUnpublished(receiving.id, before.version);
     state.session = session;
@@ -221,6 +233,7 @@ describe("本人申請から既存サイネージ配信まで", () => {
     state.session = session;
     expect((await privateImage(pending.id)).status).toBe(404);
     expect(await listSpotlightSubmissions(db, staff)).toHaveLength(0);
+    expect(await db.select().from(companyResearchOutbox)).toHaveLength(0);
   });
 
   it("承認後も既存編集・表示切替・削除と素材参照保護を適用し、既存掲載メンバーを維持する", async () => {

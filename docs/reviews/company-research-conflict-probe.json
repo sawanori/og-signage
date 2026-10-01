@@ -1,0 +1,170 @@
+{
+  "at": "2026-10-01T13:39:27.083Z",
+  "scope": "synthetic nonpersonal fixture; actual Meta API; no website fetch",
+  "pages": [
+    {
+      "sourceId": "alpha_main",
+      "markdown": "# Alpha Studio\n\nAlpha Studio株式会社は企業向けWebサイト制作を提供します。\nWebサイト制作の基本料金は10万円です。\n対応地域は東京です。"
+    },
+    {
+      "sourceId": "alpha_pricing",
+      "markdown": "# Alpha Studio 料金\n\nAlpha Studio株式会社のWebサイト制作サービスです。\nWebサイト制作の基本料金は15万円です。\n対応地域は東京です。"
+    },
+    {
+      "sourceId": "beta_main",
+      "markdown": "# Beta Labs\n\nBeta Labs株式会社は企業向けWebサイト制作を提供します。\nWebサイト制作の基本料金は20万円です。\n対応地域は大阪です。"
+    }
+  ],
+  "reservation": {
+    "provider": "meta",
+    "inputTokens": 8945,
+    "outputTokens": 8192,
+    "costMicroUsd": 2533,
+    "browserSeconds": 0
+  },
+  "httpStatus": 200,
+  "response": {
+    "id": "chatcmpl-01a0f7b1-2207-73ed-b7f2-d0227548f829",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "{\"company\": {\"industries\": [], \"name\": {\"evidenceText\": \"Alpha Studio株式会社\", \"kind\": \"fact\", \"sourceIds\": [\"alpha_main\", \"alpha_pricing\"], \"text\": \"Alpha Studio株式会社\"}, \"regions\": [{\"evidenceText\": \"東京\", \"kind\": \"fact\", \"sourceIds\": [\"alpha_main\", \"alpha_pricing\"], \"text\": \"東京\"}], \"summary\": {\"evidenceText\": \"企業向けWebサイト制作を提供します\", \"kind\": \"fact\", \"sourceIds\": [\"alpha_main\"], \"text\": \"企業向けWebサイト制作を提供する\"}}, \"limitations\": [], \"services\": [{\"delivery\": [], \"description\": {\"evidenceText\": \"企業向けWebサイト制作を提供します\", \"kind\": \"fact\", \"sourceIds\": [\"alpha_main\"], \"text\": \"企業向けWebサイト制作を提供するサービス\"}, \"name\": {\"evidenceText\": \"Webサイト制作\", \"kind\": \"fact\", \"sourceIds\": [\"alpha_main\", \"alpha_pricing\"], \"text\": \"Webサイト制作\"}, \"pricing\": [], \"problemsSolved\": [], \"targetCustomers\": []}], \"sourceConflicts\": [{\"evidenceText\": \"基本料金は10万円です\", \"kind\": \"fact\", \"sourceIds\": [\"alpha_main\"], \"text\": \"alpha_mainでは基本料金10万円と記載するが、alpha_pricingでは15万円と記載し矛盾する\"}, {\"evidenceText\": \"基本料金は15万円です\", \"kind\": \"fact\", \"sourceIds\": [\"alpha_pricing\"], \"text\": \"alpha_pricingでは基本料金15万円と記載しalpha_mainと矛盾する\"}, {\"evidenceText\": \"Beta Labs\", \"kind\": \"fact\", \"sourceIds\": [\"beta_main\"], \"text\": \"Beta Labs株式会社はAlpha Studioとは別会社の情報を示すため統合しない\"}], \"strengths\": [], \"unknowns\": [\"Alpha Studioの基本料金は資料間で矛盾するため確定できない\", \"Beta Labsの詳細は別会社のため本出力に統合していない\"]}",
+          "refusal": null,
+          "role": "assistant"
+        },
+        "logprobs": null
+      }
+    ],
+    "created": 1790861975,
+    "model": "muse-spark-1.3-contributor",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 1054,
+      "prompt_tokens": 1674,
+      "total_tokens": 2728,
+      "completion_tokens_details": {
+        "reasoning_tokens": 623
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      }
+    }
+  },
+  "result": {
+    "profile": {
+      "company": {
+        "name": {
+          "text": "Alpha Studio株式会社",
+          "kind": "fact",
+          "sourceIds": [
+            "alpha_main",
+            "alpha_pricing"
+          ],
+          "evidenceText": "Alpha Studio株式会社"
+        },
+        "summary": {
+          "text": "企業向けWebサイト制作を提供する",
+          "kind": "fact",
+          "sourceIds": [
+            "alpha_main"
+          ],
+          "evidenceText": "企業向けWebサイト制作を提供します"
+        },
+        "industries": [],
+        "regions": [
+          {
+            "text": "東京",
+            "kind": "fact",
+            "sourceIds": [
+              "alpha_main",
+              "alpha_pricing"
+            ],
+            "evidenceText": "東京"
+          }
+        ]
+      },
+      "services": [
+        {
+          "name": {
+            "text": "Webサイト制作",
+            "kind": "fact",
+            "sourceIds": [
+              "alpha_main",
+              "alpha_pricing"
+            ],
+            "evidenceText": "Webサイト制作"
+          },
+          "description": {
+            "text": "企業向けWebサイト制作を提供するサービス",
+            "kind": "fact",
+            "sourceIds": [
+              "alpha_main"
+            ],
+            "evidenceText": "企業向けWebサイト制作を提供します"
+          },
+          "targetCustomers": [],
+          "problemsSolved": [],
+          "delivery": [],
+          "pricing": []
+        }
+      ],
+      "strengths": [],
+      "limitations": [],
+      "unknowns": [
+        "Alpha Studioの基本料金は資料間で矛盾するため確定できない",
+        "Beta Labsの詳細は別会社のため本出力に統合していない"
+      ],
+      "sourceConflicts": [
+        {
+          "text": "alpha_mainでは基本料金10万円と記載するが、alpha_pricingでは15万円と記載し矛盾する",
+          "kind": "fact",
+          "sourceIds": [
+            "alpha_main"
+          ],
+          "evidenceText": "基本料金は10万円です"
+        },
+        {
+          "text": "alpha_pricingでは基本料金15万円と記載しalpha_mainと矛盾する",
+          "kind": "fact",
+          "sourceIds": [
+            "alpha_pricing"
+          ],
+          "evidenceText": "基本料金は15万円です"
+        },
+        {
+          "text": "Beta Labs株式会社はAlpha Studioとは別会社の情報を示すため統合しない",
+          "kind": "fact",
+          "sourceIds": [
+            "beta_main"
+          ],
+          "evidenceText": "Beta Labs"
+        }
+      ],
+      "schemaVersion": 1,
+      "sourceId": "synthetic_company_conflicts",
+      "generation": 1,
+      "model": "muse-spark-1.3-contributor",
+      "promptVersion": "company-research-v2",
+      "extractedAt": "2026-10-01T13:39:36.232Z"
+    },
+    "usage": {
+      "inputTokens": 1674,
+      "outputTokens": 1054,
+      "cachedInputTokens": 0,
+      "reasoningTokens": 623,
+      "costMicroUsd": 379
+    },
+    "inputTokenEstimate": 8945
+  },
+  "checks": {
+    "conflictsPresent": true,
+    "noMergedCompanyName": false,
+    "serviceAttributionSeparated": true,
+    "bothCompaniesRetained": false,
+    "alphaPricesRetained": false,
+    "betaPriceRetained": false
+  },
+  "passed": false
+}

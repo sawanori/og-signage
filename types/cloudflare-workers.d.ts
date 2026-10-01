@@ -16,5 +16,6 @@ declare module "cloudflare:workers" {
     SPOTLIGHT_SUBMISSION_RATE_LIMITER: RateLimit;
     RESEND_API_KEY?: string;
     SPOTLIGHT_NOTIFICATION_FROM: string;
+    COMPANY_RESEARCH?: import("../worker/company-research-dispatch").CompanyResearchServiceBinding;
   };
 }
