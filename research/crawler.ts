@@ -74,7 +74,8 @@ async function request(auth: CrawlAuth, url: string, init: RequestInit): Promise
     response = await (auth.fetcher ?? fetch)(url, {
       ...init,
       headers: { Authorization: `Bearer ${auth.apiToken}`, "Content-Type": "application/json" },
-      redirect: "error", signal: AbortSignal.timeout(30_000),
+      // Never forward the API token to a redirect destination; non-2xx responses are rejected below.
+      redirect: "manual", signal: AbortSignal.timeout(30_000),
     });
   } catch { throw new ProviderError("provider_network_unknown", true); }
   if (!response.ok) {

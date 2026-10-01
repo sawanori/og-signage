@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { validateEvidence } from "../../research/evidence";
 import type { ProfileContent } from "../../research/profile-schema";
 import { sanitizePage } from "../../research/sanitize";
-import { assertPublicUrl, isInResearchScope, isPublicIp, normalizeResearchUrl } from "../../research/url-policy";
+import { assertPublicUrl, isInResearchScope, isPublicIp, normalizeResearchUrl, resolvePublicHostname } from "../../research/url-policy";
 
 describe("public website collection boundary", () => {
   it.each(["http://127.1", "http://2130706433", "http://[::1]", "http://localhost", "http://server.local", "https://user:pass@company.example/", "https://company.example:8443/", "file:///etc/passwd"])("rejects %s", (url) => {
@@ -18,6 +18,15 @@ describe("public website collection boundary", () => {
     expect(isInResearchScope("https://evil.example/", ["https://company.example/"])).toBe(false);
     expect(isInResearchScope("https://sub.company.example/", ["https://company.example/"])).toBe(false);
     expect(isInResearchScope("https://company.example/service", ["https://company.example/"])).toBe(true);
+  });
+  it("uses workerd-compatible manual redirect mode for DNS and rejects a redirected response", async () => {
+    const fetcher = vi.fn<typeof fetch>(async (_url, init) => {
+      expect(init?.redirect).toBe("manual");
+      return new Response(null, { status: 302, headers: { Location: "http://127.0.0.1/" } });
+    });
+    await expect(resolvePublicHostname("company.example", fetcher)).rejects.toMatchObject({ code: "unsafe_url" });
+    expect(fetcher).toHaveBeenCalledTimes(2); // A and AAAA only; the destination is never requested.
+    expect(fetcher.mock.calls.every(([url]) => new URL(String(url)).origin === "https://cloudflare-dns.com")).toBe(true);
   });
 });
 

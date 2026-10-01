@@ -54,6 +54,7 @@ describe("private research provider adapters", () => {
     const events: string[] = [];
     const fetcher = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
       events.push("fetch");
+      expect(init?.redirect).toBe("manual");
       expect(JSON.parse(String(init?.body))).toMatchObject({
         limit: 50, depth: 5, formats: ["html", "markdown"], render: true,
         crawlPurposes: ["search", "ai-input", "ai-train"], contentUse: "full",
@@ -139,11 +140,25 @@ describe("private research provider adapters", () => {
     expect(result.browserSecondsUsed).toBe(0);
   });
 
+  it.each([301, 302, 303, 307, 308])("refuses provider HTTP %i redirects without forwarding API credentials", async (status) => {
+    const fetcher = vi.fn<typeof fetch>(async (_url, init) => {
+      expect(init?.redirect).toBe("manual");
+      return new Response(null, { status, headers: { Location: "https://untrusted.example/collect" } });
+    });
+    await expect(startCrawl({ ...auth, url: "https://company.example/", resolveHostname: async () => ["1.1.1.1"], beforePaidCall: async () => {}, fetcher }))
+      .rejects.toMatchObject({ code: `provider_http_${status}`, retryable: false });
+    await expect(extractProfile({ apiKey: "test-secret", sourceId: "member", generation: 1, pages: [{ sourceId: "page_1", markdown }], beforePaidCall: async () => {}, fetcher }))
+      .rejects.toMatchObject({ code: `provider_http_${status}`, retryable: false });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher.mock.calls.map(([url]) => new URL(String(url)).origin)).toEqual(["https://api.cloudflare.com", "https://api.meta.ai"]);
+  });
+
   it("uses Contributor strict JSON, strips metadata from prompts and accounts for reasoning once", async () => {
     let sentBody = "";
     const beforePaidCall = vi.fn(async () => {});
     const fetcher = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
       expect(beforePaidCall).toHaveBeenCalledTimes(1);
+      expect(init?.redirect).toBe("manual");
       sentBody = String(init?.body);
       return metaResponse();
     });

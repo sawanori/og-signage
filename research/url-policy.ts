@@ -49,7 +49,8 @@ export async function resolvePublicHostname(hostname: string, fetcher: typeof fe
     endpoint.searchParams.set("name", hostname);
     endpoint.searchParams.set("type", type);
     const response = await fetcher(endpoint, {
-      headers: { Accept: "application/dns-json" }, redirect: "error", signal: AbortSignal.timeout(10_000),
+      // Manual mode is supported by workerd; !ok below rejects redirects without following them.
+      headers: { Accept: "application/dns-json" }, redirect: "manual", signal: AbortSignal.timeout(10_000),
     });
     if (!response.ok) throw new UrlPolicyError();
     const data = await response.json() as { Status?: number; Answer?: { type: number; data: string }[] };

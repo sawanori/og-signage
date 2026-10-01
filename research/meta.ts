@@ -84,7 +84,8 @@ export async function extractProfile(input: {
   try {
     response = await (input.fetcher ?? fetch)("https://api.meta.ai/v1/chat/completions", {
       method: "POST", headers: { Authorization: `Bearer ${input.apiKey}`, "Content-Type": "application/json" },
-      body, redirect: "error", signal: AbortSignal.timeout(40_000),
+      // Never forward the API token to a redirect destination; non-2xx responses are rejected below.
+      body, redirect: "manual", signal: AbortSignal.timeout(40_000),
     });
   } catch { throw new ProviderError("provider_network_unknown", true); }
   if (!response.ok) throw providerHttpError(response);
