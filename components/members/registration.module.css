@@ -57,3 +57,12 @@
   .page { padding-inline: 12px; }
   .card { padding: 20px 16px; }
 }
+/* 名刺から入力（2026-10-02）。ボタンに見せた label で file 入力を開く。iOS でも label から確実に開くよう、入力は display:none にせず見えなくする */
+.cardField { margin: 0 0 22px; padding: 14px; border: 1px solid #e3e6df; border-radius: 10px; background: #f8f9f6; }
+.cardTitle { margin: 0; font-size: 14px; font-weight: 700; }
+.cardButtons { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.cardButtons label { display: flex; align-items: center; justify-content: center; text-align: center; }
+.cardButtons .cardCamera { border-color: #355845; color: #fff; background: #355845; }
+.cardInput { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; opacity: 0; }
+.cardInput:focus-visible + label { outline: 3px solid #8cad9b; outline-offset: 3px; }
+.cardInput:disabled + label { opacity: 0.5; cursor: default; }

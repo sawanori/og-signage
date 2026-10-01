@@ -212,12 +212,19 @@ export function SpotlightRegistrationForm({ notificationFrom }: { notificationFr
         </header>
         <form className={styles.card} noValidate onSubmit={(event) => { void send(event); }}>
           <div className={styles.sectionHead}><h2>あなたについて</h2><p>会社名・所属とお名前をご入力ください。</p></div>
-          <div className={styles.field}>
-            <label htmlFor="member-card">名刺から入力（任意）</label>
-            <p id="card-hint" className={styles.hint}>名刺の写真を選ぶと、会社名・お名前・メールアドレスなどの空いている欄に自動で入力します。画像は読み取りのためにGoogleのAI（Gemini）へ送りますが、保存はしません。</p>
-            <input id="member-card" type="file" accept="image/jpeg,image/png,image/webp" disabled={locked || card.busy} aria-describedby="card-hint"
-              onChange={(event) => { void readCard(event.currentTarget.files?.[0]); event.currentTarget.value = ""; }} />
-            {card.busy ? <p role="status">名刺を読み取っています…</p> : null}
+          {/* スマホではすぐ背面カメラが開く「カメラで撮影」と、撮影済みの写真や届いた画像を選ぶ「画像を選ぶ」を分ける（2026-10-02 ユーザー指示） */}
+          <div className={styles.cardField} role="group" aria-labelledby="card-title" aria-describedby="card-hint">
+            <p id="card-title" className={styles.cardTitle}>名刺から入力（任意）</p>
+            <p id="card-hint" className={styles.hint}>名刺を撮影すると、会社名・お名前・メールアドレスなどの空いている欄に自動で入力します。明るい場所で、名刺全体が写るように撮ってください。画像は読み取りのためにGoogleのAI（Gemini）へ送りますが、保存はしません。</p>
+            <div className={styles.cardButtons}>
+              <input id="member-card-camera" className={styles.cardInput} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" disabled={locked || card.busy}
+                onChange={(event) => { void readCard(event.currentTarget.files?.[0]); event.currentTarget.value = ""; }} />
+              <label htmlFor="member-card-camera" className={`${styles.secondaryButton} ${styles.cardCamera}`}>カメラで撮影</label>
+              <input id="member-card-file" className={styles.cardInput} type="file" accept="image/jpeg,image/png,image/webp" disabled={locked || card.busy}
+                onChange={(event) => { void readCard(event.currentTarget.files?.[0]); event.currentTarget.value = ""; }} />
+              <label htmlFor="member-card-file" className={styles.secondaryButton}>画像を選ぶ</label>
+            </div>
+            {card.busy ? <p role="status" className={styles.hint}>名刺を読み取っています…</p> : null}
             {card.message ? <p role="status" className={styles.hint}>{card.message}</p> : null}
             {card.error ? <p role="alert" className={styles.fieldError}>{card.error}</p> : null}
           </div>

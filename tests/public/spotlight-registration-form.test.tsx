@@ -164,7 +164,7 @@ describe("本人登録フォーム", () => {
     scan.mockResolvedValueOnce(scanned);
     render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
     fireEvent.change(screen.getByLabelText("お名前"), { target: { value: "手入力 花子" } });
-    fireEvent.change(screen.getByLabelText("名刺から入力（任意）"), { target: { files: [cardFile()] } });
+    fireEvent.change(screen.getByLabelText("画像を選ぶ"), { target: { files: [cardFile()] } });
     expect(await screen.findByText("名刺から「会社名・所属」「肩書き」「メールアドレス」「ホームページのURL 1」を入力しました。内容が正しいか確認してください。")).toBeTruthy();
     expect((screen.getByLabelText("会社名・所属") as HTMLInputElement).value).toBe("株式会社名刺");
     expect((screen.getByLabelText("お名前") as HTMLInputElement).value).toBe("手入力 花子");
@@ -174,12 +174,26 @@ describe("本人登録フォーム", () => {
     expect((screen.getByText("詳しい情報を追加する（任意）").closest("details") as HTMLDetailsElement).open).toBe(true);
   });
 
+  it("「カメラで撮影」はスマホの背面カメラを直接開き、撮った写真も同じように読み取る。「画像を選ぶ」はカメラを強制しない", async () => {
+    scan.mockResolvedValueOnce(scanned);
+    render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
+    const camera = screen.getByLabelText("カメラで撮影") as HTMLInputElement;
+    expect(camera.type).toBe("file");
+    expect(camera.getAttribute("capture")).toBe("environment");
+    expect(screen.getByLabelText("画像を選ぶ").hasAttribute("capture")).toBe(false);
+    expect(screen.getByRole("group", { name: "名刺から入力（任意）" })).toBeTruthy();
+    fireEvent.change(camera, { target: { files: [cardFile()] } });
+    expect(await screen.findByText(/名刺から「会社名・所属」/)).toBeTruthy();
+    expect(scan).toHaveBeenCalledTimes(1);
+    expect((screen.getByLabelText("会社名・所属") as HTMLInputElement).value).toBe("株式会社名刺");
+  });
+
   it("名刺の読み取り中は送信を止め、読み取れなかったときは理由を出して入力を変えない", async () => {
     let resolve!: (value: BusinessCardScan) => void;
     scan.mockReturnValueOnce(new Promise((done) => { resolve = done; }));
     render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
     input();
-    fireEvent.change(screen.getByLabelText("名刺から入力（任意）"), { target: { files: [cardFile()] } });
+    fireEvent.change(screen.getByLabelText("画像を選ぶ"), { target: { files: [cardFile()] } });
     expect(await screen.findByText("名刺を読み取っています…")).toBeTruthy();
     expect((screen.getByRole("button", { name: "紹介を送信" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.submit(screen.getByRole("button", { name: "紹介を送信" }).closest("form")!);
