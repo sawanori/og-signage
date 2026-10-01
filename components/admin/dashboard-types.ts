@@ -20,8 +20,8 @@ export type ShellUser = {
   avatarUrl: string | null;
 };
 
-/** ベルに出す知らせ（端末の不調など） */
-export type ShellAlert = { id: string; message: string };
+/** ベルに出す知らせ（端末の不調、メンバー紹介の確認待ちなど）。href があれば押すとその画面へ移る */
+export type ShellAlert = { id: string; message: string; href?: string };
 
 export type ShellData = {
   user: ShellUser;

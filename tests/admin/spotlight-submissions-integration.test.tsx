@@ -8,7 +8,7 @@ import { SpotlightBucket } from "../helpers/spotlight-bucket";
 import { openTempDb } from "../helpers/temp-db";
 
 const state = vi.hoisted(() => ({ db: null as unknown as Db, bucket: null as unknown as SpotlightBucket, session: null as unknown }));
-const router = vi.hoisted(() => ({ refresh: vi.fn() }));
+const router = vi.hoisted(() => ({ refresh: vi.fn(), replace: vi.fn() }));
 vi.mock("@/lib/runtime", () => ({ getDb: () => state.db }));
 vi.mock("@/lib/r2", async (original) => ({ ...await original<typeof import("@/lib/r2")>(), getMediaBucket: () => state.bucket }));
 vi.mock("next/navigation", () => ({ useRouter: () => router, redirect: (url: string) => { throw new Error(`redirect:${url}`); } }));
@@ -50,6 +50,9 @@ beforeEach(async () => {
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); close(); });
 
+/** /admin/spotlights（?tab なし）を開いたときのページ */
+const renderPage = () => SpotlightsPage({ searchParams: Promise.resolve({}) });
+
 function openPending() {
   fireEvent.click(screen.getByRole("button", { name: "確認待ち（1件）" }));
   fireEvent.click(screen.getByRole("button", { name: "内容を確認" }));
@@ -57,7 +60,7 @@ function openPending() {
 
 describe("管理ページと実Action・サービス・プレビューの接続", () => {
   it("実際のStaff画像と掲載カードを確認して承認するとDBに掲載され、再取得で件数と掲載一覧が更新される", async () => {
-    const view = render(await SpotlightsPage());
+    const view = render(await renderPage());
     openPending();
     const preview = screen.getByTestId("spotlight");
     expect(within(preview).getByText(payload.companyName)).toBeTruthy();
@@ -73,7 +76,7 @@ describe("管理ページと実Action・サービス・プレビューの接続"
     expect(screen.queryByRole("region", { name: "申請内容の確認" })).toBeNull();
     expect(await db.select().from(memberSpotlights)).toMatchObject([{ personName: payload.personName, enabled: true }]);
     expect(await db.select().from(media)).toMatchObject([{ r2Key: `member-submissions/${id}/photo` }]);
-    view.rerender(await SpotlightsPage());
+    view.rerender(await renderPage());
     expect(screen.getByRole("button", { name: "確認待ち（0件）" })).toBeTruthy();
     expect(screen.getByText("確認待ちの申請はありません。")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "掲載メンバー" }));
@@ -81,14 +84,14 @@ describe("管理ページと実Action・サービス・プレビューの接続"
   });
 
   it("別スタッフの却下後に古い詳細から掲載しても、実Actionの競合で詳細を閉じて最新件数へ戻る", async () => {
-    const view = render(await SpotlightsPage());
+    const view = render(await renderPage());
     openPending();
     expect(await rejectSpotlightSubmissionAction(id, 0)).toEqual({ data: null });
     fireEvent.click(screen.getByRole("button", { name: "掲載する" }));
     await waitFor(() => expect(router.refresh).toHaveBeenCalledOnce());
     expect(screen.getByRole("alert").textContent).toContain("他のスタッフが処理しました");
     expect(screen.queryByRole("region", { name: "申請内容の確認" })).toBeNull();
-    view.rerender(await SpotlightsPage());
+    view.rerender(await renderPage());
     expect(screen.getByRole("button", { name: "確認待ち（0件）" })).toBeTruthy();
     expect(await db.select().from(memberSpotlights)).toHaveLength(0);
     const [submission] = await db.select().from(memberSpotlightSubmissions).where(eq(memberSpotlightSubmissions.id, id));

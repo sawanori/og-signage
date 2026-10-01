@@ -11,6 +11,8 @@ export const SPOTLIGHT_SUBMISSION_RETRY_AFTER_SECONDS = 60;
 export const SPOTLIGHT_SUBMISSION_CLEANUP_BATCH_SIZE = 50;
 export const SPOTLIGHT_SUBMISSION_EXPIRY_SECONDS = 24 * 60 * 60;
 export const SPOTLIGHT_REGISTRATION_PATH = "/members/register";
+/** 管理画面の「確認待ち」タブを直接開くURL（ベルの知らせから飛ぶ）。 */
+export const SPOTLIGHT_SUBMISSIONS_PENDING_PATH = "/admin/spotlights?tab=pending";
 
 export const SPOTLIGHT_SUBMISSION_STATUSES = ["receiving", "pending", "approved", "rejected", "expired"] as const;
 export const SPOTLIGHT_SUBMISSION_IMAGE_KINDS = ["photo", "logo"] as const;

@@ -9,6 +9,8 @@ import { listEvents } from "@/lib/services/events";
 import { getDesignSettings } from "@/lib/services/house";
 import { listNotices } from "@/lib/services/notices";
 import { getDevicePlaybackSettings, getPlaylistItems, type PlaylistItemWithMedia } from "@/lib/services/playback";
+import { countPendingSpotlightSubmissions } from "@/lib/services/spotlight-submissions";
+import { SPOTLIGHT_SUBMISSIONS_PENDING_PATH } from "@/lib/spotlight-submissions";
 import type {
   DashboardData,
   DashboardEvent,
@@ -24,18 +26,24 @@ function displayName(user: AuthUser): string {
 }
 
 export async function loadShell(db: Db, user: AuthUser, now: number): Promise<ShellData> {
-  const devices = await listDevices(db, now);
+  const [devices, pendingSubmissions] = await Promise.all([listDevices(db, now), countPendingSpotlightSubmissions(db, user)]);
   return {
     user: { name: displayName(user), role: user.role, avatarUrl: null },
-    alerts: devices
-      .filter((d) => d.status !== "online")
-      .map((d) => ({
-        id: d.id,
-        message:
-          d.status === "offline"
-            ? `端末「${d.name}」と通信できていません`
-            : `端末「${d.name}」の表示に異常があります`,
-      })),
+    alerts: [
+      // メンバー本人からの登録申請（2026-10-01）。スタッフが確認するまでサイネージに出ない
+      ...(pendingSubmissions > 0
+        ? [{ id: "spotlight-submissions", message: `メンバー紹介の確認待ちが ${pendingSubmissions} 件あります`, href: SPOTLIGHT_SUBMISSIONS_PENDING_PATH }]
+        : []),
+      ...devices
+        .filter((d) => d.status !== "online")
+        .map((d) => ({
+          id: d.id,
+          message:
+            d.status === "offline"
+              ? `端末「${d.name}」と通信できていません`
+              : `端末「${d.name}」の表示に異常があります`,
+        })),
+    ],
   };
 }
 

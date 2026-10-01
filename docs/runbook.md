@@ -22,7 +22,7 @@
 | Turso DB | `og-signage` | グループ `default`（aws-ap-northeast-1）。URL 形式 `libsql://og-signage-sawanori.aws-ap-northeast-1.turso.io` |
 | Cron Trigger | `*/30 * * * *`（天気の取得） / `0 19 * * *`（UTC 19:00 = 日本時間 4:00 の掃除） | `wrangler.jsonc` の `triggers.crons`。ハンドラは `worker/index.ts` の `scheduled` → `worker/scheduled.ts` |
 | Rate Limiting binding | `LOGIN_RATE_LIMITER`（namespace_id `4301`） | ログインの IP / メールアドレス単位の緩い制限。厳密な回数制限ではない（`docs/spikes/workers.md` 7 節） |
-| 本人登録のRate Limiting binding | `SPOTLIGHT_SUBMISSION_RATE_LIMITER`（namespace_id `4302`） | 同一IPで5回/60秒。アカウント全体のnamespace重複は配備前に確認する。今回の実装では未確認 |
+| 本人登録のRate Limiting binding | `SPOTLIGHT_SUBMISSION_RATE_LIMITER`（namespace_id `4302`） | 同一IPで20回/60秒（2026-10-01に5回から変更。施設のWi-Fiを共有するメンバーが受付のQRから同時に送れるように）。アカウント全体のnamespace重複は配備前に確認する。今回の実装では未確認 |
 | Secret（Workers） | `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` / `AUTH_SECRET` / `OPENWEATHER_API_KEY` | `npx wrangler secret list --name sharehouse-signage` で名前だけ確認できる（値は表示されない）。値はこの文書に書かない |
 | Pi（表示端末） | — | 導入・更新・交換は `raspberry-pi/README.md` を参照（本書の i 節） |
 
@@ -403,19 +403,22 @@ rm secrets.json
 
 1. StaffまたはAdministratorが `/admin/spotlights` の「登録用URL・QR」を開き、現在のサイトの `/members/register` をコピーするかQRをPNG保存する。受付でそのURL・QRを案内する。
 2. 本人は会社名・所属、名前、任意の写真・紹介文を入力し、館内とログイン不要のWeb表示への同意後に送信する。
-3. スタッフは「確認待ち」から写真・全文・掲載プレビューを確認して「掲載する」。不適切な申請は確認ダイアログから「却下する」。承認前の内容は公開されない。
-4. 承認後の修正・表示OFF・削除は「掲載メンバー」の既存操作を使う。公開configの次回取得と、本人のスライドが巡回して表示される時点には時間差がある。
+3. 確認待ちの申請があると、管理画面右上のベルに赤い点と「メンバー紹介の確認待ちが N 件あります」が出る（ページを開いた・読み込み直した時点の件数。メール等の通知はない）。押すと `/admin/spotlights?tab=pending` の「確認待ち」が開く。
+4. スタッフは「確認待ち」から写真・全文・掲載プレビューを確認して「掲載する」。不適切な申請は確認ダイアログから「却下する」。承認前の内容は公開されない。
+5. 承認後の修正・表示OFF・削除は「掲載メンバー」の既存操作を使う。公開configの次回取得と、本人のスライドが巡回して表示される時点には時間差がある。
 
 ### 送信・審査に失敗した場合
 
 - 「送信結果を確認できません」では画面を閉じず「送信結果を確認」を使う。同じ本文・画像・送信キーだけを再送する。最初の送信結果が不明なまま429になった場合も、新規登録へ切り替えない。
-- 429は60秒待つ。施設で同じ回線を使う人同士も制限を共有する。未対応画像はJPEG・PNG・WebPを選び直す。変換後は各2MiB、送信全体は5MiBまで。
+- 429は60秒待つ。施設で同じ回線を使う人同士も制限（60秒20回）を共有する。未対応画像はJPEG・PNG・WebPを選び直す。変換後は各2MiB、送信全体は5MiBまで。
 - 受付済みの文面修正はスタッフへ依頼する。ページを再読み込みした後の下書き・同じ送信キーの復元はない。
 - 審査競合は最新一覧を再取得する。同時承認でも紹介は1件だけ作成する。DB書き込みロックの限定再試行を尽くした場合は時間を置いて再操作する。
 
 ### 画像回収と保持
 
 日次Cron（日本時間4:00）は、24時間更新のない受信中申請を最大50件期限切れにし、却下/期限切れの未回収申請を最大50件回収する。残件は翌日へ繰り越す。失敗行は次回対象時刻を24時間後へ移し、完了した行は再処理しない。確認待ちは期限で消さない。
+
+承認した申請は、承認の時点で申請側の文面（`payload`）を消す。文面は掲載メンバーへ写してあるので、掲載メンバーを削除すれば名前・会社名などはDBに残らない。再送の判定に使う送信キー・fingerprint、同意日時・同意の版、画像のキー情報は残す。
 
 回収では `member-submissions/<UUID>/photo|logo` の画像本文を0バイトの空マーカーへ置き換える。すべての対象キーが成功した後に本文を消去し、`cleanup_completed_at` を記録する。キー・送信識別情報と空マーカーは残すため、日次処理は完了してもオブジェクト件数は減らない。遅延した画像保存は新規作成条件で拒否される。
 

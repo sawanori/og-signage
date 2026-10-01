@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "../../db/index";
 import { media, memberSpotlights, memberSpotlightSubmissions, users } from "../../db/schema";
 import type { AuthUser } from "../../lib/auth";
-import { approveSpotlightSubmission, cleanupSpotlightSubmissions, getSpotlightSubmissionImage, listSpotlightSubmissions, rejectSpotlightSubmission, submitSpotlightSubmission } from "../../lib/services/spotlight-submissions";
+import { approveSpotlightSubmission, cleanupSpotlightSubmissions, countPendingSpotlightSubmissions, getSpotlightSubmissionImage, listSpotlightSubmissions, rejectSpotlightSubmission, submitSpotlightSubmission } from "../../lib/services/spotlight-submissions";
 import { SpotlightBucket } from "../helpers/spotlight-bucket";
 import { openTempDb } from "../helpers/temp-db";
 
@@ -274,6 +274,15 @@ describe("スタッフによる申請の審査", () => {
     await expect(getSpotlightSubmissionImage(db, bucket, staff, row.id, "photo")).rejects.toMatchObject({ status: 404 });
   });
 
+  it("ベル用の確認待ち件数はpendingだけを数える", async () => {
+    expect(await countPendingSpotlightSubmissions(db, staff)).toBe(0);
+    const first = await pending();
+    await pending();
+    expect(await countPendingSpotlightSubmissions(db, staff)).toBe(2);
+    await approveSpotlightSubmission(db, bucket, staff, first.id, 0);
+    expect(await countPendingSpotlightSubmissions(db, staff)).toBe(1);
+  });
+
   it("承認で画像2件と紹介1件を作り、古いrevisionでの承認再送も増殖しない", async () => {
     const row = await pending();
     const result = await approveSpotlightSubmission(db, bucket, staff, row.id, 0);
@@ -284,7 +293,8 @@ describe("スタッフによる申請の審査", () => {
     expect(images).toHaveLength(2);
     expect(images.map((image) => image.r2Key).sort()).toEqual([row.logoFile!.r2Key, row.photoFile!.r2Key].sort());
     expect(images.every((image) => image.fileSize === 7 && image.sha256?.length === 64 && image.width === null && image.state === "active")).toBe(true);
-    expect((await db.select().from(memberSpotlightSubmissions))[0]).toMatchObject({ status: "approved", revision: 1, reviewedBy: "staff", approvedSpotlightId: result.spotlightId });
+    // 文面は紹介へ写したので申請側には残さない。再送判定用のfingerprintと同意日時は残す
+    expect((await db.select().from(memberSpotlightSubmissions))[0]).toMatchObject({ status: "approved", revision: 1, reviewedBy: "staff", approvedSpotlightId: result.spotlightId, payload: null, requestFingerprint: row.requestFingerprint, consentedAt: 100 });
     await db.delete(memberSpotlights).where(eq(memberSpotlights.id, result.spotlightId!));
     expect(await approveSpotlightSubmission(db, bucket, staff, row.id, 0)).toEqual({ spotlightId: null });
     expect(await db.select().from(memberSpotlights)).toHaveLength(0);
@@ -315,7 +325,8 @@ describe("スタッフによる申請の審査", () => {
   it("画像欠落やサイズ不一致では部分掲載しない", async () => {
     const row = await pending();
     bucket.objects.set(row.photoFile!.r2Key, new Uint8Array());
-    await expect(approveSpotlightSubmission(db, bucket, staff, row.id, 0)).rejects.toMatchObject({ status: 503 });
+    // スタッフには本人向けの「送信結果を確認」ではなく、画像を読めなかったことを伝える
+    await expect(approveSpotlightSubmission(db, bucket, staff, row.id, 0)).rejects.toMatchObject({ status: 503, message: "申請の画像を読み込めませんでした。時間をおいてもう一度お試しください" });
     expect(await db.select().from(media)).toHaveLength(0);
     expect(await db.select().from(memberSpotlights)).toHaveLength(0);
     expect((await db.select().from(memberSpotlightSubmissions))[0].status).toBe("pending");

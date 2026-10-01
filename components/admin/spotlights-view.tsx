@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { createSpotlightAction, deleteSpotlightAction, updateSpotlightAction } from "@/app/admin/_actions/spotlights";
 import type { SpotlightRow } from "@/lib/services/spotlights";
-import type { SpotlightSubmissionDetail } from "@/lib/spotlight-submissions";
+import { SPOTLIGHT_SUBMISSIONS_PENDING_PATH, type SpotlightSubmissionDetail } from "@/lib/spotlight-submissions";
 import admin from "./admin.module.css";
 import events from "./events.module.css";
 import { KANA_ROWS, kanaRowOf, normalizeForSearch, sortByReading, type KanaRow } from "./kana-row";
@@ -43,11 +43,20 @@ function matches(s: SpotlightRow, needle: string): boolean {
 export function SpotlightsView({
   spotlights,
   submissions = [],
+  initialTab = "published",
 }: {
   spotlights: SpotlightRow[];
   submissions?: SpotlightSubmissionDetail[];
+  /** ベルの知らせ（?tab=pending）から来たときは「確認待ち」を開く */
+  initialTab?: "published" | "pending";
 }) {
-  const [tab, setTab] = useState<"published" | "pending">("published");
+  const [tab, setTab] = useState<"published" | "pending">(initialTab);
+  // 同じ画面を開いたままベルの知らせを押したときも、URL（?tab=pending）に合わせて切り替える
+  const [urlTab, setUrlTab] = useState(initialTab);
+  if (urlTab !== initialTab) {
+    setUrlTab(initialTab);
+    setTab(initialTab);
+  }
   const [form, setForm] = useState<SpotlightFormState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -56,6 +65,10 @@ export function SpotlightsView({
   const [row, setRow] = useState<KanaRow | "all">("all");
   const [sort, setSort] = useState<Sort>("registered");
   const router = useRouter();
+  const selectTab = (next: "published" | "pending") => {
+    setTab(next);
+    router.replace(next === "pending" ? SPOTLIGHT_SUBMISSIONS_PENDING_PATH : "/admin/spotlights", { scroll: false });
+  };
 
   // 行ごとの人数は検索に当たった人で数える（どの行に当たりがあるか分かるように）
   const needle = normalizeForSearch(query).trim();
@@ -135,10 +148,10 @@ export function SpotlightsView({
       <SpotlightRegistrationShare />
 
       <div className={`${admin.chips} ${styles.kanaChips}`} role="group" aria-label="メンバー紹介の表示切り替え" style={{ marginLeft: 0, marginTop: 0 }}>
-        <button type="button" className={admin.chip} aria-pressed={tab === "published"} onClick={() => setTab("published")}>
+        <button type="button" className={admin.chip} aria-pressed={tab === "published"} onClick={() => selectTab("published")}>
           掲載メンバー
         </button>
-        <button type="button" className={admin.chip} aria-pressed={tab === "pending"} onClick={() => setTab("pending")}>
+        <button type="button" className={admin.chip} aria-pressed={tab === "pending"} onClick={() => selectTab("pending")}>
           確認待ち（{submissions.length}件）
         </button>
       </div>

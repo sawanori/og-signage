@@ -37,7 +37,8 @@
     {
       "name": "SPOTLIGHT_SUBMISSION_RATE_LIMITER",
       "namespace_id": "4302",
-      "simple": { "limit": 5, "period": 60 }
+      // 施設のWi-Fiを共有するメンバーが受付のQRから同時に送れるよう、1回線あたり60秒20回（2026-10-01）
+      "simple": { "limit": 20, "period": 60 }
     }
   ]
 }

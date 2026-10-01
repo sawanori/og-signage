@@ -12,9 +12,14 @@ export const dynamic = "force-dynamic";
 
 export const metadata = { title: `メンバー紹介 | ${ADMIN_TITLE}` };
 
-export default async function SpotlightsPage() {
+export default async function SpotlightsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const user = await requirePageUser();
+  const { tab } = await searchParams;
   const db = getDb();
   const [spotlights, submissions] = await Promise.all([listSpotlights(db), listSpotlightSubmissions(db, user)]);
-  return <SpotlightsView spotlights={spotlights} submissions={submissions} />;
+  return <SpotlightsView spotlights={spotlights} submissions={submissions} initialTab={tab === "pending" ? "pending" : "published"} />;
 }

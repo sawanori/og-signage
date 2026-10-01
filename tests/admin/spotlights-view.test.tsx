@@ -135,6 +135,21 @@ describe("SpotlightsView の一覧", () => {
     render(<SpotlightsView spotlights={[]} />);
     expect(screen.getByText("メンバー紹介はまだありません。")).toBeTruthy();
   });
+
+  it("ベルの知らせ（?tab=pending）から来たら確認待ちを開き、タブの切り替えはURLにも残す", () => {
+    const { rerender } = render(<SpotlightsView spotlights={[yamada]} initialTab="pending" />);
+    expect(screen.getByRole("region", { name: "確認待ち一覧" })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "メンバー紹介一覧" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "掲載メンバー" }));
+    expect(router.replace).toHaveBeenLastCalledWith("/admin/spotlights", { scroll: false });
+    expect(screen.getByRole("region", { name: "メンバー紹介一覧" })).toBeTruthy();
+
+    // 画面を開いたまま、もう一度ベルの知らせを押したとき
+    rerender(<SpotlightsView spotlights={[yamada]} initialTab="published" />);
+    rerender(<SpotlightsView spotlights={[yamada]} initialTab="pending" />);
+    expect(screen.getByRole("region", { name: "確認待ち一覧" })).toBeTruthy();
+  });
 });
 
 describe("SpotlightsView の検索・あ行・か行… の絞り込み・名前順", () => {

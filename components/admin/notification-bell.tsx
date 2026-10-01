@@ -1,7 +1,8 @@
 "use client";
 
-/** ヘッダーの通知ベル。端末の不調などの知らせがあれば赤い点を出す */
+/** ヘッダーの通知ベル。端末の不調やメンバー紹介の確認待ちなどの知らせがあれば赤い点を出す */
 import { Bell } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 import styles from "./admin.module.css";
 import type { ShellAlert } from "./dashboard-types";
@@ -30,11 +31,23 @@ export function NotificationBell({ alerts }: { alerts: ShellAlert[] }) {
           {alerts.length === 0 ? (
             <p className={styles.popoverNote}>新しいお知らせはありません</p>
           ) : (
-            alerts.map((a) => (
-              <p key={a.id} className={styles.popoverNote} style={{ color: "var(--ink)" }}>
-                {a.message}
-              </p>
-            ))
+            alerts.map((a) =>
+              a.href ? (
+                <Link
+                  key={a.id}
+                  href={a.href}
+                  className={styles.popoverNote}
+                  style={{ display: "block", color: "var(--ink)", textDecoration: "underline" }}
+                  onClick={close}
+                >
+                  {a.message}
+                </Link>
+              ) : (
+                <p key={a.id} className={styles.popoverNote} style={{ color: "var(--ink)" }}>
+                  {a.message}
+                </p>
+              ),
+            )
           )}
         </div>
       ) : null}

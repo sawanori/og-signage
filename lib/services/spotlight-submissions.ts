@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, lte, sql } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 import type { Db } from "../../db/index";
 import { media, memberSpotlights, memberSpotlightSubmissions, nowSeconds } from "../../db/schema";
 import type { AuthUser } from "../auth";
@@ -27,6 +27,10 @@ export class SpotlightSubmissionError extends Error {
 
 const unavailable = () => new SpotlightSubmissionError(503, "temporarily_unavailable", "送信結果を確認できません。時間をおいて同じ内容で再確認してください");
 const conflict = () => new SpotlightSubmissionError(409, "conflict", "他のスタッフが処理しました。最新の一覧を確認してください");
+/** スタッフの審査画面に出す。本人向けの「送信結果を確認」の文言は使わない。 */
+const reviewUnavailable = (message = "処理を完了できませんでした。時間をおいてもう一度お試しください") =>
+  new SpotlightSubmissionError(503, "temporarily_unavailable", message);
+const imageUnavailable = () => reviewUnavailable("申請の画像を読み込めませんでした。時間をおいてもう一度お試しください");
 const accepted = { accepted: true } as const;
 type SubmissionRow = typeof memberSpotlightSubmissions.$inferSelect;
 export type SpotlightSubmissionImages = Partial<Record<SpotlightSubmissionImageKind, { bytes: Uint8Array; mimeType: string }>>;
@@ -109,7 +113,7 @@ export async function listSpotlightSubmissions(db: Db, user: AuthUser): Promise<
   const rows = await db.select().from(memberSpotlightSubmissions).where(eq(memberSpotlightSubmissions.status, "pending"))
     .orderBy(asc(memberSpotlightSubmissions.submittedAt), asc(memberSpotlightSubmissions.id));
   return rows.map((row) => {
-    if (!row.payload || row.submittedAt === null) throw unavailable();
+    if (!row.payload || row.submittedAt === null) throw reviewUnavailable();
     return {
       id: row.id, companyName: row.payload.companyName, personName: row.payload.personName, revision: row.revision,
       submittedAt: row.submittedAt, payload: row.payload, consentedAt: row.consentedAt, consentVersion: row.consentVersion,
@@ -117,6 +121,13 @@ export async function listSpotlightSubmissions(db: Db, user: AuthUser): Promise<
       logoUrl: row.logoFile ? `/api/spotlight-submissions/${row.id}/images/logo` : null,
     };
   });
+}
+
+/** 管理画面のベルに出す確認待ちの件数。 */
+export async function countPendingSpotlightSubmissions(db: Db, user: AuthUser): Promise<number> {
+  assertRole(user, "staff");
+  const [row] = await db.select({ total: count() }).from(memberSpotlightSubmissions).where(eq(memberSpotlightSubmissions.status, "pending"));
+  return row?.total ?? 0;
 }
 
 export async function getSpotlightSubmissionImage(db: Db, bucket: MediaBucket, user: AuthUser, id: string, kind: string) {
@@ -144,7 +155,7 @@ async function withWriteRetry<T>(operation: () => Promise<T>): Promise<T> {
         cause = cause.cause;
       }
       if (!busy) throw error;
-      if (attempt >= 3) throw unavailable();
+      if (attempt >= 3) throw reviewUnavailable("ほかの操作と重なったため処理できませんでした。時間をおいてもう一度お試しください");
       // 同時審査の書き込みロックが解放された後に、状態を再照合する。
       await new Promise((resolve) => setTimeout(resolve, 25 * (attempt + 1)));
     }
@@ -161,8 +172,8 @@ export async function approveSpotlightSubmission(db: Db, bucket: MediaBucket, us
     if (!file) continue;
     try {
       const object = await bucket.head(file.r2Key);
-      if (!object || object.size === 0 || object.size !== file.size) throw unavailable();
-    } catch { throw unavailable(); }
+      if (!object || object.size === 0 || object.size !== file.size) throw imageUnavailable();
+    } catch { throw imageUnavailable(); }
   }
   // libSQLのwriteトランザクションで状態確定と関連行作成を一括rollback可能にする。
   return withWriteRetry(() => db.transaction(async (tx) => {
@@ -170,9 +181,10 @@ export async function approveSpotlightSubmission(db: Db, bucket: MediaBucket, us
     if (!row) throw new SpotlightSubmissionError(404, "not_found", "申請が見つかりません");
     if (row.status === "approved") return { spotlightId: row.approvedSpotlightId };
     if (row.status !== "pending" || row.revision !== revision) throw conflict();
-    if (!row.payload) throw unavailable();
+    if (!row.payload) throw reviewUnavailable();
     const now = nowSeconds();
-    const changed = await tx.update(memberSpotlightSubmissions).set({ status: "approved", revision: sql`${memberSpotlightSubmissions.revision} + 1`, reviewedAt: now, reviewedBy: user.id, updatedAt: now })
+    // 文面は紹介へ写すので、申請側には残さない（紹介を削除した後に個人の情報が残らないようにする）。
+    const changed = await tx.update(memberSpotlightSubmissions).set({ status: "approved", payload: null, revision: sql`${memberSpotlightSubmissions.revision} + 1`, reviewedAt: now, reviewedBy: user.id, updatedAt: now })
       .where(and(eq(memberSpotlightSubmissions.id, id), eq(memberSpotlightSubmissions.status, "pending"), eq(memberSpotlightSubmissions.revision, revision))).returning();
     if (changed.length === 0) throw conflict();
     const imageIds: Partial<Record<SpotlightSubmissionImageKind, string>> = {};
