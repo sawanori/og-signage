@@ -70,6 +70,10 @@ describe("審査結果のメール通知", () => {
     expect(body.html).not.toContain(name);
     expect(body.text).toContain(status === "approved" ? "館内とWebのサイネージに掲載しました" : "今回は掲載を見送りました");
     expect(body.text).toContain(status === "approved" ? "修正や掲載の取りやめ" : "スタッフへお問い合わせ");
+    for (const part of [body.text, body.html]) {
+      expect(part).toContain("WeWork Ocean Gate のメンバー紹介にご登録いただいた方へ");
+      expect(part).toContain("送信専用のアドレスのため、このメールには返信できません。");
+    }
     expect(body.html).not.toMatch(/href|https?:/);
     expect(body.text).not.toMatch(/https?:/);
     expect(await stored(row.id)).toMatchObject({ status, notificationStatus: "sent", notificationAttempts: 0, notifiedAt: NOW, contactEmail: null, notificationName: null, notificationNextAt: null });

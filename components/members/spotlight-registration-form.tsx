@@ -18,7 +18,8 @@ const EMPTY_TEXT: TextFields = { companyName: "", personName: "", email: "", per
 const EMPTY_IMAGES: Images = { photo: null, logo: null };
 const optional = (text: string) => text.trim() || null;
 
-export function SpotlightRegistrationForm() {
+/** notificationFrom: 結果メールの差出人（例「サイネージ管理 <noreply@non-turn.com>」）。完了画面で迷惑メールの確認を案内する */
+export function SpotlightRegistrationForm({ notificationFrom }: { notificationFrom: string }) {
   const [fields, setFields] = useState(EMPTY_TEXT);
   const [tags, setTags] = useState<string[]>(Array.from({ length: SPOTLIGHT_TAGS_MAX }, () => ""));
   const [consent, setConsent] = useState(false);
@@ -142,6 +143,7 @@ export function SpotlightRegistrationForm() {
           <h1>送信しました</h1>
           <p>スタッフの確認後に掲載されます。</p>
           <p>掲載の可否は、ご入力のメールアドレスへお知らせします。</p>
+          <p className={styles.hint}>お知らせは「{notificationFrom}」から届きます。見当たらないときは、迷惑メールフォルダーもご確認ください。</p>
           <p className={styles.hint}>修正が必要な場合はスタッフへご依頼ください。<br />この画面は閉じていただけます。</p>
         </section>
       </main>

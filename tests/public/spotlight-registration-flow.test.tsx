@@ -13,6 +13,7 @@ import { openTempDb } from "../helpers/temp-db";
 vi.mock("@/lib/client/prepare-spotlight-image", () => ({ prepareSpotlightImage: vi.fn() }));
 vi.mock("@/components/members/spotlight-preview", () => ({ SpotlightPreview: () => null }));
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+const NOTIFICATION_FROM = "サイネージ管理 <noreply@non-turn.com>";
 
 const bytesOf = (blob: Blob) => new Promise<Uint8Array>((resolve, reject) => {
   const reader = new FileReader();
@@ -43,7 +44,7 @@ it("写真付き受付の202消失と再送429を経ても、元の1件だけを
   vi.stubGlobal("fetch", fetchStub);
 
   try {
-    render(<SpotlightRegistrationForm />);
+    render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
     fireEvent.change(screen.getByLabelText("会社名・所属"), { target: { value: "合同会社サンプル" } });
     fireEvent.change(screen.getByLabelText("お名前"), { target: { value: "山田 太郎" } });
     fireEvent.change(screen.getByLabelText("メールアドレス"), { target: { value: "member@example.com" } });

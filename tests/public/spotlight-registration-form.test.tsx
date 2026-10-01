@@ -14,6 +14,7 @@ vi.mock("@/components/members/spotlight-preview", () => ({ SpotlightPreview: ({ 
 } }));
 
 const submit = vi.mocked(submitSpotlight);
+const NOTIFICATION_FROM = "サイネージ管理 <noreply@non-turn.com>";
 const prepare = vi.mocked(prepareSpotlightImage);
 const rejected = (status: number): SpotlightSubmissionResult => ({ kind: "rejected", status, message: "再度確認してください", retryAfterSeconds: status === 429 ? 1 : 0 });
 const input = () => {
@@ -33,18 +34,19 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals(); vi.useRe
 
 describe("本人登録フォーム", () => {
   it("必須3項目と同意だけで正規化済み内容を送り、完了後は結果メールを案内する", async () => {
-    render(<SpotlightRegistrationForm />);
+    render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
     expect(screen.getByText(/ログイン不要のWebサイネージ/)).toBeTruthy();
     input(); send();
     expect(await screen.findByRole("heading", { name: "送信しました" })).toBeTruthy();
     expect(submit.mock.calls[0][0].data).toMatchObject({ companyName: "株式会社サンプル", personName: "山田 太郎", email: "member@example.com", tags: [], consent: true });
     expect(screen.queryByRole("button", { name: "紹介を送信" })).toBeNull();
     expect(screen.getByText(/修正が必要な場合はスタッフへ/)).toBeTruthy();
+    expect(screen.getByText("お知らせは「サイネージ管理 <noreply@non-turn.com>」から届きます。見当たらないときは、迷惑メールフォルダーもご確認ください。")).toBeTruthy();
     expect(screen.getByText("掲載の可否は、ご入力のメールアドレスへお知らせします。")).toBeTruthy();
   });
 
   it("名前の次に必須のメール欄と用途を表示し、文字数を出さず、未入力と不正形式を送らない", () => {
-    render(<SpotlightRegistrationForm />);
+    render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
     const email = screen.getByLabelText("メールアドレス") as HTMLInputElement;
     expect(email.type).toBe("email");
     expect(email.autocomplete).toBe("email");
@@ -65,7 +67,7 @@ describe("本人登録フォーム", () => {
   });
 
   it("掲載イメージへメールアドレスを渡さない", () => {
-    render(<SpotlightRegistrationForm />);
+    render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
     input();
     fireEvent.click(screen.getByRole("button", { name: "掲載イメージを確認" }));
     expect(preview).toHaveBeenCalled();
@@ -74,7 +76,7 @@ describe("本人登録フォーム", () => {
   });
 
   it("未同意や不正ふりがなは送らず欄のエラーを表示する", async () => {
-    render(<SpotlightRegistrationForm />);
+    render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
     send();
     expect(submit).not.toHaveBeenCalled();
     expect(await screen.findByText("掲載先を確認して同意してください")).toBeTruthy();
@@ -88,7 +90,7 @@ describe("本人登録フォーム", () => {
   it("写真処理中は送信を止め、ローカルプレビューと画像解放を行う", async () => {
     let resolve!: (value: Awaited<ReturnType<typeof prepareSpotlightImage>>) => void;
     prepare.mockReturnValueOnce(new Promise((done) => { resolve = done; }));
-    const { unmount } = render(<SpotlightRegistrationForm />);
+    const { unmount } = render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
     input();
     fireEvent.change(screen.getByLabelText("写真（任意）"), { target: { files: [new File(["image"], "photo.jpg", { type: "image/jpeg" })] } });
     expect((screen.getByRole("button", { name: "紹介を送信" }) as HTMLButtonElement).disabled).toBe(true);
@@ -103,7 +105,7 @@ describe("本人登録フォーム", () => {
 
   it.each([400, 429])("最初の保存前%sでは入力を修正できる", async (status) => {
     submit.mockResolvedValueOnce(rejected(status));
-    render(<SpotlightRegistrationForm />);
+    render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
     input(); send();
     await screen.findByText(/再度確認してください/);
     fireEvent.change(screen.getByLabelText("お名前"), { target: { value: "山田 花子" } });
@@ -116,7 +118,7 @@ describe("本人登録フォーム", () => {
 
   it.each([400, 429])("結果不明後の%sでも入力を固定し、同じkey・本文・Blobでのみ確認する", async (status) => {
     submit.mockResolvedValueOnce({ kind: "uncertain", message: "送信できたか確認できません。画面を閉じずに送信結果を確認してください。" }).mockResolvedValueOnce(rejected(status));
-    render(<SpotlightRegistrationForm />);
+    render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
     input();
     fireEvent.change(screen.getByLabelText("写真（任意）"), { target: { files: [new File(["image"], "photo.jpg")] } });
     await waitFor(() => expect((screen.getByRole("button", { name: "紹介を送信" }) as HTMLButtonElement).disabled).toBe(false));
@@ -141,7 +143,7 @@ describe("本人登録フォーム", () => {
 
   it("結果不明から202なら完了し、410なら入力を保持して新しいkeyで送り直せる", async () => {
     submit.mockResolvedValueOnce({ kind: "uncertain", message: "結果不明" }).mockResolvedValueOnce({ kind: "expired", message: "期限切れです。もう一度送信してください。" });
-    render(<SpotlightRegistrationForm />); input(); send();
+    render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />); input(); send();
     fireEvent.click(await screen.findByRole("button", { name: "送信結果を確認" }));
     await screen.findByText(/期限切れです/);
     expect((screen.getByLabelText("お名前") as HTMLInputElement).disabled).toBe(false);

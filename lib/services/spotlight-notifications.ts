@@ -43,8 +43,18 @@ export async function notifySpotlightSubmission(db: Db, id: string, now = nowSec
     const paragraphs = approved
       ? ["メンバー紹介にご登録いただき、ありがとうございます。", "スタッフが内容を確認し、館内とWebのサイネージに掲載しました。", "内容の修正や掲載の取りやめをご希望の場合は、スタッフへお伝えください。"]
       : ["メンバー紹介にご登録いただき、ありがとうございます。", "今回は掲載を見送りました。", "内容についてはスタッフへお問い合わせください。"];
-    const text = [`${row.notificationName} 様`, ...paragraphs].join("\n\n");
-    const html = [`<p>${escapeHtml(row.notificationName)} 様</p>`, ...paragraphs.map((paragraph) => `<p>${paragraph}</p>`)].join("");
+    // 送った理由を末尾に書く（理由の無い短いメールは迷惑メールと判定されやすい。2026-10-01 ユーザー指示）
+    const footer = [
+      "このメールは、WeWork Ocean Gate のメンバー紹介にご登録いただいた方へ、登録時にご入力いただいたメールアドレス宛てにお送りしています。",
+      "送信専用のアドレスのため、このメールには返信できません。",
+    ];
+    const text = [`${row.notificationName} 様`, ...paragraphs, "――――", ...footer].join("\n\n");
+    const html = [
+      `<p>${escapeHtml(row.notificationName)} 様</p>`,
+      ...paragraphs.map((paragraph) => `<p>${paragraph}</p>`),
+      "<hr>",
+      ...footer.map((line) => `<p style="color:#666;font-size:12px">${line}</p>`),
+    ].join("");
     let sent = false;
     try {
       const response = await fetch("https://api.resend.com/emails", {
