@@ -118,7 +118,10 @@ export async function extractProfile(input: {
     profile = validated.data;
     validateEvidence(profile, input.pages);
     // Product names and words such as 様々 legitimately appear in profiles; reject only unmistakable personal data.
-    if (containsDefinitePersonalData(JSON.stringify(profile))) throw new ProviderError("private_model_output", false);
+    // sourceIds は送ったページの ID（ハッシュ）だけだと validateEvidence で確認済み。数字が10個続くことがあり
+    // 電話番号と誤判定されるので、モデルが書いた文章の部分だけを確かめる
+    const generatedText = JSON.stringify(profile, (key, value: unknown) => key === "sourceIds" ? undefined : value);
+    if (containsDefinitePersonalData(generatedText)) throw new ProviderError("private_model_output", false);
   } catch (error) {
     const failure = error instanceof ProviderError ? error : new ProviderError(
       error instanceof EvidenceError ? "invalid_evidence" : "invalid_profile_output", error instanceof EvidenceError,

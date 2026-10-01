@@ -210,6 +210,14 @@ describe("private research provider adapters", () => {
     })).rejects.toMatchObject({ code: "private_model_output", retryable: false });
   });
 
+  it("does not mistake a page ID whose hash has ten digits in a row for a phone number", async () => {
+    const pageId = "page-1234567890abcdef1234567890abcdef";
+    const fetcher = vi.fn(async () => metaResponse({ ...profile, company: { ...profile.company, summary: { ...claim, sourceIds: [pageId] } } }));
+    const result = await extractProfile({ apiKey: "test-secret", sourceId: "member_1", generation: 1,
+      pages: [{ sourceId: pageId, markdown }], beforePaidCall: async () => {}, fetcher });
+    expect(result.profile.company.summary).toMatchObject({ sourceIds: [pageId] });
+  });
+
   it("keeps product names and ordinary wording that only resemble names in the output", async () => {
     const text = "Opero Copilotなど様々な業種向けのサービスを2019年から提供";
     const result = await extractProfile({ apiKey: "test-secret", sourceId: "member_1", generation: 1,
