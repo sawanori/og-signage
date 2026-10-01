@@ -13,7 +13,7 @@ import { isInResearchScope, pagePriority } from "./url-policy";
 
 const LEASE_SECONDS = 120;
 const crawlStateSchema = z.object({ url: z.string(), id: z.string(), reservationId: z.string(), startedAt: z.number(), cursor: z.string().nullable(), done: z.boolean(), status: z.string(), total: z.number().default(0), cancelled: z.boolean().default(false) });
-const progressSchema = z.object({ crawls: z.array(crawlStateSchema).default([]), reasons: z.array(z.string()).default([]), skipped: z.array(z.object({ url: z.string(), reason: z.string() })).default([]), crawlCompletedAt: z.number().optional(), crawlSuccessful: z.boolean().optional(), contentHash: z.string().optional(), manualRetryToken: z.string().optional() });
+const progressSchema = z.object({ crawls: z.array(crawlStateSchema).default([]), reasons: z.array(z.string()).default([]), skipped: z.array(z.object({ url: z.string(), reason: z.string() })).default([]), nextUrlIndex: z.number().int().min(0).max(2).optional(), crawlCompletedAt: z.number().optional(), crawlSuccessful: z.boolean().optional(), contentHash: z.string().optional(), manualRetryToken: z.string().optional() });
 export type ResearchJobProgress = z.infer<typeof progressSchema>;
 export type ResearchProviders = { startCrawl: typeof startCrawl; pollCrawl: typeof pollCrawl; cancelCrawl: typeof cancelCrawl; extractProfile: typeof extractProfile };
 const providers: ResearchProviders = { startCrawl, pollCrawl, cancelCrawl, extractProfile };
@@ -132,13 +132,25 @@ export async function runResearchTick(db: ResearchDb, env: ResearchEnv, options:
     const crawlAuth = { accountId: env.CLOUDFLARE_ACCOUNT_ID ?? "", apiToken: env.CRAWL_API_TOKEN ?? "" };
     if (job.phase === "crawl") {
       const current = progress.crawls.find((crawl) => !crawl.done);
-      if (!current && progress.crawls.length < job.urls.length) {
-        const index = progress.crawls.length;
-        const result = await api.startCrawl({ ...crawlAuth, url: job.urls[index].url, beforePaidCall: async (estimate) => {
-          latestReservation = await reserveUsage(db, { ...estimate, jobId: job.jobId, leaseToken: job.leaseToken!, operationKey: `${progress.manualRetryToken ?? "initial"}:crawl:${index}:${job.attempts}` }, env, readNow());
-          await markUsageStarted(db, latestReservation, job.leaseToken!, readNow());
-          reservationStarted = true;
-        } });
+      const index = progress.nextUrlIndex ?? progress.crawls.length;
+      if (!current && index < job.urls.length) {
+        let result: Awaited<ReturnType<typeof startCrawl>>;
+        try {
+          result = await api.startCrawl({ ...crawlAuth, url: job.urls[index].url, beforePaidCall: async (estimate) => {
+            latestReservation = await reserveUsage(db, { ...estimate, jobId: job.jobId, leaseToken: job.leaseToken!, operationKey: `${progress.manualRetryToken ?? "initial"}:crawl:${index}:${job.attempts}` }, env, readNow());
+            await markUsageStarted(db, latestReservation, job.leaseToken!, readNow());
+            reservationStarted = true;
+          } });
+        } catch (error) {
+          if (!(error instanceof ProviderError) || error.code !== "crawl_site_disallowed" || !latestReservation || !reservationStarted) throw error;
+          // An explicit site-policy refusal has no remote job ID; retain its unknown cost.
+          await markUsageUnknown(db, latestReservation, readNow());
+          progress.skipped.push({ url: job.urls[index].url, reason: error.code });
+          if (!progress.reasons.includes(error.code)) progress.reasons.push(error.code);
+          progress.nextUrlIndex = index + 1;
+          await checkpointResearchJob(db, job, { progress }, readNow());
+          return { processed: 1 };
+        }
         if (!latestReservation) throw new Error("Provider bypassed research budget gate");
         try { await recordCrawlRequest(db, latestReservation, result.id, readNow()); }
         catch (error) {
@@ -147,6 +159,7 @@ export async function runResearchTick(db: ResearchDb, env: ResearchEnv, options:
           throw error;
         }
         progress.crawls.push({ url: job.urls[index].url, id: result.id, reservationId: latestReservation, startedAt: now, cursor: null, done: false, status: "running", total: 0, cancelled: false });
+        progress.nextUrlIndex = index + 1;
         await checkpointResearchJob(db, job, { progress }, readNow());
       } else if (current) {
         const result = await api.pollCrawl({ ...crawlAuth, id: current.id, cursor: current.cursor });
@@ -180,7 +193,7 @@ export async function runResearchTick(db: ResearchDb, env: ResearchEnv, options:
         await checkpointResearchJob(db, job, { progress }, readNow());
       } else {
         progress.crawlCompletedAt = now;
-        progress.crawlSuccessful = progress.crawls.every((crawl) => crawl.status === "completed");
+        progress.crawlSuccessful = progress.crawls.length === job.urls.length && progress.crawls.every((crawl) => crawl.status === "completed");
         await checkpointResearchJob(db, job, { phase: "extract", progress }, readNow());
       }
     } else if (job.phase === "extract") {

@@ -6,6 +6,7 @@ import { PROFILE_JSON_SCHEMA } from "../../research/profile-schema";
 import realSyntheticExtraction from "./fixtures/meta-extraction-success.json";
 import realConflictingExtraction from "./fixtures/meta-conflict-success.json";
 import { profileClaims } from "../../research/evidence";
+import providerProbe from "../../docs/reviews/company-research-provider-probe.json";
 
 const accountId = "a".repeat(32);
 const auth = { accountId, apiToken: "test-token" };
@@ -75,6 +76,26 @@ describe("private research provider adapters", () => {
     await expect(startCrawl({ ...auth, url: "https://company.example", resolveHostname: async () => ["127.0.0.1"], beforePaidCall, fetcher })).rejects.toThrow("public website");
     expect(beforePaidCall).toHaveBeenCalledTimes(1);
     expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("classifies the captured Content-Signal refusal as a site-specific start rejection without exposing its body", async () => {
+    const captured = providerProbe.crawl.find((item) => item.case === "content_signal_block")!;
+    const beforePaidCall = vi.fn(async () => {});
+    const error = await startCrawl({ ...auth, url: "https://company.example/", resolveHostname: async () => ["1.1.1.1"], beforePaidCall,
+      fetcher: async () => new Response(JSON.stringify(captured.start), { status: captured.startStatus }),
+    }).catch((error: unknown) => error);
+    expect(beforePaidCall).toHaveBeenCalledTimes(1);
+    expect(error).toMatchObject({ code: "crawl_site_disallowed", retryable: false, status: 400, message: "crawl_site_disallowed" });
+  });
+
+  it.each([
+    { status: 400, body: { success: false, errors: [{ message: 'Unrecognized key: "crawlUseLevel"' }] }, code: "provider_http_400" },
+    { status: 400, body: { success: false, errors: [{ message: "Crawl disallowed by Content-Signal directive (purpose or use level)" }, { message: "Invalid credentials" }] }, code: "provider_http_400" },
+    { status: 403, body: { success: false, errors: [{ message: "Crawl disallowed by Content-Signal directive (purpose or use level)" }] }, code: "provider_configuration_error" },
+  ])("does not treat other start errors as site rejection ($status/$code)", async ({ status, body, code }) => {
+    await expect(startCrawl({ ...auth, url: "https://company.example/", resolveHostname: async () => ["1.1.1.1"], beforePaidCall: async () => {},
+      fetcher: async () => new Response(JSON.stringify(body), { status }),
+    })).rejects.toMatchObject({ code, retryable: false, status });
   });
 
   it("parses pages, browser usage and pagination without discarding disallowed records", async () => {

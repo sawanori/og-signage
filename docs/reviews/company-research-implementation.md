@@ -36,3 +36,10 @@
 ## 未完了の確認
 
 本番Worker配備・通常保存からのCronによる少数検証・通常有効化は、この記録作成時点では未実施。PDFの未取得URL記録と異なる企業の実AI応答は最終レビューに基づき追加検証中。最終結果はこの節を更新する。
+
+## 最終レビューとCI失敗の修正
+
+- 第三者レビューで、Content-Signalにより片方のCrawl開始が拒否された際に他方も停止するF-01を再現した。観測済みの400応答だけをサイト固有の拒否へ分類し、拒否URLと理由を残して残るURLを処理する。拒否の料金予約はunknownを維持。両順序と認証停止を含む39件を第三者が再実行して成功。`company-research-final-review.md`参照。
+- 初回GitHub Actions `36871720898` は939成功・1失敗。`tests/research/ops.test.ts`の最初の統合テストが5161msで既定5000msを超えた。2件目は3989msで成功し、DBロックや個別CLIのtimeoutは記録されていない。
+- 4〜5個の別Node/tsxプロセスを実起動する2ケースのみ30秒へ設定。個別CLIの20秒停止と全assertion、グローバルのtimeoutは変更しない。修正後ローカルは946件成功・型検査成功。GitHub Actionsの修正版は再push後に確認する。
+- Pi回帰は最初のsystem Pythonにpytestがなく実行できなかった。一時venvへ既存requirements-devを入れて再実行し106件成功。CIのpi-agentジョブも初回から成功している。

@@ -33,5 +33,35 @@
     "spotlights": 6,
     "forbiddenValuesAbsent": true
   },
-  "canary": "awaiting_cron"
+  "canary": "awaiting_cron",
+  "schedules": {
+    "sharehouse-signage": {
+      "schedules": [
+        {
+          "cron": "* * * * *",
+          "created_on": "2026-10-01T13:42:46.36176Z",
+          "modified_on": "2026-10-01T13:42:46.36176Z"
+        },
+        {
+          "cron": "0 19 * * *",
+          "created_on": "2026-09-24T17:03:05.720454Z",
+          "modified_on": "2026-10-01T13:42:46.36176Z"
+        },
+        {
+          "cron": "*/30 * * * *",
+          "created_on": "2026-09-24T17:03:05.720454Z",
+          "modified_on": "2026-10-01T13:42:46.36176Z"
+        }
+      ]
+    },
+    "og-company-research": {
+      "schedules": [
+        {
+          "cron": "* * * * *",
+          "created_on": "2026-10-01T13:42:20.637947Z",
+          "modified_on": "2026-10-01T13:45:12.320744Z"
+        }
+      ]
+    }
+  }
 }

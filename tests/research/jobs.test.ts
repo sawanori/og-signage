@@ -4,10 +4,11 @@ import { buildCompanyResearchEvent } from "../../lib/company-research-contract";
 import { acceptResearchEvent } from "../../research/intake";
 import { claimResearchJob, checkpointResearchJob, finishResearchJob, runResearchTick, cancelInactiveResearchCrawls, type ResearchProviders } from "../../research/jobs";
 import { researchJobs, researchPages, researchProfiles, researchSubjects, researchUsage } from "../../research/db/schema";
-import { ProviderError } from "../../research/crawler";
+import { ProviderError, startCrawl } from "../../research/crawler";
 import { RESEARCH_MODEL, RESEARCH_PROMPT_VERSION } from "../../research/profile-schema";
 import type { ResearchEnv } from "../../research/env";
 import { openTestResearchDatabase } from "./db-helper";
+import providerProbe from "../../docs/reviews/company-research-provider-probe.json";
 
 const all: Awaited<ReturnType<typeof openTestResearchDatabase>>[] = [];
 afterEach(() => { for (const connection of all.splice(0)) connection.close(); });
@@ -166,11 +167,42 @@ describe("durable research execution", () => {
 
   it("records configuration failures without retrying paid calls", async () => {
     const x = await setup();
+    await acceptResearchEvent(x.db, await buildCompanyResearchEvent({ sourceId: "member", sourceRevision: 1, eventType: "upsert", urls: [{ slot: 1, url: "https://example.com/" }, { slot: 2, url: "https://second.example.com/" }] }), 100);
     x.api.startCrawl = vi.fn(async () => { throw new ProviderError("provider_configuration_error", false, 401); });
     await x.tick(100); await x.tick(160);
     expect(x.api.startCrawl).toHaveBeenCalledTimes(1);
-    expect((await x.db.select().from(researchJobs))[0].status).toBe("configuration_required");
+    expect((await x.db.select().from(researchJobs)).find((job) => job.generation === 2)?.status).toBe("configuration_required");
     expect(await x.db.select().from(researchUsage)).toHaveLength(0);
+  });
+
+  it.each([1, 2])("continues the other URL after URL %i is refused by Content-Signal and retains the unknown reservation", async (blockedSlot) => {
+    const x = await setup();
+    const urls = [{ slot: 1 as const, url: "https://example.com/" }, { slot: 2 as const, url: "https://second.example.com/" }];
+    const blockedUrl = urls[blockedSlot - 1].url;
+    const allowedUrl = urls[2 - blockedSlot].url;
+    await acceptResearchEvent(x.db, await buildCompanyResearchEvent({ sourceId: "member", sourceRevision: 1, eventType: "upsert", urls }), 100);
+    const captured = providerProbe.crawl.find((item) => item.case === "content_signal_block")!;
+    x.api.startCrawl = vi.fn(async (args) => startCrawl({ ...args, resolveHostname: async () => ["1.1.1.1"], fetcher: async () =>
+      args.url === blockedUrl ? new Response(JSON.stringify(captured.start), { status: captured.startStatus }) : new Response(JSON.stringify({ success: true, result: "allowed-crawl" })),
+    }));
+    x.api.pollCrawl = vi.fn(async () => ({ id: "allowed-crawl", status: "completed", browserSecondsUsed: 2, total: 1, finished: 1, cursor: null,
+      records: [{ url: allowedUrl, status: "completed", markdown: "法人向けウェブ制作サービスを提供しています。制作から公開と保守まで対応します。", metadata: { status: 200 } }],
+    }));
+    for (const time of [100, 160, 220, 280, 340, 400]) await x.tick(time);
+    expect(vi.mocked(x.api.startCrawl).mock.calls.map(([args]) => args.url)).toEqual(urls.map((item) => item.url));
+    expect(x.api.pollCrawl).toHaveBeenCalledTimes(1);
+    expect(x.api.extractProfile).toHaveBeenCalledTimes(1);
+    const [subject] = await x.db.select().from(researchSubjects);
+    const [job] = await x.db.select().from(researchJobs).where(eq(researchJobs.jobId, subject.currentJobId!));
+    expect(job).toMatchObject({ status: "succeeded", phase: "complete", progress: { nextUrlIndex: 2, crawlSuccessful: false } });
+    const [profile] = await x.db.select().from(researchProfiles);
+    expect(profile.payload.coverage).toEqual(expect.objectContaining({ status: "partial", inputUrls: urls.map((item) => item.url), skipped: [{ url: blockedUrl, reason: "crawl_site_disallowed" }], processed: 1 }));
+    expect(profile.payload.sources).toEqual([expect.objectContaining({ url: allowedUrl })]);
+    const usage = await x.db.select().from(researchUsage);
+    expect(usage).toHaveLength(3);
+    expect(usage.find((row) => row.operationKey === `initial:crawl:${blockedSlot - 1}:0`)).toMatchObject({ status: "unknown", chargedMicrousd: 30_000, providerRequestId: null });
+    expect(usage.reduce((total, row) => total + row.chargedMicrousd, 0)).toBe(30_080);
+    expect(x.api.cancelCrawl).not.toHaveBeenCalled();
   });
 
   it("keeps a missing browser usage value unknown instead of releasing its reservation", async () => {

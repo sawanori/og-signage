@@ -10,6 +10,9 @@ import { researchControls, researchJobs, researchProfiles, researchSubjects, res
 import { openTestResearchDatabase } from "./db-helper";
 
 const connections: Awaited<ReturnType<typeof openTestResearchDatabase>>[] = [];
+// Each case starts 4–5 real Node/tsx CLI processes. Allow CI startup overhead,
+// while keeping the per-process 20s kill limit below the test deadline.
+const CLI_TEST_TIMEOUT_MS = 30_000;
 afterEach(() => { for (const c of connections.splice(0)) c.close(); });
 async function setup() {
   const connection = await openTestResearchDatabase(); connections.push(connection);
@@ -40,7 +43,7 @@ describe("private operator CLI on a real research database", () => {
     expect(retried).toMatchObject({ status: "retry", attempts: 0, phase: "crawl" });
     expect(retried.progress.manualRetryToken).toMatch(/^[a-f\d-]{36}$/);
     expect((await x.db.select().from(researchUsage))[0]).toMatchObject({ reservationId: "prior-call", chargedMicrousd: 30_000, status: "unknown" });
-  });
+  }, CLI_TEST_TIMEOUT_MS);
 
   it("exports only the active current profile privately and rejects completed-phase retry", async () => {
     const x = await setup();
@@ -58,5 +61,5 @@ describe("private operator CLI on a real research database", () => {
     expect(x.cli("retry", x.job.jobId).status).toBe(1);
     await acceptResearchEvent(x.db, await buildCompanyResearchEvent({ sourceId: "cli-member", sourceRevision: 1, eventType: "delete", urls: [] }), 200);
     expect(x.cli("export", "cli-member", destination + ".json").status).toBe(1);
-  });
+  }, CLI_TEST_TIMEOUT_MS);
 });

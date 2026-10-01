@@ -50,6 +50,10 @@ const resultSchema = z.object({
   total: z.number().int().nonnegative().optional(), finished: z.number().int().nonnegative().optional(),
   records: z.array(recordSchema).max(100).optional(), cursor: z.union([z.string(), z.number(), z.null()]).optional(),
 });
+const siteRejectionSchema = z.object({
+  success: z.literal(false),
+  errors: z.array(z.object({ message: z.literal("Crawl disallowed by Content-Signal directive (purpose or use level)") })).min(1),
+});
 export type CrawlRecord = z.infer<typeof recordSchema>;
 export type CrawlResult = {
   id: string; status: string; browserSecondsUsed: number | null; total: number; finished: number;
@@ -73,7 +77,21 @@ async function request(auth: CrawlAuth, url: string, init: RequestInit): Promise
       redirect: "error", signal: AbortSignal.timeout(30_000),
     });
   } catch { throw new ProviderError("provider_network_unknown", true); }
-  if (!response.ok) throw providerHttpError(response);
+  if (!response.ok) {
+    // Classify only the captured site-policy rejection from a crawl-start request.
+    // Other 400s and authentication/configuration failures must still stop execution.
+    if (init.method === "POST" && response.status === 400) {
+      try {
+        const body = await response.text();
+        if (body.length <= 16_384 && siteRejectionSchema.safeParse(JSON.parse(body)).success) {
+          throw new ProviderError("crawl_site_disallowed", false, 400);
+        }
+      } catch (error) {
+        if (error instanceof ProviderError) throw error;
+      }
+    }
+    throw providerHttpError(response);
+  }
   const text = await response.text();
   if (text.length > 12_000_000) throw new ProviderError("provider_response_too_large", false);
   let data: unknown;
