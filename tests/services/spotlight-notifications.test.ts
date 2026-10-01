@@ -64,7 +64,7 @@ describe("審査結果のメール通知", () => {
     expect(url).toBe("https://api.resend.com/emails");
     expect(options).toMatchObject({ method: "POST", headers: { Authorization: "Bearer test-secret-key", "Content-Type": "application/json", "Idempotency-Key": `spotlight-submission/${row.id}/${status}` } });
     const body = JSON.parse(String(options?.body));
-    expect(body).toMatchObject({ from: "WeWorkOG <noreply@non-turn.com>", to: [email], subject: status === "approved" ? "メンバー紹介を掲載しました" : "メンバー紹介の登録について" });
+    expect(body).toMatchObject({ from: "サイネージ管理 <noreply@non-turn.com>", to: [email], subject: status === "approved" ? "メンバー紹介を掲載しました" : "メンバー紹介の登録について" });
     expect(body.text).toContain(`${name} 様`);
     expect(body.html).toContain("山田 &lt;&gt;&amp;&quot;&#39; 様");
     expect(body.html).not.toContain(name);

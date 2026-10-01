@@ -411,7 +411,7 @@ rm secrets.json
 ### Resendの準備と結果通知
 
 1. ResendのDomainsに `non-turn.com` を追加する（2026-10-01 追加済み、リージョン ap-northeast-1）。Resendが表示するレコードを、お名前.comのDNS設定へそのまま追加して検証を完了する。2026-10-01 時点でResendが求めたのは、DKIM の TXT（`resend._domainkey`）と、SPF 用の CNAME 2 件（`send` → `send.forge.rmta.net`、`rsend` → `rsend-apne1.forge.rmta.net`）。ルートドメインの既存の SPF（`v=spf1 include:_spf.onamae.ne.jp ~all`）と受信用 MX は変えない。値は変わり得るので、追加の前に Resend の管理画面で確認する。
-2. Resendで送信用APIキーを発行し、対象WorkerのSecret `RESEND_API_KEY` に登録する（運用担当が接続先を確認して `npx wrangler secret put RESEND_API_KEY` を実行する）。キーを `wrangler.jsonc`、リポジトリ、ログへ記載しない。送信元はWorkerの変数 `SPOTLIGHT_NOTIFICATION_FROM` にある `WeWorkOG <noreply@non-turn.com>` を使う。
+2. Resendで送信用APIキーを発行し、対象WorkerのSecret `RESEND_API_KEY` に登録する（運用担当が接続先を確認して `npx wrangler secret put RESEND_API_KEY` を実行する）。キーを `wrangler.jsonc`、リポジトリ、ログへ記載しない。送信元はWorkerの変数 `SPOTLIGHT_NOTIFICATION_FROM` にある `サイネージ管理 <noreply@non-turn.com>` を使う。
 3. **既存の0010まで適用済みのDBへ、追加migration `0011_*.sql` を先に適用してから新Workerをデプロイする。** 0011は通知用の列と索引を追加する。未適用のまま新Workerを配備しない。この実装作業ではDNS・Secret登録・本番migration・デプロイ・実送信は行っていない。
 
 メールはResend REST APIの `POST https://api.resend.com/emails` へBearer認証で送る。プレーンテキストとHTMLの両方を送り、リンクや却下理由は含めない。`Idempotency-Key` は `spotlight-submission/<申請id>/<approved|rejected>` で固定する。APIとヘッダー仕様は2026-10-01に[送信API公式資料](https://resend.com/docs/api-reference/emails/send-email)と[冪等キー公式資料](https://resend.com/docs/dashboard/emails/idempotency-keys)で確認した。

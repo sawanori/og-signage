@@ -5,7 +5,8 @@
   "compatibility_flags": ["nodejs_compat"],
   "main": "./worker/index.ts",
   "vars": {
-    "SPOTLIGHT_NOTIFICATION_FROM": "WeWorkOG <noreply@non-turn.com>"
+    // 掲載結果メールの差出人。ブランド名（WeWork）を別ドメインから名乗るとなりすましと見られ迷惑メールに入るため変えた（2026-10-01 ユーザー指示）
+    "SPOTLIGHT_NOTIFICATION_FROM": "サイネージ管理 <noreply@non-turn.com>"
   },
   "assets": {
     "directory": "dist/client",
