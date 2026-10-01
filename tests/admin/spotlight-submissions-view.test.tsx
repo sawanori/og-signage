@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { SpotlightSubmissionDetail } from "@/lib/spotlight-submissions";
+import type { SpotlightNotificationStatus, SpotlightSubmissionDetail } from "@/lib/spotlight-submissions";
 
 const actions = vi.hoisted(() => ({
   approveSpotlightSubmissionAction: vi.fn(),
@@ -26,9 +26,10 @@ const submission: SpotlightSubmissionDetail = {
   revision: 2,
   companyName: "NonTurn",
   personName: "山田 太郎",
+  contactEmail: "member@example.com",
   submittedAt: 1_790_000_000,
   consentedAt: 1_790_000_000,
-  consentVersion: 1,
+  consentVersion: 2,
   photoUrl: "/api/spotlight-submissions/submission-a/images/photo",
   logoUrl: "/api/spotlight-submissions/submission-a/images/logo",
   payload: {
@@ -57,8 +58,8 @@ function openFirst() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  actions.approveSpotlightSubmissionAction.mockResolvedValue({ data: { spotlightId: "spt-approved" } });
-  actions.rejectSpotlightSubmissionAction.mockResolvedValue({ data: null });
+  actions.approveSpotlightSubmissionAction.mockResolvedValue({ data: { spotlightId: "spt-approved", notificationStatus: "sent" } });
+  actions.rejectSpotlightSubmissionAction.mockResolvedValue({ data: { notificationStatus: "sent" } });
 });
 afterEach(cleanup);
 
@@ -67,6 +68,7 @@ describe("確認待ちの審査", () => {
     render(<SpotlightSubmissionsView submissions={[another, submission]} />);
     const rows = within(screen.getByRole("region", { name: "確認待ち一覧" })).getAllByRole("listitem");
     expect(rows.map((row) => within(row).getByText(/さん$/).textContent)).toEqual(["山田 太郎さん", "佐藤 次郎さん"]);
+    expect(screen.queryByText("member@example.com")).toBeNull();
     openFirst();
     const detail = within(screen.getByRole("region", { name: "申請内容の確認" }));
     for (const value of Object.values(submission.payload).filter((v) => typeof v === "string")) {
@@ -74,13 +76,24 @@ describe("確認待ちの審査", () => {
     }
     expect(detail.getByText("映像・Web")).toBeTruthy();
     expect(detail.getByText("掲載先への同意日時")).toBeTruthy();
+    expect(detail.getByText("メールアドレス（結果の通知先。サイネージには表示しません）")).toBeTruthy();
+    expect(detail.getByText("member@example.com")).toBeTruthy();
     expect(detail.getByRole("img", { name: "本人写真" }).getAttribute("src")).toBe(submission.photoUrl);
     expect(detail.getByRole("img", { name: "会社ロゴ" }).getAttribute("src")).toBe(submission.logoUrl);
     expect(preview).toHaveBeenLastCalledWith({ payload: submission.payload, photoUrl: submission.photoUrl, logoUrl: submission.logoUrl });
+    expect(JSON.stringify(preview.mock.calls)).not.toContain("member@example.com");
+  });
+
+  it("メールアドレスのない既存申請も詳細を開け、通知がないことを示す", () => {
+    render(<SpotlightSubmissionsView submissions={[{ ...submission, contactEmail: null, consentVersion: 1 }]} />);
+    openFirst();
+    expect(screen.getByText("未登録（通知なし）")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "掲載する" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "却下" })).toBeTruthy();
   });
 
   it("掲載するを一度押すとid/revisionだけで承認し、処理中は重複操作を止め、成功後に詳細を閉じて再取得する", async () => {
-    let resolve!: (value: { data: { spotlightId: string } }) => void;
+    let resolve!: (value: { data: { spotlightId: string; notificationStatus: "sent" } }) => void;
     actions.approveSpotlightSubmissionAction.mockReturnValue(new Promise((done) => { resolve = done; }));
     render(<SpotlightSubmissionsView submissions={[submission]} />);
     openFirst();
@@ -88,9 +101,10 @@ describe("確認待ちの審査", () => {
     expect(actions.approveSpotlightSubmissionAction).toHaveBeenCalledExactlyOnceWith(submission.id, submission.revision);
     await waitFor(() => expect((screen.getByRole("button", { name: "処理中…" }) as HTMLButtonElement).disabled).toBe(true));
     expect((screen.getByRole("button", { name: "却下" }) as HTMLButtonElement).disabled).toBe(true);
-    await act(async () => resolve({ data: { spotlightId: "spt-approved" } }));
+    await act(async () => resolve({ data: { spotlightId: "spt-approved", notificationStatus: "sent" } }));
     expect(screen.queryByRole("region", { name: "申請内容の確認" })).toBeNull();
     expect(screen.getByRole("status").textContent).toContain("掲載しました");
+    expect(screen.getByRole("status").textContent).toContain("結果をメールでお知らせしました。");
     expect(router.refresh).toHaveBeenCalledOnce();
     expect((screen.getByRole("button", { name: "内容を確認" }) as HTMLButtonElement).disabled).toBe(true);
   });
@@ -108,7 +122,27 @@ describe("確認待ちの審査", () => {
     await waitFor(() => expect(router.refresh).toHaveBeenCalledOnce());
     expect(actions.rejectSpotlightSubmissionAction).toHaveBeenCalledExactlyOnceWith(submission.id, submission.revision);
     expect(screen.queryByRole("region", { name: "申請内容の確認" })).toBeNull();
-    expect(screen.getByRole("status").textContent).toBe("申請を却下しました。");
+    expect(screen.getByRole("status").textContent).toBe("申請を却下しました。結果をメールでお知らせしました。");
+  });
+
+  it.each(["approve", "reject"] as const)("%s 後の通知の再送・終了・未登録を結果として表示する", async (review) => {
+    const statuses: [SpotlightNotificationStatus, string][] = [
+      ["pending", "結果のメールを送れなかったため、自動で再送します。"],
+      ["failed", "結果のメールを送れず、再送を終了しました。"],
+      ["skipped", "メールアドレスが未登録のため、結果のメールは送りません。"],
+    ];
+    for (const [notificationStatus, expected] of statuses) {
+      const action = review === "approve" ? actions.approveSpotlightSubmissionAction : actions.rejectSpotlightSubmissionAction;
+      action.mockResolvedValueOnce({ data: { spotlightId: "spt-approved", notificationStatus } });
+      const view = render(<SpotlightSubmissionsView submissions={[submission]} />);
+      openFirst();
+      fireEvent.click(screen.getByRole("button", { name: review === "approve" ? "掲載する" : "却下" }));
+      if (review === "reject") fireEvent.click(screen.getByRole("button", { name: "却下する" }));
+      expect((await screen.findByRole("status")).textContent).toContain(expected);
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(screen.queryByRole("region", { name: "申請内容の確認" })).toBeNull();
+      view.unmount();
+    }
   });
 
   it("競合時は古い詳細を閉じ、同じrevisionの再操作を止め、最新一覧を読み直す", async () => {

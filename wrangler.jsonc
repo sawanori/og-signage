@@ -4,6 +4,9 @@
   "compatibility_date": "2026-09-24",
   "compatibility_flags": ["nodejs_compat"],
   "main": "./worker/index.ts",
+  "vars": {
+    "SPOTLIGHT_NOTIFICATION_FROM": "WeWorkOG <noreply@non-turn.com>"
+  },
   "assets": {
     "directory": "dist/client",
     "not_found_handling": "none",
@@ -18,7 +21,7 @@
     }
   ],
 
-  // Cron Trigger（天気 30 分ごと・R2 削除予約の実行・未完了アップロード掃除・device_logs 掃除）。
+  // Cron Trigger（天気と掲載結果メール再送は30分ごと・R2 削除予約の実行・未完了アップロード掃除・device_logs 掃除）。
   // scheduled ハンドラは worker/index.ts の scheduled から worker/scheduled.ts を呼ぶ。
   // "0 19 * * *" は日本時間 4:00（Pi の Chromium 毎日再起動と同じ時間帯。計画 7 節）。
   "triggers": {

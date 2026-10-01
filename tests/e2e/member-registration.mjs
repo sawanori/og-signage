@@ -46,6 +46,7 @@ async function submit(name, withPhoto = true) {
   await page.goto(`${base}/members/register`, { waitUntil: "networkidle" });
   await page.getByLabel("会社名・所属", { exact: true }).fill("ブラウザ検証株式会社");
   await page.getByLabel("お名前", { exact: true }).fill(name);
+  await page.getByLabel("メールアドレス", { exact: true }).fill("member@example.test");
   await page.getByLabel("ふりがな（任意）", { exact: true }).fill("やまだたろう");
   await page.getByLabel("ひとこと（任意）", { exact: true }).fill("実際の送信と掲載を確認");
   if (withPhoto) {

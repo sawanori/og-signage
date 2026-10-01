@@ -15,7 +15,7 @@ let db: Db;
 let close: () => void;
 const staff: AuthUser = { id: "staff", email: "staff@example.com", name: "Staff", role: "staff" };
 const submit = (bucket: SpotlightBucket) =>
-  submitSpotlightSubmission(db, bucket, { requestKey: crypto.randomUUID(), companyName: "所属", personName: "名前", consent: true }, {}, 100);
+  submitSpotlightSubmission(db, bucket, { requestKey: crypto.randomUUID(), companyName: "所属", personName: "名前", email: "member@example.com", consent: true }, {}, 100);
 
 beforeEach(async () => {
   ({ db, close } = await openTempDb());

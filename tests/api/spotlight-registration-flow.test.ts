@@ -36,6 +36,7 @@ import { approveSpotlightSubmissionAction, rejectSpotlightSubmissionAction } fro
 
 const BASE = "https://signage.example.com";
 const NOW = 1_790_000_000;
+const EMAIL = "private-member@example.com";
 const PHOTO = new Uint8Array([255, 216, 255, 224, 1, 2, 3]);
 const LOGO = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 4, 5]);
 let db: Db;
@@ -49,6 +50,7 @@ let existing: SpotlightRow;
 
 const input = () => ({
   requestKey: crypto.randomUUID(), companyName: "申請株式会社", personName: "申請 花子", personNameKana: "しんせい はなこ",
+  email: EMAIL,
   role: "デザイナー", quote: "毎日が実験です", bio: "映像を作っています", tags: ["映像"], consent: true,
 });
 
@@ -65,13 +67,17 @@ function post(data: ReturnType<typeof input>, withLogo = false) {
 async function publicConfig(): Promise<SignageConfig> {
   const response = await getPublicConfig(new Request(`${BASE}/api/signage/config?device=${deviceId}`));
   expect(response.status).toBe(200);
-  return signageConfigSchema.parse(await response.json());
+  const json = await response.json();
+  expect(JSON.stringify(json)).not.toMatch(/private-member@example\.com|contactEmail|contact_email|notificationName|notification_name/);
+  return signageConfigSchema.parse(json);
 }
 
 async function deviceConfig(): Promise<SignageConfig> {
   const response = await getDeviceConfig(new Request(`${BASE}/api/device/config`, { headers: { authorization: `Bearer ${token}` } }));
   expect(response.status).toBe(200);
-  return signageConfigSchema.parse(await response.json());
+  const json = await response.json();
+  expect(JSON.stringify(json)).not.toMatch(/private-member@example\.com|contactEmail|contact_email|notificationName|notification_name/);
+  return signageConfigSchema.parse(json);
 }
 
 function publicImage(id: string) {
@@ -129,6 +135,9 @@ describe("本人申請から既存サイネージ配信まで", () => {
     expect(await accepted.json()).toEqual({ data: { accepted: true } });
     expect("GET" in submissionsEndpoint).toBe(false);
     const [pending] = await listSpotlightSubmissions(db, staff);
+    expect(pending.contactEmail).toBe(EMAIL);
+    expect(JSON.stringify(pending.payload)).not.toContain(EMAIL);
+    expect(pending.payload).not.toHaveProperty("email");
     await expectUnpublished(pending.id, before.version);
     expect((await privateImage(pending.id)).status).toBe(401);
     state.session = session;
@@ -142,7 +151,11 @@ describe("本人申請から既存サイネージ配信まで", () => {
     const id = approved.data!.spotlightId;
     const [row] = await db.select().from(memberSpotlights).where(eq(memberSpotlights.id, id!));
     expect(row).toMatchObject({ personName: data.personName, personNameKana: data.personNameKana, enabled: true });
+    expect(JSON.stringify(row)).not.toContain(EMAIL);
+    expect(row).not.toHaveProperty("email");
+    expect(row).not.toHaveProperty("contactEmail");
     expect(await listMedia(db)).toHaveLength(2);
+    expect(JSON.stringify(await listMedia(db))).not.toContain(EMAIL);
     expect(await listSpotlightSubmissions(db, staff)).toHaveLength(0);
     for (const config of [await publicConfig(), await deviceConfig()]) {
       expect(config.version).not.toBe(before.version);
@@ -154,6 +167,7 @@ describe("本人申請から既存サイネージ配信まで", () => {
     }
     for (const response of [await publicImage(row.photoMediaId!), await deviceImage(row.photoMediaId!)]) {
       expect(response?.status).toBe(200);
+      expect(JSON.stringify([...response!.headers])).not.toContain(EMAIL);
       expect(new Uint8Array(await response!.arrayBuffer())).toEqual(PHOTO);
     }
     state.session = null;
@@ -185,7 +199,7 @@ describe("本人申請から既存サイネージ配信まで", () => {
     expect((await post(data)).status).toBe(202);
     const [pending] = await listSpotlightSubmissions(db, staff);
     state.session = session;
-    expect(await rejectSpotlightSubmissionAction(pending.id, pending.revision)).toEqual({ data: null });
+    expect(await rejectSpotlightSubmissionAction(pending.id, pending.revision)).toEqual({ data: { notificationStatus: "pending" } });
     state.session = null;
     expect((await post(data)).status).toBe(202);
     await expectUnpublished(pending.id, before.version);
@@ -207,7 +221,7 @@ describe("本人申請から既存サイネージ配信まで", () => {
     await updateSpotlight(db, staff, row.id, { ...hidden, enabled: true });
     expect((await publicConfig()).spotlights?.find((item) => item.id === row.id)?.personName).toBe("掲載後の修正");
     await deleteSpotlight(db, staff, row.id);
-    expect(await approveSpotlightSubmissionAction(pending.id, pending.revision)).toEqual({ data: { spotlightId: null } });
+    expect(await approveSpotlightSubmissionAction(pending.id, pending.revision)).toEqual({ data: { spotlightId: null, notificationStatus: "pending" } });
     expect((await publicConfig()).spotlights?.map((item) => item.id)).toEqual([existing.id]);
     await requestMediaDeletion(db, row.photoMediaId!, NOW);
     expect(await listMedia(db)).toHaveLength(0);

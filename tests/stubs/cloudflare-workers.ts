@@ -5,4 +5,6 @@ export const env = {
   AUTH_SECRET: "test-secret-test-secret-test-secret-0123",
   LOGIN_RATE_LIMITER: { limit: async () => ({ success: true }) },
   SPOTLIGHT_SUBMISSION_RATE_LIMITER: { limit: async () => ({ success: true }) },
+  RESEND_API_KEY: undefined as string | undefined,
+  SPOTLIGHT_NOTIFICATION_FROM: "WeWorkOG <noreply@non-turn.com>",
 };

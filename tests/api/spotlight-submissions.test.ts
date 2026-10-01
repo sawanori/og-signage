@@ -19,7 +19,7 @@ const { GET } = await import("../../app/api/spotlight-submissions/[id]/images/[k
 const { approveSpotlightSubmissionAction, rejectSpotlightSubmissionAction } = await import("../../app/admin/_actions/spotlight-submissions");
 const BASE = "https://signage.example.com";
 let close: () => void;
-const data = () => ({ requestKey: crypto.randomUUID(), companyName: "所属", personName: "名前", consent: true });
+const data = () => ({ requestKey: crypto.randomUUID(), companyName: "所属", personName: "名前", email: "member@example.com", consent: true });
 const jpeg = new Uint8Array([255, 216, 255, 224, 1, 2, 3]);
 function form(value: unknown = data(), photo = true) {
   const body = new FormData();
@@ -39,10 +39,31 @@ afterEach(() => { vi.restoreAllMocks(); close(); });
 
 describe("匿名の申請POST", () => {
   it("ログインなしで画像を保存し一般的な202だけを返す", async () => {
+    const fetch = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("受付時には送信しない"));
     const response = await POST(request());
     expect(response.status).toBe(202);
     expect(await response.json()).toEqual({ data: { accepted: true } });
     expect((await state.db.select().from(memberSpotlightSubmissions))[0].status).toBe("pending");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("古い画面のメール無し申請は400で再読み込みを案内する", async () => {
+    const value: Record<string, unknown> = data();
+    delete value.email;
+    const response = await POST(request(form(value)));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: { code: "invalid_input", message: "メールアドレスを入力してください。画面を読み込み直してください" } });
+    expect(await state.db.select().from(memberSpotlightSubmissions)).toHaveLength(0);
+  });
+  it("メールの形式不正は値を漏らさず400、同じキーで宛先だけ変更すると409", async () => {
+    const invalid = "private-invalid-address";
+    const response = await POST(request(form({ ...data(), email: invalid })));
+    expect(response.status).toBe(400);
+    expect(await response.text()).not.toContain(invalid);
+    const value = data();
+    expect((await POST(request(form(value)))).status).toBe(202);
+    const conflict = await POST(request(form({ ...value, email: "other@example.com" })));
+    expect(conflict.status).toBe(409);
+    expect(await conflict.text()).not.toContain("@example.com");
   });
   it("他Originは保存もrate limitも呼ぶ前に403", async () => {
     const limiter = vi.spyOn(env.SPOTLIGHT_SUBMISSION_RATE_LIMITER, "limit");

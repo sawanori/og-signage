@@ -14,5 +14,7 @@ declare module "cloudflare:workers" {
     AUTH_SECRET: string;
     LOGIN_RATE_LIMITER: RateLimit;
     SPOTLIGHT_SUBMISSION_RATE_LIMITER: RateLimit;
+    RESEND_API_KEY?: string;
+    SPOTLIGHT_NOTIFICATION_FROM: string;
   };
 }

@@ -35,15 +35,40 @@ describe("メンバー本人登録の入力契約", () => {
     requestKey: "123e4567-e89b-42d3-a456-426614174000",
     companyName: " 株式会社サンプル ",
     personName: " 山田 陸 ",
+    email: "member@example.com",
     consent: true,
   };
 
-  it("必須2項目と同意だけで申請でき、任意の空欄を正規化する", () => {
+  it("必須3項目と同意だけで申請でき、任意の空欄を正規化する", () => {
     expect(spotlightSubmissionInputSchema.parse(input)).toEqual({
       ...input, companyName: "株式会社サンプル", personName: "山田 陸",
       personNameKana: null, role: null, quote: null, bio: null, tags: [],
     });
     expect(spotlightSubmissionInputSchema.parse({ ...input, role: "  " }).role).toBeNull();
+  });
+
+  it.each([undefined, "", "   "])("メールアドレス未入力は日本語で案内する（%s）", (email) => {
+    const result = spotlightSubmissionInputSchema.safeParse({ ...input, email });
+    expect(result.success).toBe(false);
+    expect(messages(result)[0]).toContain("メールアドレスを入力してください");
+    if (email === undefined) expect(messages(result)[0]).toContain("画面を読み込み直してください");
+  });
+
+  it.each(["invalid", "a@", "member@example.com\r\nBcc:other@example.com"])("メールアドレスの不正形式は値を応答に含めず拒否する", (email) => {
+    const result = spotlightSubmissionInputSchema.safeParse({ ...input, email });
+    expect(result.success).toBe(false);
+    expect(messages(result)).toContain("メールアドレスの形式が正しくありません");
+    expect(messages(result).join()).not.toContain(email);
+  });
+
+  it("メールは前後をtrimして検証し、254文字を受け付け255文字は拒否する", () => {
+    expect(spotlightSubmissionInputSchema.parse({ ...input, email: "  member@example.com  " }).email).toBe("member@example.com");
+    const email = `${"a".repeat(64)}@${"b".repeat(63)}.${"c".repeat(63)}.${"d".repeat(57)}.com`;
+    expect(email.length).toBe(254);
+    expect(spotlightSubmissionInputSchema.safeParse({ ...input, email }).success).toBe(true);
+    const result = spotlightSubmissionInputSchema.safeParse({ ...input, email: `a${email}` });
+    expect(result.success).toBe(false);
+    expect(messages(result)).toContain("メールアドレスは254文字以内で入力してください");
   });
 
   it.each(["companyName", "personName"])("%sは空にできない", (field) => {

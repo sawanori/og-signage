@@ -10,11 +10,11 @@ import { countChars, SPOTLIGHT_BIO_MAX, SPOTLIGHT_QUOTE_MAX, SPOTLIGHT_TAG_MAX, 
 import { SpotlightPreview } from "./spotlight-preview";
 import styles from "./registration.module.css";
 
-type TextFields = { companyName: string; personName: string; personNameKana: string; role: string; quote: string; bio: string };
+type TextFields = { companyName: string; personName: string; email: string; personNameKana: string; role: string; quote: string; bio: string };
 type ImageSelection = { blob: Blob; url: string };
 type Images = Record<SpotlightSubmissionImageKind, ImageSelection | null>;
 type Phase = "editing" | "sending" | "uncertain" | "accepted";
-const EMPTY_TEXT: TextFields = { companyName: "", personName: "", personNameKana: "", role: "", quote: "", bio: "" };
+const EMPTY_TEXT: TextFields = { companyName: "", personName: "", email: "", personNameKana: "", role: "", quote: "", bio: "" };
 const EMPTY_IMAGES: Images = { photo: null, logo: null };
 const optional = (text: string) => text.trim() || null;
 
@@ -88,7 +88,7 @@ export function SpotlightRegistrationForm() {
     if (sending.current || preparing || retryAfterSeconds > 0 || phase === "accepted") return;
     let current = snapshot.current;
     if (!current) {
-      const parsed = spotlightSubmissionInputSchema.safeParse({ ...textPayload, requestKey: crypto.randomUUID(), consent });
+      const parsed = spotlightSubmissionInputSchema.safeParse({ ...textPayload, email: fields.email, requestKey: crypto.randomUUID(), consent });
       if (!parsed.success) {
         const next: Record<string, string> = {};
         for (const issue of parsed.error.issues) {
@@ -141,6 +141,7 @@ export function SpotlightRegistrationForm() {
           <div className={styles.completeMark} aria-hidden>✓</div>
           <h1>送信しました</h1>
           <p>スタッフの確認後に掲載されます。</p>
+          <p>掲載の可否は、ご入力のメールアドレスへお知らせします。</p>
           <p className={styles.hint}>修正が必要な場合はスタッフへご依頼ください。<br />この画面は閉じていただけます。</p>
         </section>
       </main>
@@ -180,6 +181,14 @@ export function SpotlightRegistrationForm() {
           <div className={styles.sectionHead}><h2>あなたについて</h2><p>会社名・所属とお名前をご入力ください。</p></div>
           <TextField name="companyName" label="会社名・所属" value={fields.companyName} max={30} required disabled={locked} error={errors.companyName} onChange={change} />
           <TextField name="personName" label="お名前" value={fields.personName} max={20} required disabled={locked} error={errors.personName} onChange={change} />
+          <div className={styles.field}>
+            <div className={styles.labelRow}><label htmlFor="member-email">メールアドレス</label><span className={styles.required}>必須</span></div>
+            <p id="email-hint" className={styles.hint}>掲載の可否をお知らせします。サイネージには表示しません。</p>
+            <input id="member-email" type="email" autoComplete="email" required value={fields.email} disabled={locked}
+              aria-invalid={Boolean(errors.email)} aria-describedby={`email-hint${errors.email ? " email-error" : ""}`}
+              onChange={(event) => change("email", event.target.value)} />
+            {errors.email ? <p id="email-error" className={styles.fieldError}>{errors.email}</p> : null}
+          </div>
           <TextField name="personNameKana" label="ふりがな（任意）" value={fields.personNameKana} max={40} disabled={locked} error={errors.personNameKana} onChange={change} />
           <TextField name="role" label="肩書き（任意）" value={fields.role} max={30} disabled={locked} error={errors.role} onChange={change} />
           <TextField name="quote" label="ひとこと（任意）" value={fields.quote} max={SPOTLIGHT_QUOTE_MAX} multiline disabled={locked} error={errors.quote} onChange={change} />
@@ -202,7 +211,7 @@ export function SpotlightRegistrationForm() {
             {showPreview ? <div className={styles.previewArea}><SpotlightPreview payload={textPayload} photoUrl={images.photo?.url ?? null} logoUrl={images.logo?.url ?? null} /><p className={styles.hint}>横型サイネージでの掲載イメージです。</p></div> : null}
             <label className={styles.consent}>
               <input type="checkbox" checked={consent} disabled={locked} onChange={(event) => { if (!locked) setConsent(event.target.checked); }} aria-invalid={Boolean(errors.consent)} />
-              <span>入力した内容と写真を、館内および誰でも閲覧できるWebサイネージに掲載することに同意します。</span>
+              <span>入力した紹介内容と写真を、館内および誰でも閲覧できるWebサイネージに掲載することに同意します。メールアドレスは掲載結果のお知らせにだけ使い、サイネージには表示しません。</span>
             </label>
             {errors.consent ? <p className={styles.fieldError}>{errors.consent}</p> : null}
             {message ? <p role="alert" className={styles.message}>{message}</p> : null}

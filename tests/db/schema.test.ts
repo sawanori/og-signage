@@ -98,17 +98,18 @@ describe("マイグレーション", () => {
 });
 
 describe("メンバー紹介の申請テーブル", () => {
-  const { requestKey: _key, consent: _consent, ...payload } = spotlightSubmissionInputSchema.parse({
-    requestKey: "123e4567-e89b-42d3-a456-426614174000", companyName: "所属", personName: "名前", consent: true,
+  const { requestKey: _key, consent: _consent, email: _email, ...payload } = spotlightSubmissionInputSchema.parse({
+    requestKey: "123e4567-e89b-42d3-a456-426614174000", companyName: "所属", personName: "名前", email: "member@example.com", consent: true,
   });
   void _key;
   void _consent;
+  void _email;
   const submission = (requestKey: string) => ({ requestKey, requestFingerprint: "a".repeat(64), payload, consentedAt: 100, consentVersion: 1 });
 
   it("既存の掲載情報と分離し、受信中・未回収の初期値を持つ", async () => {
     await db.insert(memberSpotlights).values({ id: "published", companyName: "公開済み", personName: "既存" });
     const [row] = await db.insert(memberSpotlightSubmissions).values(submission("request-1")).returning();
-    expect(row).toMatchObject({ status: "receiving", revision: 0, payload, photoFile: null, logoFile: null, submittedAt: null, cleanupNextAt: null, cleanupCompletedAt: null });
+    expect(row).toMatchObject({ status: "receiving", revision: 0, payload, photoFile: null, logoFile: null, submittedAt: null, cleanupNextAt: null, cleanupCompletedAt: null, contactEmail: null, notificationStatus: null, notificationAttempts: 0, notificationName: null, notifiedAt: null, notificationNextAt: null });
     expect((await db.select().from(memberSpotlights)).map((r) => r.id)).toEqual(["published"]);
     expect(await db.select().from(media)).toHaveLength(0);
   });
@@ -168,6 +169,31 @@ describe("メンバー紹介の申請テーブル", () => {
       expect(await previous.db.select().from(memberSpotlights)).toEqual([before]);
       await previous.db.insert(memberSpotlightSubmissions).values(submission("new"));
       expect(await previous.db.select().from(memberSpotlightSubmissions)).toHaveLength(1);
+    } finally {
+      previous.client.close();
+    }
+  });
+
+  it("0011は既存申請の確認待ち・承認済み・却下済みを保ち、通知列だけ初期化する", async () => {
+    const previousMigrations = join(dir, "before-email-migrations");
+    cpSync("db/migrations", previousMigrations, { recursive: true });
+    const journalPath = join(previousMigrations, "meta/_journal.json");
+    const journal = JSON.parse(readFileSync(journalPath, "utf8"));
+    journal.entries = journal.entries.filter((entry: { idx: number }) => entry.idx <= 10);
+    writeFileSync(journalPath, JSON.stringify(journal));
+    const previous = createDb(createClient, pathToFileURL(join(dir, "before-email.db")).href);
+    try {
+      await migrate(previous.db, { migrationsFolder: previousMigrations });
+      for (const status of ["pending", "approved", "rejected"]) {
+        await previous.client.execute({
+          sql: "INSERT INTO member_spotlight_submissions (id, request_key, request_fingerprint, status, payload, consented_at, consent_version, created_at, updated_at) VALUES (?, ?, 'hash', ?, ?, 100, 1, 100, 100)",
+          args: [status, status, status, JSON.stringify(payload)],
+        });
+      }
+      const before = await previous.client.execute("SELECT * FROM member_spotlight_submissions ORDER BY id");
+      await migrate(previous.db, { migrationsFolder: "db/migrations" });
+      const after = await previous.client.execute("SELECT * FROM member_spotlight_submissions ORDER BY id");
+      expect(after.rows).toEqual(before.rows.map((row) => ({ ...row, contact_email: null, notification_status: null, notification_attempts: 0, notified_at: null, notification_next_at: null, notification_name: null })));
     } finally {
       previous.client.close();
     }

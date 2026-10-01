@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { env } from "cloudflare:workers";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@/db/index";
@@ -48,7 +49,7 @@ beforeEach(async () => {
   });
   state.bucket.objects.set(`member-submissions/${id}/photo`, bytes);
 });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); close(); });
+afterEach(() => { cleanup(); env.RESEND_API_KEY = undefined; vi.unstubAllGlobals(); close(); });
 
 /** /admin/spotlights（?tab なし）を開いたときのページ */
 const renderPage = () => SpotlightsPage({ searchParams: Promise.resolve({}) });
@@ -59,9 +60,32 @@ function openPending() {
 }
 
 describe("管理ページと実Action・サービス・プレビューの接続", () => {
+  it.each(["approve", "reject"] as const)("%s で実Actionの通知結果を示し、メールアドレスを掲載内容に含めない", async (review) => {
+    env.RESEND_API_KEY = "test-resend-key";
+    const send = vi.fn().mockResolvedValue(Response.json({ id: "email-integration" }));
+    vi.stubGlobal("fetch", send);
+    await db.update(memberSpotlightSubmissions).set({ contactEmail: "member@example.com", consentVersion: 2 }).where(eq(memberSpotlightSubmissions.id, id));
+    render(await renderPage());
+    openPending();
+    expect(screen.getByText("member@example.com")).toBeTruthy();
+    expect(screen.getByTestId("spotlight").textContent).not.toContain("member@example.com");
+    fireEvent.click(screen.getByRole("button", { name: review === "approve" ? "掲載する" : "却下" }));
+    if (review === "reject") fireEvent.click(screen.getByRole("button", { name: "却下する" }));
+    await waitFor(() => expect(router.refresh).toHaveBeenCalledOnce());
+    expect(screen.getByRole("status").textContent).toContain("結果をメールでお知らせしました。");
+    expect(send).toHaveBeenCalledOnce();
+    const [submission] = await db.select().from(memberSpotlightSubmissions).where(eq(memberSpotlightSubmissions.id, id));
+    expect(submission).toMatchObject({ contactEmail: null, notificationStatus: "sent", status: review === "approve" ? "approved" : "rejected" });
+    expect(JSON.stringify(submission.payload)).not.toContain("member@example.com");
+    const published = await db.select().from(memberSpotlights);
+    expect(published).toHaveLength(review === "approve" ? 1 : 0);
+    expect(JSON.stringify(published)).not.toContain("member@example.com");
+  });
+
   it("実際のStaff画像と掲載カードを確認して承認するとDBに掲載され、再取得で件数と掲載一覧が更新される", async () => {
     const view = render(await renderPage());
     openPending();
+    expect(screen.getByText("未登録（通知なし）")).toBeTruthy();
     const preview = screen.getByTestId("spotlight");
     expect(within(preview).getByText(payload.companyName)).toBeTruthy();
     expect(within(preview).getByText(payload.personName)).toBeTruthy();
@@ -74,6 +98,7 @@ describe("管理ページと実Action・サービス・プレビューの接続"
     fireEvent.click(screen.getByRole("button", { name: "掲載する" }));
     await waitFor(() => expect(router.refresh).toHaveBeenCalledOnce());
     expect(screen.queryByRole("region", { name: "申請内容の確認" })).toBeNull();
+    expect(screen.getByRole("status").textContent).toContain("メールアドレスが未登録のため、結果のメールは送りません。");
     expect(await db.select().from(memberSpotlights)).toMatchObject([{ personName: payload.personName, enabled: true }]);
     expect(await db.select().from(media)).toMatchObject([{ r2Key: `member-submissions/${id}/photo` }]);
     view.rerender(await renderPage());
@@ -86,7 +111,7 @@ describe("管理ページと実Action・サービス・プレビューの接続"
   it("別スタッフの却下後に古い詳細から掲載しても、実Actionの競合で詳細を閉じて最新件数へ戻る", async () => {
     const view = render(await renderPage());
     openPending();
-    expect(await rejectSpotlightSubmissionAction(id, 0)).toEqual({ data: null });
+    expect(await rejectSpotlightSubmissionAction(id, 0)).toEqual({ data: { notificationStatus: "skipped" } });
     fireEvent.click(screen.getByRole("button", { name: "掲載する" }));
     await waitFor(() => expect(router.refresh).toHaveBeenCalledOnce());
     expect(screen.getByRole("alert").textContent).toContain("他のスタッフが処理しました");

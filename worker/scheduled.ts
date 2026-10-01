@@ -1,7 +1,7 @@
 /**
  * Cron Trigger の本体（task_013）。worker/index.ts の `scheduled` から呼ぶ。
  *
- * - `*​/30 * * * *`: 天気の取得（lib/weather.ts）。
+ * - `*​/30 * * * *`: 天気の取得（lib/weather.ts）と掲載結果メールの再送。
  * - `0 19 * * *`（日本時間 4:00）: 削除予約が過ぎた media を R2 と行から消す（purgeDeletedMedia）、
  *   24 時間以上 uploading のままの uploads を R2 の abortMultipartUpload と aborted に、
  *   30 日より古い device_logs の削除、終わってから 1 週間を過ぎたイベントの削除（purgeEndedEvents）。
@@ -18,6 +18,7 @@ import { getDb } from "../lib/runtime";
 import { purgeEndedEvents } from "../lib/services/events";
 import { purgeDeletedMedia } from "../lib/services/media";
 import { cleanupSpotlightSubmissions } from "../lib/services/spotlight-submissions";
+import { retrySpotlightNotifications } from "../lib/services/spotlight-notifications";
 import { refreshWeather } from "../lib/weather";
 
 export const WEATHER_CRON = "*/30 * * * *";
@@ -86,7 +87,9 @@ export async function scheduled(cron: string): Promise<void> {
   const now = Math.floor(Date.now() / 1000);
 
   if (cron === WEATHER_CRON) {
-    await refreshWeather(db, readOpenWeatherApiKey());
+    // 天気の取得が失敗しても、確定済みの審査結果は通知する。
+    try { await refreshWeather(db, readOpenWeatherApiKey()); }
+    finally { await retrySpotlightNotifications(db, now); }
     return;
   }
   if (cron === DAILY_CRON) {

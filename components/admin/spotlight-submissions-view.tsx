@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { approveSpotlightSubmissionAction, rejectSpotlightSubmissionAction } from "@/app/admin/_actions/spotlight-submissions";
 import { SpotlightPreview } from "@/components/members/spotlight-preview";
-import type { SpotlightSubmissionDetail } from "@/lib/spotlight-submissions";
+import type { SpotlightNotificationStatus, SpotlightSubmissionDetail } from "@/lib/spotlight-submissions";
 import { ConfirmDialog, type ConfirmRequest } from "./confirm-dialog";
 import styles from "./settings.module.css";
 
@@ -20,6 +20,13 @@ const dateTime = new Intl.DateTimeFormat("ja-JP", {
 function submissionKey(submission: SpotlightSubmissionDetail) {
   return `${submission.id}:${submission.revision}`;
 }
+
+const notificationMessages: Record<SpotlightNotificationStatus, string> = {
+  sent: "結果をメールでお知らせしました。",
+  pending: "結果のメールを送れなかったため、自動で再送します。",
+  failed: "結果のメールを送れず、再送を終了しました。",
+  skipped: "メールアドレスが未登録のため、結果のメールは送りません。",
+};
 
 export function SpotlightSubmissionsView({ submissions }: { submissions: SpotlightSubmissionDetail[] }) {
   const router = useRouter();
@@ -50,7 +57,8 @@ export function SpotlightSubmissionsView({ submissions }: { submissions: Spotlig
         if (result.error) {
           setError("他のスタッフが処理しました。最新の一覧を読み込みます。");
         } else {
-          setMessage(approve ? "掲載しました。内容の修正は「掲載メンバー」から行えます。" : "申請を却下しました。");
+          const reviewMessage = approve ? "掲載しました。内容の修正は「掲載メンバー」から行えます。" : "申請を却下しました。";
+          setMessage(`${reviewMessage}${notificationMessages[result.data.notificationStatus]}`);
         }
         router.refresh();
       } catch {
@@ -109,6 +117,7 @@ export function SpotlightSubmissionsView({ submissions }: { submissions: Spotlig
             {[
               ["会社名・所属", selected.payload.companyName],
               ["名前", selected.payload.personName],
+              ["メールアドレス（結果の通知先。サイネージには表示しません）", selected.contactEmail ?? "未登録（通知なし）"],
               ["ふりがな", selected.payload.personNameKana],
               ["肩書き", selected.payload.role],
               ["ひとこと", selected.payload.quote],

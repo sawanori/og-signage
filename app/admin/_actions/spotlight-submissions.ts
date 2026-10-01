@@ -4,7 +4,7 @@ import { AuthzError, requireRole, type AuthUser } from "../../../lib/auth";
 import { getMediaBucket } from "../../../lib/r2";
 import { getDb } from "../../../lib/runtime";
 import { SpotlightSubmissionError, approveSpotlightSubmission, rejectSpotlightSubmission } from "../../../lib/services/spotlight-submissions";
-import type { SpotlightSubmissionApproval } from "../../../lib/spotlight-submissions";
+import type { SpotlightSubmissionApproval, SpotlightSubmissionReview } from "../../../lib/spotlight-submissions";
 import type { ActionResult } from "./content";
 
 async function run<T>(fn: (user: AuthUser) => Promise<T>): Promise<ActionResult<T>> {
@@ -21,6 +21,6 @@ export async function approveSpotlightSubmissionAction(id: string, revision: num
   return run((user) => approveSpotlightSubmission(getDb(), getMediaBucket(), user, id, revision));
 }
 
-export async function rejectSpotlightSubmissionAction(id: string, revision: number): Promise<ActionResult<null>> {
+export async function rejectSpotlightSubmissionAction(id: string, revision: number): Promise<ActionResult<SpotlightSubmissionReview>> {
   return run((user) => rejectSpotlightSubmission(getDb(), user, id, revision));
 }

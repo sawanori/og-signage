@@ -1,3 +1,4 @@
+import { env } from "cloudflare:workers";
 import type { InStatement } from "@libsql/client";
 import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,17 +13,23 @@ let db: Db;
 let close: () => void;
 let bucket: SpotlightBucket;
 const jpeg = { bytes: new Uint8Array([255, 216, 255, 224, 1, 2, 3]), mimeType: "image/jpeg" };
-const input = () => ({ requestKey: crypto.randomUUID(), companyName: "所属", personName: "名前", consent: true });
+const input = () => ({ requestKey: crypto.randomUUID(), companyName: "所属", personName: "名前", email: "member@example.com", consent: true });
 const staff: AuthUser = { id: "staff", email: "staff@example.com", name: "Staff", role: "staff" };
-beforeEach(async () => { ({ db, close } = await openTempDb()); bucket = new SpotlightBucket(); });
-afterEach(() => { vi.restoreAllMocks(); close(); });
+beforeEach(async () => {
+  ({ db, close } = await openTempDb()); bucket = new SpotlightBucket();
+  env.RESEND_API_KEY = "test-resend-key";
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("{}", { status: 200 })));
+});
+afterEach(() => { env.RESEND_API_KEY = undefined; vi.unstubAllGlobals(); vi.restoreAllMocks(); close(); });
 
 describe("本人申請の受付", () => {
-  it("必須2項目を受け付け、未承認情報を公開テーブルに入れない", async () => {
+  it("メールは専用列だけに保存し、受付では送信せず公開テーブルに入れない", async () => {
     expect(await submitSpotlightSubmission(db, bucket, input(), {})).toEqual({ accepted: true });
-    expect(await db.select().from(memberSpotlightSubmissions)).toMatchObject([{ status: "pending", revision: 0, consentVersion: 1 }]);
+    expect(await db.select().from(memberSpotlightSubmissions)).toMatchObject([{ status: "pending", revision: 0, consentVersion: 2, contactEmail: "member@example.com", notificationStatus: null }]);
     expect(await db.select().from(memberSpotlights)).toHaveLength(0);
     expect(await db.select().from(media)).toHaveLength(0);
+    expect(JSON.stringify((await db.select().from(memberSpotlightSubmissions))[0].payload)).not.toContain("member@example.com");
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("画像保存より先にキーを記録し、写真とロゴの両方を条件付き保存する", async () => {
@@ -51,11 +58,12 @@ describe("本人申請の受付", () => {
     expect(await db.select().from(memberSpotlightSubmissions)).toHaveLength(1);
   });
 
-  it("同じkeyで文面や画像が変われば409", async () => {
+  it("同じkeyで文面・画像・メールアドレスが変われば409", async () => {
     const data = input();
     await submitSpotlightSubmission(db, bucket, data, { photo: jpeg });
     await expect(submitSpotlightSubmission(db, bucket, { ...data, personName: "別人" }, { photo: jpeg })).rejects.toMatchObject({ status: 409 });
     await expect(submitSpotlightSubmission(db, bucket, data, {})).rejects.toMatchObject({ status: 409 });
+    await expect(submitSpotlightSubmission(db, bucket, { ...data, email: "other@example.com" }, { photo: jpeg })).rejects.toMatchObject({ status: 409 });
   });
 
   it("保存途中の失敗後は同じ画像を再利用して不足ファイルを保存できる", async () => {
@@ -265,7 +273,7 @@ describe("スタッフによる申請の審査", () => {
   it("一覧はpendingだけ、Staff専用画像URLを持つDTOで古い順に返す", async () => {
     const row = await pending();
     const details = await listSpotlightSubmissions(db, staff);
-    expect(details).toEqual([{ id: row.id, companyName: "所属", personName: "名前", submittedAt: 100, revision: 0, payload: row.payload, consentedAt: 100, consentVersion: 1, photoUrl: `/api/spotlight-submissions/${row.id}/images/photo`, logoUrl: `/api/spotlight-submissions/${row.id}/images/logo` }]);
+    expect(details).toEqual([{ id: row.id, companyName: "所属", personName: "名前", submittedAt: 100, revision: 0, payload: row.payload, consentedAt: 100, consentVersion: 2, contactEmail: "member@example.com", photoUrl: `/api/spotlight-submissions/${row.id}/images/photo`, logoUrl: `/api/spotlight-submissions/${row.id}/images/logo` }]);
     const image = await getSpotlightSubmissionImage(db, bucket, staff, row.id, "photo");
     expect(image.file.mimeType).toBe("image/jpeg");
     expect(new Uint8Array(await image.object.arrayBuffer())).toEqual(jpeg.bytes);
@@ -289,6 +297,8 @@ describe("スタッフによる申請の審査", () => {
     expect(await approveSpotlightSubmission(db, bucket, staff, row.id, 999)).toEqual(result);
     const [spotlight] = await db.select().from(memberSpotlights);
     expect(spotlight).toMatchObject({ id: result.spotlightId, companyName: "所属", personName: "名前", enabled: true });
+    expect(JSON.stringify(spotlight)).not.toContain("member@example.com");
+    expect(spotlight).not.toHaveProperty("contactEmail");
     const images = await db.select().from(media);
     expect(images).toHaveLength(2);
     expect(images.map((image) => image.r2Key).sort()).toEqual([row.logoFile!.r2Key, row.photoFile!.r2Key].sort());
@@ -296,7 +306,7 @@ describe("スタッフによる申請の審査", () => {
     // 文面は紹介へ写したので申請側には残さない。再送判定用のfingerprintと同意日時は残す
     expect((await db.select().from(memberSpotlightSubmissions))[0]).toMatchObject({ status: "approved", revision: 1, reviewedBy: "staff", approvedSpotlightId: result.spotlightId, payload: null, requestFingerprint: row.requestFingerprint, consentedAt: 100 });
     await db.delete(memberSpotlights).where(eq(memberSpotlights.id, result.spotlightId!));
-    expect(await approveSpotlightSubmission(db, bucket, staff, row.id, 0)).toEqual({ spotlightId: null });
+    expect(await approveSpotlightSubmission(db, bucket, staff, row.id, 0)).toEqual({ spotlightId: null, notificationStatus: "sent" });
     expect(await db.select().from(memberSpotlights)).toHaveLength(0);
   });
 
@@ -304,8 +314,8 @@ describe("スタッフによる申請の審査", () => {
     const row = await pending();
     await expect(approveSpotlightSubmission(db, bucket, staff, row.id, 1)).rejects.toMatchObject({ status: 409 });
     await expect(rejectSpotlightSubmission(db, staff, row.id, 1)).rejects.toMatchObject({ status: 409 });
-    expect(await rejectSpotlightSubmission(db, staff, row.id, 0)).toBeNull();
-    expect(await rejectSpotlightSubmission(db, staff, row.id, 999)).toBeNull();
+    expect(await rejectSpotlightSubmission(db, staff, row.id, 0)).toEqual({ notificationStatus: "sent" });
+    expect(await rejectSpotlightSubmission(db, staff, row.id, 999)).toEqual({ notificationStatus: "sent" });
     await expect(approveSpotlightSubmission(db, bucket, staff, row.id, 0)).rejects.toMatchObject({ status: 409 });
     expect(await db.select().from(memberSpotlights)).toHaveLength(0);
   });
@@ -313,7 +323,7 @@ describe("スタッフによる申請の審査", () => {
   it("同時承認は1件だけ掲載し、承認と却下では片方だけ確定する", async () => {
     const row = await pending();
     const approvals = await Promise.all([approveSpotlightSubmission(db, bucket, staff, row.id, 0), approveSpotlightSubmission(db, bucket, staff, row.id, 0)]);
-    expect(approvals[0]).toEqual(approvals[1]);
+    expect(approvals[0].spotlightId).toEqual(approvals[1].spotlightId);
     expect(await db.select().from(memberSpotlights)).toHaveLength(1);
     await submitSpotlightSubmission(db, bucket, input(), {});
     const second = (await db.select().from(memberSpotlightSubmissions)).find((candidate) => candidate.status === "pending")!;

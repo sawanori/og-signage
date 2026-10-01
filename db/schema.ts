@@ -330,6 +330,14 @@ export const memberSpotlightSubmissions = sqliteTable(
     id: id(),
     requestKey: text("request_key").notNull().unique(),
     requestFingerprint: text("request_fingerprint").notNull(),
+    /** 結果の通知専用。公開するpayloadやmember_spotlightsには写さない。 */
+    contactEmail: text("contact_email"),
+    notificationStatus: text("notification_status", { enum: ["pending", "sent", "failed", "skipped"] }),
+    notificationAttempts: integer("notification_attempts").notNull().default(0),
+    notifiedAt: integer("notified_at"),
+    notificationNextAt: integer("notification_next_at"),
+    /** 承認時はpayloadを消すため、通知が終わるまで宛名だけ保持する。 */
+    notificationName: text("notification_name"),
     payload: text("payload", { mode: "json" }).$type<SpotlightSubmissionPayload>(),
     photoFile: text("photo_file", { mode: "json" }).$type<SpotlightSubmissionFile>(),
     logoFile: text("logo_file", { mode: "json" }).$type<SpotlightSubmissionFile>(),
@@ -352,6 +360,8 @@ export const memberSpotlightSubmissions = sqliteTable(
     index("member_spotlight_submissions_status_updated_at_idx").on(t.status, t.updatedAt),
     index("member_spotlight_submissions_cleanup_idx").on(t.cleanupNextAt, t.id)
       .where(sql`${t.status} IN ('rejected', 'expired') AND ${t.cleanupCompletedAt} IS NULL`),
+    index("member_spotlight_submissions_notification_idx").on(t.notificationNextAt, t.id)
+      .where(sql`${t.notificationStatus} = 'pending'`),
   ],
 );
 

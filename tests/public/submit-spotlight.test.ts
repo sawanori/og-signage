@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { submitSpotlight, type SpotlightSubmissionSnapshot } from "@/lib/client/submit-spotlight";
 
 const snapshot: SpotlightSubmissionSnapshot = {
-  data: { requestKey: "9b1dc7e1-5bdf-4cf0-91a9-f995b712a2be", companyName: "会社", personName: "名前", personNameKana: null, role: null, quote: null, bio: null, tags: [], consent: true },
+  data: { requestKey: "9b1dc7e1-5bdf-4cf0-91a9-f995b712a2be", companyName: "会社", personName: "名前", email: "member@example.com", personNameKana: null, role: null, quote: null, bio: null, tags: [], consent: true },
   photo: new Blob(["same bytes"], { type: "image/jpeg" }), logo: null,
 };
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
@@ -26,6 +26,12 @@ describe("本人登録の送信結果", () => {
   it.each([400, 403, 413, 415, 429])("保存前の%sを区別して返す", async (status) => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ error: { code: "rejected", message: "受け付けできません" } }, { status, headers: { "Retry-After": "60" } })));
     expect(await submitSpotlight(snapshot)).toMatchObject({ kind: "rejected", status, message: "受け付けできません" });
+  });
+
+  it("旧画面のメール未入力を案内する400メッセージを保持する", async () => {
+    const message = "メールアドレスを入力してください。画面を読み込み直してください";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ error: { code: "validation_error", message } }, { status: 400 })));
+    expect(await submitSpotlight(snapshot)).toMatchObject({ kind: "rejected", status: 400, message });
   });
 
   it("410だけは期限切れと確定できる", async () => {

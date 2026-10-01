@@ -15,8 +15,10 @@ import {
   type SpotlightSubmissionImageKind,
   type SpotlightSubmissionDetail,
   type SpotlightSubmissionApproval,
+  type SpotlightSubmissionReview,
 } from "../spotlight-submissions";
 import { assertRole } from "./notices";
+import { notifySpotlightSubmission } from "./spotlight-notifications";
 
 export class SpotlightSubmissionError extends Error {
   constructor(readonly status: 400 | 404 | 409 | 410 | 413 | 415 | 503, readonly code: string, message: string) {
@@ -60,8 +62,11 @@ export async function submitSpotlightSubmission(
   now = nowSeconds(),
 ): Promise<{ accepted: true }> {
   const parsed = spotlightSubmissionInputSchema.safeParse(input);
-  if (!parsed.success) throw new SpotlightSubmissionError(400, "invalid_input", parsed.error.issues[0]?.message ?? "入力が正しくありません");
-  const { requestKey, consent, ...payload } = parsed.data;
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    throw new SpotlightSubmissionError(400, "invalid_input", issue?.code === "unrecognized_keys" ? "入力が正しくありません" : issue?.message ?? "入力が正しくありません");
+  }
+  const { requestKey, consent, email, ...payload } = parsed.data;
   const id = crypto.randomUUID();
   const files: Partial<Record<SpotlightSubmissionImageKind, SpotlightSubmissionFile>> = {};
   for (const kind of SPOTLIGHT_SUBMISSION_IMAGE_KINDS) {
@@ -72,9 +77,9 @@ export async function submitSpotlightSubmission(
     if (!mimeType || mimeType === "video/mp4" || mimeType !== image.mimeType) throw new SpotlightSubmissionError(415, "unsupported_image", "JPEG・PNG・WebPの画像を選択してください");
     files[kind] = { r2Key: `member-submissions/${id}/${kind}`, mimeType, size: image.bytes.length, sha256: await digest(image.bytes) };
   }
-  const fingerprint = await digest(new TextEncoder().encode(JSON.stringify({ payload, consent, photo: files.photo?.sha256 ?? null, logo: files.logo?.sha256 ?? null })));
+  const fingerprint = await digest(new TextEncoder().encode(JSON.stringify({ payload, consent, email, photo: files.photo?.sha256 ?? null, logo: files.logo?.sha256 ?? null })));
   await db.insert(memberSpotlightSubmissions).values({
-    id, requestKey, requestFingerprint: fingerprint, payload, photoFile: files.photo ?? null, logoFile: files.logo ?? null,
+    id, requestKey, requestFingerprint: fingerprint, payload, contactEmail: email, photoFile: files.photo ?? null, logoFile: files.logo ?? null,
     consentedAt: now, consentVersion: SPOTLIGHT_SUBMISSION_CONSENT_VERSION, createdAt: now, updatedAt: now,
   }).onConflictDoNothing({ target: memberSpotlightSubmissions.requestKey });
   let [row] = await db.select().from(memberSpotlightSubmissions).where(eq(memberSpotlightSubmissions.requestKey, requestKey));
@@ -117,6 +122,7 @@ export async function listSpotlightSubmissions(db: Db, user: AuthUser): Promise<
     return {
       id: row.id, companyName: row.payload.companyName, personName: row.payload.personName, revision: row.revision,
       submittedAt: row.submittedAt, payload: row.payload, consentedAt: row.consentedAt, consentVersion: row.consentVersion,
+      contactEmail: row.contactEmail,
       photoUrl: row.photoFile ? `/api/spotlight-submissions/${row.id}/images/photo` : null,
       logoUrl: row.logoFile ? `/api/spotlight-submissions/${row.id}/images/logo` : null,
     };
@@ -166,7 +172,7 @@ export async function approveSpotlightSubmission(db: Db, bucket: MediaBucket, us
   assertRole(user, "staff");
   validateRevision(revision);
   const before = await findSubmission(db, id);
-  if (before.status === "approved") return { spotlightId: before.approvedSpotlightId };
+  if (before.status === "approved") return { spotlightId: before.approvedSpotlightId, notificationStatus: before.notificationStatus ?? "skipped" };
   if (before.status !== "pending" || before.revision !== revision) throw conflict();
   for (const file of [before.photoFile, before.logoFile]) {
     if (!file) continue;
@@ -176,7 +182,7 @@ export async function approveSpotlightSubmission(db: Db, bucket: MediaBucket, us
     } catch { throw imageUnavailable(); }
   }
   // libSQLのwriteトランザクションで状態確定と関連行作成を一括rollback可能にする。
-  return withWriteRetry(() => db.transaction(async (tx) => {
+  const approval = await withWriteRetry(() => db.transaction(async (tx) => {
     const [row] = await tx.select().from(memberSpotlightSubmissions).where(eq(memberSpotlightSubmissions.id, id));
     if (!row) throw new SpotlightSubmissionError(404, "not_found", "申請が見つかりません");
     if (row.status === "approved") return { spotlightId: row.approvedSpotlightId };
@@ -184,7 +190,11 @@ export async function approveSpotlightSubmission(db: Db, bucket: MediaBucket, us
     if (!row.payload) throw reviewUnavailable();
     const now = nowSeconds();
     // 文面は紹介へ写すので、申請側には残さない（紹介を削除した後に個人の情報が残らないようにする）。
-    const changed = await tx.update(memberSpotlightSubmissions).set({ status: "approved", payload: null, revision: sql`${memberSpotlightSubmissions.revision} + 1`, reviewedAt: now, reviewedBy: user.id, updatedAt: now })
+    const changed = await tx.update(memberSpotlightSubmissions).set({
+      status: "approved", payload: null, revision: sql`${memberSpotlightSubmissions.revision} + 1`, reviewedAt: now, reviewedBy: user.id, updatedAt: now,
+      notificationStatus: row.contactEmail ? "pending" : "skipped", notificationNextAt: row.contactEmail ? now : null,
+      notificationName: row.contactEmail ? row.payload.personName : null,
+    })
       .where(and(eq(memberSpotlightSubmissions.id, id), eq(memberSpotlightSubmissions.status, "pending"), eq(memberSpotlightSubmissions.revision, revision))).returning();
     if (changed.length === 0) throw conflict();
     const imageIds: Partial<Record<SpotlightSubmissionImageKind, string>> = {};
@@ -198,16 +208,26 @@ export async function approveSpotlightSubmission(db: Db, bucket: MediaBucket, us
     await tx.update(memberSpotlightSubmissions).set({ approvedSpotlightId: spotlight.id }).where(eq(memberSpotlightSubmissions.id, id));
     return { spotlightId: spotlight.id };
   }, { behavior: "immediate" }));
+  return { ...approval, notificationStatus: await notifySpotlightSubmission(db, id) };
 }
 
-export async function rejectSpotlightSubmission(db: Db, user: AuthUser, id: string, revision: number): Promise<null> {
+export async function rejectSpotlightSubmission(db: Db, user: AuthUser, id: string, revision: number): Promise<SpotlightSubmissionReview> {
   assertRole(user, "staff");
   validateRevision(revision);
+  const before = await findSubmission(db, id);
+  if (before.status === "rejected") return { notificationStatus: before.notificationStatus ?? "skipped" };
+  if (before.status !== "pending" || before.revision !== revision) throw conflict();
+  if (before.contactEmail && !before.payload) throw reviewUnavailable();
   const now = nowSeconds();
-  const changed = await withWriteRetry(() => db.update(memberSpotlightSubmissions).set({ status: "rejected", revision: sql`${memberSpotlightSubmissions.revision} + 1`, reviewedAt: now, reviewedBy: user.id, updatedAt: now, cleanupNextAt: now })
+  const changed = await withWriteRetry(() => db.update(memberSpotlightSubmissions).set({
+    status: "rejected", revision: sql`${memberSpotlightSubmissions.revision} + 1`, reviewedAt: now, reviewedBy: user.id, updatedAt: now, cleanupNextAt: now,
+    notificationStatus: before.contactEmail ? "pending" : "skipped", notificationNextAt: before.contactEmail ? now : null,
+    notificationName: before.contactEmail ? before.payload!.personName : null,
+  })
     .where(and(eq(memberSpotlightSubmissions.id, id), eq(memberSpotlightSubmissions.status, "pending"), eq(memberSpotlightSubmissions.revision, revision))).returning({ id: memberSpotlightSubmissions.id }).execute());
-  if (changed.length > 0) return null;
-  if ((await findSubmission(db, id)).status === "rejected") return null;
+  if (changed.length > 0) return { notificationStatus: await notifySpotlightSubmission(db, id) };
+  const current = await findSubmission(db, id);
+  if (current.status === "rejected") return { notificationStatus: current.notificationStatus ?? "skipped" };
   throw conflict();
 }
 
@@ -219,24 +239,26 @@ export async function cleanupSpotlightSubmissions(db: Db, bucket: MediaBucket, n
     .orderBy(asc(memberSpotlightSubmissions.updatedAt), asc(memberSpotlightSubmissions.id)).limit(SPOTLIGHT_SUBMISSION_CLEANUP_BATCH_SIZE);
   for (const row of stale) {
     const expired = await db.update(memberSpotlightSubmissions)
-      .set({ status: "expired", revision: sql`${memberSpotlightSubmissions.revision} + 1`, updatedAt: now, cleanupNextAt: now })
+      .set({ status: "expired", contactEmail: null, notificationName: null, revision: sql`${memberSpotlightSubmissions.revision} + 1`, updatedAt: now, cleanupNextAt: now })
       .where(and(eq(memberSpotlightSubmissions.id, row.id), eq(memberSpotlightSubmissions.status, "receiving"), eq(memberSpotlightSubmissions.updatedAt, row.updatedAt))).returning({ id: memberSpotlightSubmissions.id });
     result.expired += expired.length;
   }
   // 部分索引のWHEREと一致する固定条件。パラメーター化するとSQLiteが索引を選べない。
   const due = await db.select().from(memberSpotlightSubmissions)
-    .where(and(sql`${memberSpotlightSubmissions.status} IN ('rejected', 'expired')`, isNull(memberSpotlightSubmissions.cleanupCompletedAt), lte(memberSpotlightSubmissions.cleanupNextAt, now)))
+    .where(and(sql`${memberSpotlightSubmissions.status} IN ('rejected', 'expired')`, sql`(${memberSpotlightSubmissions.notificationStatus} IS NULL OR ${memberSpotlightSubmissions.notificationStatus} <> 'pending')`, isNull(memberSpotlightSubmissions.cleanupCompletedAt), lte(memberSpotlightSubmissions.cleanupNextAt, now)))
     .orderBy(asc(memberSpotlightSubmissions.cleanupNextAt), asc(memberSpotlightSubmissions.id)).limit(SPOTLIGHT_SUBMISSION_CLEANUP_BATCH_SIZE);
   for (const row of due) {
     try {
+      await db.update(memberSpotlightSubmissions).set({ contactEmail: null, notificationName: null })
+        .where(and(eq(memberSpotlightSubmissions.id, row.id), sql`(${memberSpotlightSubmissions.notificationStatus} IS NULL OR ${memberSpotlightSubmissions.notificationStatus} <> 'pending')`));
       const keys = [row.photoFile?.r2Key, row.logoFile?.r2Key].filter((key): key is string => key !== undefined);
       if (keys.length > 0) {
         const owned = await db.select({ id: media.id }).from(media).where(inArray(media.r2Key, keys)).limit(1);
         if (owned.length > 0) throw new Error("Submission key belongs to media");
         for (const key of keys) await putSpotlightSubmissionMarker(bucket, key);
       }
-      const completed = await db.update(memberSpotlightSubmissions).set({ payload: null, cleanupNextAt: null, cleanupCompletedAt: now })
-        .where(and(eq(memberSpotlightSubmissions.id, row.id), inArray(memberSpotlightSubmissions.status, ["rejected", "expired"]), isNull(memberSpotlightSubmissions.cleanupCompletedAt))).returning({ id: memberSpotlightSubmissions.id });
+      const completed = await db.update(memberSpotlightSubmissions).set({ payload: null, contactEmail: null, notificationName: null, cleanupNextAt: null, cleanupCompletedAt: now })
+        .where(and(eq(memberSpotlightSubmissions.id, row.id), inArray(memberSpotlightSubmissions.status, ["rejected", "expired"]), sql`(${memberSpotlightSubmissions.notificationStatus} IS NULL OR ${memberSpotlightSubmissions.notificationStatus} <> 'pending')`, isNull(memberSpotlightSubmissions.cleanupCompletedAt))).returning({ id: memberSpotlightSubmissions.id });
       result.completed += completed.length;
     } catch {
       result.failed++;

@@ -11,7 +11,7 @@ export const SPOTLIGHT_SUBMISSION_MAX_IMAGE_EDGE = 1280;
 export const SPOTLIGHT_SUBMISSION_MIN_IMAGE_EDGE = 640;
 /** 1枚あたりこの大きさに収まるまで画質を下げ、それでも大きければ寸法を縮める（写真とロゴを合わせて1MB未満） */
 export const SPOTLIGHT_SUBMISSION_TARGET_IMAGE_BYTES = 400 * 1024;
-export const SPOTLIGHT_SUBMISSION_CONSENT_VERSION = 1;
+export const SPOTLIGHT_SUBMISSION_CONSENT_VERSION = 2;
 export const SPOTLIGHT_SUBMISSION_RETRY_AFTER_SECONDS = 60;
 export const SPOTLIGHT_SUBMISSION_CLEANUP_BATCH_SIZE = 50;
 export const SPOTLIGHT_SUBMISSION_EXPIRY_SECONDS = 24 * 60 * 60;
@@ -25,6 +25,10 @@ export const SPOTLIGHT_SUBMISSION_IMAGE_MIME_TYPES = ["image/jpeg", "image/png",
 
 export const spotlightSubmissionInputSchema = z.strictObject({
   ...spotlightTextSchema.shape,
+  email: z.string({ error: "メールアドレスを入力してください。画面を読み込み直してください" }).trim()
+    .min(1, "メールアドレスを入力してください")
+    .max(254, "メールアドレスは254文字以内で入力してください")
+    .email("メールアドレスの形式が正しくありません"),
   requestKey: z.uuid({ error: "送信情報が正しくありません" }),
   consent: z.literal(true, { error: "掲載先を確認して同意してください" }),
 });
@@ -34,6 +38,7 @@ export type SpotlightSubmissionPayload = z.infer<typeof spotlightTextSchema>;
 export type SpotlightSubmissionStatus = (typeof SPOTLIGHT_SUBMISSION_STATUSES)[number];
 export type SpotlightSubmissionImageKind = (typeof SPOTLIGHT_SUBMISSION_IMAGE_KINDS)[number];
 export type SpotlightSubmissionImageMimeType = (typeof SPOTLIGHT_SUBMISSION_IMAGE_MIME_TYPES)[number];
+export type SpotlightNotificationStatus = "pending" | "sent" | "failed" | "skipped";
 
 /** 検査後のサーバーだけが生成する保存情報。公開POSTのJSONでは受け付けない。 */
 export interface SpotlightSubmissionFile {
@@ -54,12 +59,17 @@ export interface SpotlightSubmissionSummary {
 /** Staff画面用。requestKey・fingerprint・R2キーはブラウザへ渡さない。 */
 export interface SpotlightSubmissionDetail extends SpotlightSubmissionSummary {
   payload: SpotlightSubmissionPayload;
+  contactEmail: string | null;
   consentedAt: number;
   consentVersion: number;
   photoUrl: string | null;
   logoUrl: string | null;
 }
 
-export interface SpotlightSubmissionApproval {
+export interface SpotlightSubmissionReview {
+  notificationStatus: SpotlightNotificationStatus;
+}
+
+export interface SpotlightSubmissionApproval extends SpotlightSubmissionReview {
   spotlightId: string | null;
 }

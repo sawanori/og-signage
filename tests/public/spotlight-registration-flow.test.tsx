@@ -46,23 +46,29 @@ it("写真付き受付の202消失と再送429を経ても、元の1件だけを
     render(<SpotlightRegistrationForm />);
     fireEvent.change(screen.getByLabelText("会社名・所属"), { target: { value: "合同会社サンプル" } });
     fireEvent.change(screen.getByLabelText("お名前"), { target: { value: "山田 太郎" } });
+    fireEvent.change(screen.getByLabelText("メールアドレス"), { target: { value: "member@example.com" } });
     fireEvent.change(screen.getByLabelText("写真（任意）"), { target: { files: [new File([imageBytes], "portrait.jpg", { type: "image/jpeg" })] } });
     await waitFor(() => expect((screen.getByRole("button", { name: "紹介を送信" }) as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "紹介を送信" }));
     await screen.findByRole("button", { name: "送信結果を確認" });
-    expect(await db.select().from(memberSpotlightSubmissions)).toMatchObject([{ status: "pending", payload: { personName: "山田 太郎" } }]);
+    const [saved] = await db.select().from(memberSpotlightSubmissions);
+    expect(saved).toMatchObject({ status: "pending", contactEmail: "member@example.com", payload: { personName: "山田 太郎" } });
+    expect(JSON.stringify(saved.payload)).not.toContain("member@example.com");
 
     fireEvent.change(screen.getByLabelText("お名前"), { target: { value: "変更後の名前" } });
+    fireEvent.change(screen.getByLabelText("メールアドレス"), { target: { value: "changed@example.com" } });
     fireEvent.change(screen.getByLabelText("写真（任意）"), { target: { files: [new File(["different"], "other.jpg")] } });
     fireEvent.click(screen.getByRole("checkbox"));
     expect((screen.getByLabelText("お名前") as HTMLInputElement).value).toBe("山田 太郎");
+    expect((screen.getByLabelText("メールアドレス") as HTMLInputElement).value).toBe("member@example.com");
     expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(true);
     expect(screen.queryByRole("button", { name: "紹介を送信" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "送信結果を確認" }));
     await screen.findByText("1秒後にもう一度確認してください");
     expect((screen.getByLabelText("お名前") as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByLabelText("メールアドレス") as HTMLInputElement).disabled).toBe(true);
     await waitFor(() => expect((screen.getByRole("button", { name: "送信結果を確認" }) as HTMLButtonElement).disabled).toBe(false), { timeout: 2000 });
     fireEvent.click(screen.getByRole("button", { name: "送信結果を確認" }));
     await screen.findByRole("heading", { name: "送信しました" });

@@ -2,6 +2,7 @@
  * worker/scheduled.ts（task_013）。DB は一時 libSQL ファイル、R2 はメモリ上の偽物、getDb/getMediaBucket は差し替える。
  */
 import { eq } from "drizzle-orm";
+import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "../../db/index";
 import { deviceLogs, devices, events, media, memberSpotlightSubmissions, uploads, users } from "../../db/schema";
@@ -97,7 +98,7 @@ beforeEach(async () => {
   vi.clearAllMocks();
 });
 
-afterEach(() => close());
+afterEach(() => { env.RESEND_API_KEY = undefined; vi.restoreAllMocks(); close(); });
 
 async function addUser(): Promise<string> {
   const [row] = await db.insert(users).values({ email: `${crypto.randomUUID()}@example.com`, role: "staff" }).returning({ id: users.id });
@@ -215,9 +216,36 @@ describe("scheduled", () => {
     expect(bucket.objects.get(key)).toHaveLength(0);
     expect(bucket.deleted).not.toContain(key);
   });
-  it(`${WEATHER_CRON} は天気の取得だけを行う`, async () => {
+  it(`${WEATHER_CRON} は天気の取得と掲載結果の再送を行う`, async () => {
+    env.RESEND_API_KEY = "resend-test-only";
+    const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ id: "mail-id" }));
+    const now = Math.floor(Date.now() / 1000);
+    await db.insert(memberSpotlightSubmissions).values({
+      id: "notify", requestKey: "notify", requestFingerprint: "hash", status: "rejected", consentedAt: now, consentVersion: 2,
+      contactEmail: "member@example.com", notificationName: "山田", notificationStatus: "pending", notificationNextAt: now - 1, reviewedAt: now - 60,
+    });
     await scheduled(WEATHER_CRON);
     expect(refreshWeather).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect((await db.select().from(memberSpotlightSubmissions))[0]).toMatchObject({ notificationStatus: "sent", contactEmail: null, notifiedAt: expect.any(Number) });
+  });
+
+  it("天気取得の失敗時にも再送し、日次回収が先に走っても通知待ちは消さない", async () => {
+    env.RESEND_API_KEY = "resend-test-only";
+    const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ id: "mail-id" }));
+    const now = Math.floor(Date.now() / 1000);
+    await db.insert(memberSpotlightSubmissions).values({
+      id: "notify", requestKey: "notify", requestFingerprint: "hash", status: "rejected", consentedAt: now, consentVersion: 2,
+      contactEmail: "member@example.com", notificationName: "山田", notificationStatus: "pending", notificationNextAt: now - 1, reviewedAt: now - 60, cleanupNextAt: now - 1,
+    });
+    await scheduled(DAILY_CRON);
+    expect((await db.select().from(memberSpotlightSubmissions))[0]).toMatchObject({ notificationStatus: "pending", contactEmail: "member@example.com", cleanupCompletedAt: null });
+    expect(fetch).not.toHaveBeenCalled();
+    vi.mocked(refreshWeather).mockRejectedValueOnce(new Error("weather unavailable"));
+    await expect(scheduled(WEATHER_CRON)).rejects.toThrow("weather unavailable");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await scheduled(DAILY_CRON);
+    expect((await db.select().from(memberSpotlightSubmissions))[0]).toMatchObject({ notificationStatus: "sent", contactEmail: null, cleanupCompletedAt: expect.any(Number) });
   });
 
   it(`${DAILY_CRON} は削除予約・停滞アップロード・古いログ・終わって 1 週間を過ぎたイベントの掃除をまとめて行う`, async () => {
