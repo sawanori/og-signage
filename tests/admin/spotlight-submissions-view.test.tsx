@@ -7,7 +7,7 @@ const actions = vi.hoisted(() => ({
   approveSpotlightSubmissionAction: vi.fn(),
   rejectSpotlightSubmissionAction: vi.fn(),
 }));
-const router = vi.hoisted(() => ({ refresh: vi.fn() }));
+const router = vi.hoisted(() => ({ refresh: vi.fn(), replace: vi.fn() }));
 const preview = vi.hoisted(() => vi.fn());
 vi.mock("@/app/admin/_actions/spotlight-submissions", () => actions);
 vi.mock("@/app/admin/_actions/spotlights", () => ({
