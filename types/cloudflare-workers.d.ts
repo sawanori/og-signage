@@ -14,6 +14,10 @@ declare module "cloudflare:workers" {
     AUTH_SECRET: string;
     LOGIN_RATE_LIMITER: RateLimit;
     SPOTLIGHT_SUBMISSION_RATE_LIMITER: RateLimit;
+    /** 名刺の読み取り（/api/business-card）。ログイン不要の本人登録から呼ばれるので IP ごとに数を絞る */
+    BUSINESS_CARD_RATE_LIMITER: RateLimit;
+    /** 名刺の読み取りに使う Gemini の API キー（有料枠。Secret）。未設定なら読み取りを使えない */
+    GEMINI_API_KEY?: string;
     RESEND_API_KEY?: string;
     SPOTLIGHT_NOTIFICATION_FROM: string;
     COMPANY_RESEARCH?: import("../worker/company-research-dispatch").CompanyResearchServiceBinding;

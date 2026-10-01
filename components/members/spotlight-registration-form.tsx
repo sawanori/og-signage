@@ -3,7 +3,9 @@
 import "@fontsource/line-seed-jp/400.css";
 import "@fontsource/line-seed-jp/700.css";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { fillEmptyFields, type BusinessCardField } from "@/lib/business-card";
 import { prepareSpotlightImage } from "@/lib/client/prepare-spotlight-image";
+import { scanBusinessCard } from "@/lib/client/scan-business-card";
 import { submitSpotlight, type SpotlightSubmissionSnapshot } from "@/lib/client/submit-spotlight";
 import { spotlightSubmissionInputSchema, type SpotlightSubmissionImageKind } from "@/lib/spotlight-submissions";
 import { countChars, SPOTLIGHT_BIO_MAX, SPOTLIGHT_QUOTE_MAX, SPOTLIGHT_TAG_MAX, SPOTLIGHT_TAGS_MAX } from "@/lib/validators";
@@ -17,6 +19,9 @@ type Phase = "editing" | "sending" | "uncertain" | "accepted";
 const EMPTY_TEXT: TextFields = { companyName: "", personName: "", email: "", personNameKana: "", role: "", quote: "", bio: "", websiteUrl: "", websiteUrl2: "" };
 const EMPTY_IMAGES: Images = { photo: null, logo: null };
 const optional = (text: string) => text.trim() || null;
+/** 名刺の項目をどの入力欄に入れるか */
+const CARD_FIELDS: Partial<Record<BusinessCardField, keyof TextFields>> = { companyName: "companyName", personName: "personName", personNameKana: "personNameKana", role: "role", email: "email", websiteUrl: "websiteUrl" };
+const FIELD_LABELS: Record<keyof TextFields, string> = { companyName: "会社名・所属", personName: "お名前", email: "メールアドレス", personNameKana: "ふりがな", role: "肩書き", quote: "ひとこと", bio: "紹介文", websiteUrl: "ホームページのURL 1", websiteUrl2: "ホームページのURL 2" };
 
 /** notificationFrom: 結果メールの差出人（例「サイネージ管理 <noreply@non-turn.com>」）。完了画面で迷惑メールの確認を案内する */
 export function SpotlightRegistrationForm({ notificationFrom }: { notificationFrom: string }) {
@@ -30,12 +35,17 @@ export function SpotlightRegistrationForm({ notificationFrom }: { notificationFr
   const [message, setMessage] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [retryAfterSeconds, setRetryAfterSeconds] = useState(0);
+  const [card, setCard] = useState<{ busy: boolean; message: string | null; error: string | null }>({ busy: false, message: null, error: null });
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const fieldsRef = useRef(fields);
   const snapshot = useRef<SpotlightSubmissionSnapshot | null>(null);
   const unresolved = useRef(false);
   const sending = useRef(false);
   const imageRefs = useRef<Images>(EMPTY_IMAGES);
   const active = useRef(true);
   const locked = phase === "sending" || phase === "uncertain";
+
+  useEffect(() => { fieldsRef.current = fields; }, [fields]);
 
   useEffect(() => {
     active.current = true;
@@ -85,9 +95,27 @@ export function SpotlightRegistrationForm({ notificationFrom }: { notificationFr
     }
   };
 
+  /** 名刺の写真から、空いている欄だけを埋める。入力済みの欄は変えない */
+  const readCard = async (file: File | undefined) => {
+    if (!file || locked || card.busy) return;
+    setCard({ busy: true, message: null, error: null });
+    const result = await scanBusinessCard(file);
+    if (!active.current) return;
+    if (result.kind === "error") { setCard({ busy: false, message: null, error: result.message }); return; }
+    const { patch, filled } = fillEmptyFields(fieldsRef.current, result.card, CARD_FIELDS);
+    setFields((current) => ({ ...current, ...fillEmptyFields(current, result.card, CARD_FIELDS).patch }));
+    setErrors((current) => ({ ...current, ...Object.fromEntries(filled.map((key) => [key, ""])) }));
+    // URL は「詳しい情報」の中にあるので、入れたときは開いて見えるようにする
+    if (patch.websiteUrl) setDetailsOpen(true);
+    setCard({ busy: false, error: null, message: filled.length
+      ? `名刺から「${filled.map((key) => FIELD_LABELS[key]).join("」「")}」を入力しました。内容が正しいか確認してください。`
+      : "名刺から新しく入力できる項目はありませんでした。入力済みの欄はそのままにしています。" });
+  };
+
   const send = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (sending.current || preparing || retryAfterSeconds > 0 || phase === "accepted") return;
+    // 名刺の読み取り中に送ると、送った内容と読み取り後の画面がずれるので、読み取りの完了を待つ
+    if (sending.current || preparing || card.busy || retryAfterSeconds > 0 || phase === "accepted") return;
     let current = snapshot.current;
     if (!current) {
       const parsed = spotlightSubmissionInputSchema.safeParse({ ...textPayload, websiteUrl2: optional(fields.websiteUrl2), email: fields.email, requestKey: crypto.randomUUID(), consent });
@@ -184,6 +212,15 @@ export function SpotlightRegistrationForm({ notificationFrom }: { notificationFr
         </header>
         <form className={styles.card} noValidate onSubmit={(event) => { void send(event); }}>
           <div className={styles.sectionHead}><h2>あなたについて</h2><p>会社名・所属とお名前をご入力ください。</p></div>
+          <div className={styles.field}>
+            <label htmlFor="member-card">名刺から入力（任意）</label>
+            <p id="card-hint" className={styles.hint}>名刺の写真を選ぶと、会社名・お名前・メールアドレスなどの空いている欄に自動で入力します。画像は読み取りのためにGoogleのAI（Gemini）へ送りますが、保存はしません。</p>
+            <input id="member-card" type="file" accept="image/jpeg,image/png,image/webp" disabled={locked || card.busy} aria-describedby="card-hint"
+              onChange={(event) => { void readCard(event.currentTarget.files?.[0]); event.currentTarget.value = ""; }} />
+            {card.busy ? <p role="status">名刺を読み取っています…</p> : null}
+            {card.message ? <p role="status" className={styles.hint}>{card.message}</p> : null}
+            {card.error ? <p role="alert" className={styles.fieldError}>{card.error}</p> : null}
+          </div>
           <TextField name="companyName" label="会社名・所属" value={fields.companyName} max={30} required disabled={locked} error={errors.companyName} onChange={change} />
           <TextField name="personName" label="お名前" value={fields.personName} max={20} required disabled={locked} error={errors.personName} onChange={change} />
           <div className={styles.field}>
@@ -198,7 +235,7 @@ export function SpotlightRegistrationForm({ notificationFrom }: { notificationFr
           <TextField name="role" label="肩書き（任意）" value={fields.role} max={30} disabled={locked} error={errors.role} onChange={change} />
           <TextField name="quote" label="ひとこと（任意）" value={fields.quote} max={SPOTLIGHT_QUOTE_MAX} multiline disabled={locked} error={errors.quote} onChange={change} />
           {imageField("photo")}
-          <details className={styles.details}>
+          <details className={styles.details} open={detailsOpen} onToggle={(event) => setDetailsOpen(event.currentTarget.open)}>
             <summary>詳しい情報を追加する（任意）</summary>
             <TextField name="bio" label="紹介文（任意）" value={fields.bio} max={SPOTLIGHT_BIO_MAX} multiline disabled={locked} error={errors.bio} onChange={change} />
             <fieldset className={styles.tags} disabled={locked}>
@@ -237,7 +274,7 @@ export function SpotlightRegistrationForm({ notificationFrom }: { notificationFr
             {message ? <p role="alert" className={styles.message}>{message}</p> : null}
             {phase === "uncertain" ? <p className={styles.hint}>重複を防ぐため、入力内容を固定しています。画面を閉じずに、同じ内容で送信結果を確認してください。</p> : null}
             {retryAfterSeconds > 0 ? <p role="status" className={styles.hint}>あと{retryAfterSeconds}秒お待ちください。</p> : null}
-            <button type="submit" className={styles.primaryButton} disabled={phase === "sending" || preparing !== null || retryAfterSeconds > 0}>
+            <button type="submit" className={styles.primaryButton} disabled={phase === "sending" || preparing !== null || card.busy || retryAfterSeconds > 0}>
               {phase === "sending" ? "送信しています…" : phase === "uncertain" ? "送信結果を確認" : "紹介を送信"}
             </button>
             <p className={styles.hint}>送信後の修正はスタッフへご依頼ください。</p>

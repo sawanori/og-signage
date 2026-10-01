@@ -2,5 +2,7 @@ TURSO_DATABASE_URL=
 TURSO_AUTH_TOKEN=
 AUTH_SECRET=
 OPENWEATHER_API_KEY=
+# 名刺の読み取り（Gemini 3.8 Flash）。必ず課金を有効にした有料枠のキーにする（無料枠は送った内容が Google の改善に使われる）
+GEMINI_API_KEY=
 # ローカルの http 開発だけ設定する（例: http://localhost:5173）。本番の Secret には入れない
 AUTH_URL=

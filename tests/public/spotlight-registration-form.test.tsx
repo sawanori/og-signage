@@ -4,9 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SpotlightRegistrationForm } from "@/components/members/spotlight-registration-form";
 import { submitSpotlight, type SpotlightSubmissionResult } from "@/lib/client/submit-spotlight";
 import { prepareSpotlightImage } from "@/lib/client/prepare-spotlight-image";
+import { scanBusinessCard, type BusinessCardScan } from "@/lib/client/scan-business-card";
 
 vi.mock("@/lib/client/submit-spotlight", () => ({ submitSpotlight: vi.fn() }));
 vi.mock("@/lib/client/prepare-spotlight-image", () => ({ prepareSpotlightImage: vi.fn() }));
+vi.mock("@/lib/client/scan-business-card", () => ({ scanBusinessCard: vi.fn() }));
 const preview = vi.hoisted(() => vi.fn());
 vi.mock("@/components/members/spotlight-preview", () => ({ SpotlightPreview: ({ payload }: { payload: { personName: string } }) => {
   preview(payload);
@@ -18,6 +20,9 @@ const NOTIFICATION_FROM = "サイネージ管理 <noreply@non-turn.com>";
 const WEBSITE_LABEL = "ホームページのURL 1（任意）";
 const WEBSITE_2_LABEL = "ホームページのURL 2（任意）";
 const prepare = vi.mocked(prepareSpotlightImage);
+const scan = vi.mocked(scanBusinessCard);
+const cardFile = () => new File(["card"], "card.jpg", { type: "image/jpeg" });
+const scanned: BusinessCardScan = { kind: "ok", card: { companyName: "株式会社名刺", personName: "名刺 太郎", personNameKana: null, role: "ディレクター", email: "card@example.com", websiteUrl: "https://card.example/" } };
 const rejected = (status: number): SpotlightSubmissionResult => ({ kind: "rejected", status, message: "再度確認してください", retryAfterSeconds: status === 429 ? 1 : 0 });
 const input = () => {
   fireEvent.change(screen.getByLabelText("会社名・所属"), { target: { value: " 株式会社サンプル " } });
@@ -153,6 +158,36 @@ describe("本人登録フォーム", () => {
     fireEvent.click(screen.getByRole("button", { name: "写真を取り消す" }));
     expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
     unmount();
+  });
+
+  it("名刺から空いている欄だけを埋め、入力済みの欄は変えず、URLを入れたら詳しい情報を開く", async () => {
+    scan.mockResolvedValueOnce(scanned);
+    render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
+    fireEvent.change(screen.getByLabelText("お名前"), { target: { value: "手入力 花子" } });
+    fireEvent.change(screen.getByLabelText("名刺から入力（任意）"), { target: { files: [cardFile()] } });
+    expect(await screen.findByText("名刺から「会社名・所属」「肩書き」「メールアドレス」「ホームページのURL 1」を入力しました。内容が正しいか確認してください。")).toBeTruthy();
+    expect((screen.getByLabelText("会社名・所属") as HTMLInputElement).value).toBe("株式会社名刺");
+    expect((screen.getByLabelText("お名前") as HTMLInputElement).value).toBe("手入力 花子");
+    expect((screen.getByLabelText("メールアドレス") as HTMLInputElement).value).toBe("card@example.com");
+    expect((screen.getByLabelText("ふりがな（任意）") as HTMLInputElement).value).toBe("");
+    expect((screen.getByLabelText(WEBSITE_LABEL) as HTMLInputElement).value).toBe("https://card.example/");
+    expect((screen.getByText("詳しい情報を追加する（任意）").closest("details") as HTMLDetailsElement).open).toBe(true);
+  });
+
+  it("名刺の読み取り中は送信を止め、読み取れなかったときは理由を出して入力を変えない", async () => {
+    let resolve!: (value: BusinessCardScan) => void;
+    scan.mockReturnValueOnce(new Promise((done) => { resolve = done; }));
+    render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
+    input();
+    fireEvent.change(screen.getByLabelText("名刺から入力（任意）"), { target: { files: [cardFile()] } });
+    expect(await screen.findByText("名刺を読み取っています…")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "紹介を送信" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.submit(screen.getByRole("button", { name: "紹介を送信" }).closest("form")!);
+    expect(submit).not.toHaveBeenCalled();
+    await act(async () => resolve({ kind: "error", message: "名刺を読み取れませんでした。" }));
+    expect(screen.getByRole("alert").textContent).toBe("名刺を読み取れませんでした。");
+    expect((screen.getByLabelText("会社名・所属") as HTMLInputElement).value).toBe(" 株式会社サンプル ");
+    expect((screen.getByRole("button", { name: "紹介を送信" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   it.each([400, 429])("最初の保存前%sでは入力を修正できる", async (status) => {

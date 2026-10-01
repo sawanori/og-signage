@@ -5,6 +5,8 @@ export const env = {
   AUTH_SECRET: "test-secret-test-secret-test-secret-0123",
   LOGIN_RATE_LIMITER: { limit: async () => ({ success: true }) },
   SPOTLIGHT_SUBMISSION_RATE_LIMITER: { limit: async () => ({ success: true }) },
+  BUSINESS_CARD_RATE_LIMITER: { limit: async () => ({ success: true }) },
+  GEMINI_API_KEY: undefined as string | undefined,
   RESEND_API_KEY: undefined as string | undefined,
   SPOTLIGHT_NOTIFICATION_FROM: "サイネージ管理 <noreply@non-turn.com>",
 };

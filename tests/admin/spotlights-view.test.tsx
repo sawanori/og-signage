@@ -22,9 +22,11 @@ vi.mock("@/app/admin/_actions/spotlight-submissions", () => ({
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
 vi.mock("@/lib/client/upload", () => ({ uploadMedia: vi.fn(), UploadError: class UploadError extends Error {} }));
+vi.mock("@/lib/client/scan-business-card", () => ({ scanBusinessCard: vi.fn() }));
 
 import { SpotlightsView } from "@/components/admin/spotlights-view";
 import { uploadMedia } from "@/lib/client/upload";
+import { scanBusinessCard, type BusinessCardScan } from "@/lib/client/scan-business-card";
 
 const SAVED = "保存しました。サイネージには 30 秒以内に反映されます。";
 const PERSON_LABEL = "お名前（サイネージでは「さん」を付けて出します）";
@@ -103,6 +105,16 @@ function holdUpload(): (media: { id: string; type: "image" }) => void {
   );
   return (media) => finish(media);
 }
+
+/** 名刺の読み取りを途中で止めておく。返した関数を呼ぶと結果が届く */
+function holdCard(): (result: BusinessCardScan) => void {
+  let finish!: (result: BusinessCardScan) => void;
+  vi.mocked(scanBusinessCard).mockImplementation(() => new Promise((resolve) => (finish = resolve)));
+  return (result) => finish(result);
+}
+const cardReading: BusinessCardScan = { kind: "ok", card: { companyName: "名刺の会社", personName: "名刺 太郎", personNameKana: "めいし たろう", role: "部長", email: "card@example.com", websiteUrl: "https://card.example/" } };
+const chooseCard = () =>
+  fireEvent.change(screen.getByLabelText("名刺の画像"), { target: { files: [new File(["card"], "card.jpg", { type: "image/jpeg" })] } });
 
 const choosePhoto = () =>
   fireEvent.change(screen.getByLabelText(PHOTO_LABEL), {
@@ -440,6 +452,41 @@ describe("SpotlightsView の追加・編集・削除", () => {
     fireEvent.click(saveButton());
     await waitFor(() => expect(actions.updateSpotlightAction).toHaveBeenCalledTimes(1));
     expect(actions.updateSpotlightAction.mock.calls[0][1]).toMatchObject({ contactEmail: "unregistered@example.invalid" });
+  });
+
+  it("名刺の読み取り中は保存できず、空欄と仮のメールアドレスだけを名刺の値で埋める", async () => {
+    const finishCard = holdCard();
+    render(<SpotlightsView spotlights={[{ ...sato, contactEmail: "unregistered@example.invalid", websiteUrl: null }]} />);
+    fireEvent.click(screen.getByRole("button", { name: "編集" }));
+    chooseCard();
+    expect(saveButton().disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "名刺を読み取っています…" }) as HTMLButtonElement).disabled).toBe(true);
+
+    await act(async () => finishCard(cardReading));
+    expect(screen.getByText("名刺から「ふりがな」「肩書き」「メールアドレス」「ホームページの URL 1」を入力しました。内容を確認してから保存してください。")).toBeTruthy();
+    expect((screen.getByLabelText("会社名") as HTMLInputElement).value).toBe("佐藤商店");
+    expect((screen.getByLabelText(PERSON_LABEL) as HTMLInputElement).value).toBe("佐藤 次郎");
+    expect((screen.getByLabelText(EMAIL_LABEL) as HTMLInputElement).value).toBe("card@example.com");
+    expect(saveButton().disabled).toBe(false);
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(actions.updateSpotlightAction).toHaveBeenCalledTimes(1));
+    expect(actions.updateSpotlightAction.mock.calls[0][1]).toMatchObject({
+      companyName: "佐藤商店", personName: "佐藤 次郎", personNameKana: "めいし たろう", role: "部長",
+      contactEmail: "card@example.com", websiteUrl: "https://card.example/",
+    });
+  });
+
+  it("名刺の読み取り中に別の人の編集へ切り替えても、その結果は切り替えた先の人に入らない", async () => {
+    const finishCard = holdCard();
+    render(<SpotlightsView spotlights={[yamada, { ...sato, personNameKana: null }]} />);
+    const [first, second] = within(screen.getByRole("region", { name: "メンバー紹介一覧" })).getAllByRole("listitem");
+    fireEvent.click(within(first).getByRole("button", { name: "編集" }));
+    chooseCard();
+    fireEvent.click(within(second).getByRole("button", { name: "編集" }));
+
+    await act(async () => finishCard(cardReading));
+    expect((screen.getByLabelText(KANA_LABEL) as HTMLInputElement).value).toBe("");
+    expect(screen.queryByText(/名刺から「/)).toBeNull();
   });
 
   it("削除は確認してから、その人の id で削除する", async () => {

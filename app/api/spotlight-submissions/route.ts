@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { checkCsrf } from "@/lib/csrf";
 import { getMediaBucket } from "@/lib/r2";
+import { readLimitedFormData } from "@/lib/read-limited-form";
 import { getDb } from "@/lib/runtime";
 import { SpotlightSubmissionError, submitSpotlightSubmission, type SpotlightSubmissionImages } from "@/lib/services/spotlight-submissions";
 import { SPOTLIGHT_SUBMISSION_MAX_BODY_BYTES, SPOTLIGHT_SUBMISSION_MAX_DATA_BYTES, SPOTLIGHT_SUBMISSION_RETRY_AFTER_SECONDS } from "@/lib/spotlight-submissions";
@@ -9,32 +10,11 @@ function invalidInput(message = "送信内容が正しくありません"): neve
   throw new SpotlightSubmissionError(400, "invalid_input", message);
 }
 
-async function readForm(request: Request): Promise<FormData> {
-  const length = request.headers.get("content-length");
-  if (length !== null && Number(length) > SPOTLIGHT_SUBMISSION_MAX_BODY_BYTES) throw new SpotlightSubmissionError(413, "body_too_large", "送信内容は5MiBまでです");
-  const contentType = request.headers.get("content-type");
-  if (!contentType?.toLowerCase().startsWith("multipart/form-data;") || !request.body) invalidInput();
-  const reader = request.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  try {
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      total += value.byteLength;
-      if (total > SPOTLIGHT_SUBMISSION_MAX_BODY_BYTES) {
-        await reader.cancel();
-        throw new SpotlightSubmissionError(413, "body_too_large", "送信内容は5MiBまでです");
-      }
-      chunks.push(value);
-    }
-  } finally { reader.releaseLock(); }
-  const bytes = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
-  try {
-    return await new Request(request.url, { method: "POST", headers: { "content-type": contentType }, body: bytes }).formData();
-  } catch { return invalidInput(); }
+function readForm(request: Request): Promise<FormData> {
+  return readLimitedFormData(request, SPOTLIGHT_SUBMISSION_MAX_BODY_BYTES, {
+    tooLarge: () => new SpotlightSubmissionError(413, "body_too_large", "送信内容は5MiBまでです"),
+    invalid: () => new SpotlightSubmissionError(400, "invalid_input", "送信内容が正しくありません"),
+  });
 }
 
 export async function POST(request: Request): Promise<Response> {

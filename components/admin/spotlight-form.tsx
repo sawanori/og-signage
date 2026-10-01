@@ -6,12 +6,19 @@
  * 文字数の上限は lib/validators.ts の spotlightInputSchema と同じ値。
  */
 import { useEffect, useRef, useState } from "react";
+import { fillEmptyFields, type BusinessCardField } from "@/lib/business-card";
+import { scanBusinessCard } from "@/lib/client/scan-business-card";
 import type { SpotlightRow } from "@/lib/services/spotlights";
 import { SPOTLIGHT_BIO_MAX, SPOTLIGHT_PLACEHOLDER_EMAIL, SPOTLIGHT_QUOTE_MAX, SPOTLIGHT_TAG_MAX, SPOTLIGHT_TAGS_MAX, countChars } from "@/lib/validators";
 import { MediaUploadField, mediaThumbnailUrl } from "./media-upload-field";
 import styles from "./settings.module.css";
 
 const IMAGE_HINT = "JPEG・PNG・WebP（20MBまで）";
+
+type CardTextKey = "companyName" | "personName" | "personNameKana" | "role" | "contactEmail" | "websiteUrl";
+/** 名刺の項目をどの入力欄に入れるか */
+const CARD_FIELDS: Record<BusinessCardField, CardTextKey> = { companyName: "companyName", personName: "personName", personNameKana: "personNameKana", role: "role", email: "contactEmail", websiteUrl: "websiteUrl" };
+const CARD_LABELS: Record<CardTextKey, string> = { companyName: "会社名", personName: "お名前", personNameKana: "ふりがな", role: "肩書き", contactEmail: "メールアドレス", websiteUrl: "ホームページの URL 1" };
 
 export type SpotlightFormState = {
   id: string | null;
@@ -131,7 +138,9 @@ export function SpotlightForm({
 }) {
   // 写真とロゴは同時にアップロードできるので、片方が終わっても保存できないよう欄ごとに持つ
   const [uploading, setUploading] = useState({ photo: false, logo: false });
-  const busy = pending || uploading.photo || uploading.logo;
+  // 名刺の読み取り中も保存しない（保存した後に読み取り結果が入ると、画面と保存した内容がずれる）
+  const [card, setCard] = useState<{ busy: boolean; message: string | null; error: string | null }>({ busy: false, message: null, error: null });
+  const busy = pending || uploading.photo || uploading.logo || card.busy;
   // 閉じたり別の人の編集に切り替えたりしたあと（呼び出し元が key で作り直す）に届いたアップロードの結果は、
   // 今開いている人の入力に入れない
   const alive = useRef(true);
@@ -144,12 +153,72 @@ export function SpotlightForm({
   const patchImage = (patch: Partial<SpotlightFormState>) => {
     if (alive.current) onChange(patch);
   };
+  // 名刺の読み取り。結果が届いた時点の入力を見て、空いている欄だけを埋める（編集中の値と既存の値は変えない）
+  const cardInput = useRef<HTMLInputElement>(null);
+  const formRef = useRef(form);
+  useEffect(() => {
+    formRef.current = form;
+  }, [form]);
+  const readCard = async (file: File) => {
+    setCard({ busy: true, message: null, error: null });
+    const result = await scanBusinessCard(file);
+    if (!alive.current) return;
+    if (result.kind === "error") {
+      setCard({ busy: false, message: null, error: result.message });
+      return;
+    }
+    // 移行時に入れた仮のメールアドレスは、空欄と同じように名刺の値で埋める
+    const { patch, filled } = fillEmptyFields(formRef.current, result.card, CARD_FIELDS, (key, value) =>
+      value.trim() === "" || (key === "contactEmail" && value === SPOTLIGHT_PLACEHOLDER_EMAIL),
+    );
+    if (filled.length) onChange(patch);
+    setCard({
+      busy: false,
+      error: null,
+      message: filled.length
+        ? `名刺から「${filled.map((key) => CARD_LABELS[key]).join("」「")}」を入力しました。内容を確認してから保存してください。`
+        : "名刺から新しく入力できる項目はありませんでした（入力済みの欄はそのままです）。",
+    });
+  };
   const title = form.id ? "メンバー紹介を編集" : "メンバーを追加";
 
   return (
     <section className={styles.panel} aria-label={title}>
       <h2 className={styles.panelTitle}>{title}</h2>
       <div className={styles.formGrid}>
+        <div className={`${styles.field} ${styles.fieldFull}`}>
+          <p className={styles.label}>名刺から入力（任意）</p>
+          <div>
+            <button type="button" className={styles.secondaryButton} disabled={pending || card.busy} onClick={() => cardInput.current?.click()}>
+              {card.busy ? "名刺を読み取っています…" : "名刺の画像を選ぶ"}
+            </button>
+          </div>
+          <p className={styles.hint}>
+            空いている欄（会社名・お名前・ふりがな・肩書き・メールアドレス・ホームページの URL 1）に入れます。画像は読み取りのため Google の AI（Gemini）へ送りますが、保存しません。
+          </p>
+          {card.message ? (
+            <p className={styles.hint} role="status">
+              {card.message}
+            </p>
+          ) : null}
+          {card.error ? (
+            <p className={styles.fieldError} role="alert">
+              {card.error}
+            </p>
+          ) : null}
+          <input
+            ref={cardInput}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            hidden
+            aria-label="名刺の画像"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) void readCard(file);
+            }}
+          />
+        </div>
         <TextField
           id="spotlight-company"
           label="会社名"
