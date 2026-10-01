@@ -135,6 +135,8 @@ export function SpotlightRegistrationForm({ notificationFrom }: { notificationFr
   };
 
   if (phase === "accepted") {
+    // 「名前 <アドレス>」は名前とアドレスの間でだけ改行し、アドレスの途中（non- の後など）では切らない
+    const sender = /^(.*\S)\s+(<[^>]+>)$/.exec(notificationFrom);
     return (
       <main className={styles.page}>
         <section className={`${styles.card} ${styles.complete}`}>
@@ -143,7 +145,7 @@ export function SpotlightRegistrationForm({ notificationFrom }: { notificationFr
           <h1>送信しました</h1>
           <p>スタッフの確認後に掲載されます。</p>
           <p>掲載の可否は、ご入力のメールアドレスへお知らせします。</p>
-          <p className={styles.hint}>お知らせは「{notificationFrom}」から届きます。見当たらないときは、迷惑メールフォルダーもご確認ください。</p>
+          <p className={styles.hint}>お知らせは「{sender ? <>{sender[1]} <span style={{ whiteSpace: "nowrap" }}>{sender[2]}</span></> : notificationFrom}」から届きます。見当たらないときは、迷惑メールフォルダーもご確認ください。</p>
           <p className={styles.hint}>修正が必要な場合はスタッフへご依頼ください。<br />この画面は閉じていただけます。</p>
         </section>
       </main>

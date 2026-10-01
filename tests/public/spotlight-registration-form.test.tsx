@@ -41,7 +41,9 @@ describe("本人登録フォーム", () => {
     expect(submit.mock.calls[0][0].data).toMatchObject({ companyName: "株式会社サンプル", personName: "山田 太郎", email: "member@example.com", tags: [], consent: true });
     expect(screen.queryByRole("button", { name: "紹介を送信" })).toBeNull();
     expect(screen.getByText(/修正が必要な場合はスタッフへ/)).toBeTruthy();
-    expect(screen.getByText("お知らせは「サイネージ管理 <noreply@non-turn.com>」から届きます。見当たらないときは、迷惑メールフォルダーもご確認ください。")).toBeTruthy();
+    expect(screen.getByText("<noreply@non-turn.com>")).toBeTruthy();
+    expect(screen.getByText(/お知らせは「サイネージ管理/)).toBeTruthy();
+    expect(screen.getByText(/見当たらないときは、迷惑メールフォルダーもご確認ください/)).toBeTruthy();
     expect(screen.getByText("掲載の可否は、ご入力のメールアドレスへお知らせします。")).toBeTruthy();
   });
 
