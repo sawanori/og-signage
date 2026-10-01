@@ -5,6 +5,7 @@ import { acceptResearchEvent } from "../../research/intake";
 import { claimResearchJob, checkpointResearchJob, finishResearchJob, runResearchTick, cancelInactiveResearchCrawls, type ResearchProviders } from "../../research/jobs";
 import { researchJobs, researchPages, researchProfiles, researchSubjects, researchUsage } from "../../research/db/schema";
 import { ProviderError, startCrawl } from "../../research/crawler";
+import { DnsLookupError, UrlPolicyError } from "../../research/url-policy";
 import { RESEARCH_MODEL, RESEARCH_PROMPT_VERSION } from "../../research/profile-schema";
 import type { ResearchEnv } from "../../research/env";
 import { openTestResearchDatabase } from "./db-helper";
@@ -194,7 +195,7 @@ describe("durable research execution", () => {
     expect(x.api.extractProfile).toHaveBeenCalledTimes(1);
     const [subject] = await x.db.select().from(researchSubjects);
     const [job] = await x.db.select().from(researchJobs).where(eq(researchJobs.jobId, subject.currentJobId!));
-    expect(job).toMatchObject({ status: "succeeded", phase: "complete", progress: { nextUrlIndex: 2, crawlSuccessful: false } });
+    expect(job).toMatchObject({ status: "succeeded", phase: "complete", progress: { nextUrlIndex: 2, crawlSuccessful: true } });
     const [profile] = await x.db.select().from(researchProfiles);
     expect(profile.payload.coverage).toEqual(expect.objectContaining({ status: "partial", inputUrls: urls.map((item) => item.url), skipped: [{ url: blockedUrl, reason: "crawl_site_disallowed" }], processed: 1 }));
     expect(profile.payload.sources).toEqual([expect.objectContaining({ url: allowedUrl })]);
@@ -203,6 +204,53 @@ describe("durable research execution", () => {
     expect(usage.find((row) => row.operationKey === `initial:crawl:${blockedSlot - 1}:0`)).toMatchObject({ status: "unknown", chargedMicrousd: 30_000, providerRequestId: null });
     expect(usage.reduce((total, row) => total + row.chargedMicrousd, 0)).toBe(30_080);
     expect(x.api.cancelCrawl).not.toHaveBeenCalled();
+  });
+
+  it.each([1, 2])("continues the other URL after URL %i fails the public-URL check, and reuses the result on the next save", async (badSlot) => {
+    const x = await setup();
+    const urls = [{ slot: 1 as const, url: "https://example.com/" }, { slot: 2 as const, url: "https://second.example.com/" }];
+    const badUrl = urls[badSlot - 1].url;
+    const goodUrl = urls[2 - badSlot].url;
+    const event = await buildCompanyResearchEvent({ sourceId: "member", sourceRevision: 1, eventType: "upsert", urls });
+    await acceptResearchEvent(x.db, event, 100);
+    // Same path as a typo domain: DNS answers NXDOMAIN before any reservation is made.
+    x.api.startCrawl = vi.fn(async (args) => startCrawl({ ...args, resolveHostname: async (host) => host === new URL(badUrl).hostname ? Promise.reject(new UrlPolicyError()) : ["1.1.1.1"],
+      fetcher: async () => new Response(JSON.stringify({ success: true, result: "allowed-crawl" })) }));
+    x.api.pollCrawl = vi.fn(async () => ({ id: "allowed-crawl", status: "completed", browserSecondsUsed: 2, total: 1, finished: 1, cursor: null,
+      records: [{ url: goodUrl, status: "completed", markdown: "法人向けウェブ制作サービスを提供しています。制作から公開と保守まで対応します。", metadata: { status: 200 } }],
+    }));
+    for (const time of [100, 160, 220, 280, 340, 400]) await x.tick(time);
+    expect(x.api.pollCrawl).toHaveBeenCalledTimes(1);
+    expect(x.api.extractProfile).toHaveBeenCalledTimes(1);
+    const [subject] = await x.db.select().from(researchSubjects);
+    const [job] = await x.db.select().from(researchJobs).where(eq(researchJobs.jobId, subject.currentJobId!));
+    expect(job).toMatchObject({ status: "succeeded", lastErrorCode: null, progress: { crawlSuccessful: true } });
+    const [profile] = await x.db.select().from(researchProfiles);
+    expect(profile.payload.coverage).toEqual(expect.objectContaining({ status: "partial", skipped: [{ url: badUrl, reason: "unsafe_url" }], processed: 1 }));
+    const usage = await x.db.select().from(researchUsage);
+    expect(usage.filter((row) => row.provider === "crawl")).toHaveLength(1);
+    // Editing the member again with unchanged URLs must not pay for another crawl.
+    await acceptResearchEvent(x.db, { ...event, eventId: crypto.randomUUID(), sourceRevision: 2 }, 500);
+    for (const time of [500, 560, 620]) await x.tick(time);
+    expect(await x.db.select().from(researchJobs)).toHaveLength(2);
+    expect(await x.db.select().from(researchUsage)).toHaveLength(usage.length);
+  });
+
+  it("retries a temporary DNS failure instead of skipping the URL", async () => {
+    const x = await setup();
+    x.api.startCrawl = vi.fn(async (args) => startCrawl({ ...args, resolveHostname: async () => { throw new DnsLookupError(); } }));
+    await x.tick(100);
+    expect((await x.db.select().from(researchJobs))[0]).toMatchObject({ status: "retry", phase: "crawl", progress: {} });
+    expect(await x.db.select().from(researchUsage)).toHaveLength(0);
+  });
+
+  it("stops a job at its own AI allowance instead of parking it until next month", async () => {
+    const x = await setup();
+    x.api.extractProfile = vi.fn<ResearchProviders["extractProfile"]>(async (args) => { await args.beforePaidCall({ provider: "meta", inputTokens: 500_001, outputTokens: 1000, costMicroUsd: 300, browserSeconds: 0 }); throw new Error("unreachable"); });
+    for (const time of [100, 160, 220, 280, 400, 1000]) await x.tick(time);
+    expect(x.api.extractProfile).toHaveBeenCalledTimes(1);
+    expect((await x.db.select().from(researchJobs))[0]).toMatchObject({ status: "failed", lastErrorCode: "job_budget_exhausted" });
+    expect((await x.db.select().from(researchUsage)).filter((row) => row.provider === "meta")).toHaveLength(0);
   });
 
   it("keeps a missing browser usage value unknown instead of releasing its reservation", async () => {
@@ -243,6 +291,19 @@ describe("durable research execution", () => {
     await cancelInactiveResearchCrawls(x.db, x.env, { now: 102, providers: x.api });
     expect(x.api.cancelCrawl).toHaveBeenCalledWith(expect.objectContaining({ id: "late-created" }));
     expect((await x.db.select().from(researchUsage))[0].providerFinishedAt).toBe(102);
+  });
+
+  it("moves a crawl whose cancellation fails behind the others", async () => {
+    const x = await setup();
+    const others = Array.from({ length: 26 }, (_, i) => ({ sourceId: `gone-${i}`, sourceRevision: 0, urlFingerprint: "fingerprint", status: "deleted" as const, currentJobId: null }));
+    await x.db.insert(researchSubjects).values(others);
+    await x.db.insert(researchJobs).values(others.map((row, i) => ({ jobId: `job-${i}`, sourceId: row.sourceId, generation: 1, urlFingerprint: "fingerprint", urls: [], status: "superseded" as const, updatedAt: 0, progress: {} })));
+    await x.db.insert(researchUsage).values(others.map((_, i) => ({ reservationId: `usage-${i}`, jobId: `job-${i}`, operationKey: "initial", provider: "crawl" as const, providerRequestId: `stuck-${i}`, month: "1970-01", status: "started" as const, reservedMicrousd: 30_000, chargedMicrousd: 30_000, priceVersion: "test", updatedAt: i })));
+    x.api.cancelCrawl = vi.fn(async (args) => { if (args.id.startsWith("stuck-") && Number(args.id.slice(6)) < 25) throw new ProviderError("provider_http_404", false, 404); });
+    await cancelInactiveResearchCrawls(x.db, x.env, { now: 100, providers: x.api });
+    await cancelInactiveResearchCrawls(x.db, x.env, { now: 101, providers: x.api });
+    expect(x.api.cancelCrawl).toHaveBeenCalledWith(expect.objectContaining({ id: "stuck-25" }));
+    expect((await x.db.select().from(researchUsage).where(eq(researchUsage.reservationId, "usage-25")))[0].providerFinishedAt).toBe(101);
   });
 
   it("finds a cancelled subject after more than 25 permitted active crawls", async () => {

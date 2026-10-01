@@ -24,7 +24,7 @@ describe("research budget reservations", () => {
     try {
       const results = await Promise.allSettled([reserveUsage(x.db, x.input, env, 100), reserveUsage(second.db, { ...x.input, operationKey: "second" }, env, 100)]);
       expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
-      expect(results.find((r) => r.status === "rejected")).toMatchObject({ reason: { code: "budget_exhausted" } });
+      expect(results.find((r) => r.status === "rejected")).toMatchObject({ reason: { code: "job_budget_exhausted" } });
       expect(await x.db.select().from(researchUsage)).toHaveLength(1);
     } finally { second.close(); }
   });
@@ -34,7 +34,7 @@ describe("research budget reservations", () => {
     const id = await reserveUsage(x.db, x.input, env, 100);
     await markUsageStarted(x.db, id, x.job.leaseToken!, 100);
     await markUsageUnknown(x.db, id, 101);
-    await expect(reserveUsage(x.db, { ...x.input, operationKey: "second" }, env, 101)).rejects.toMatchObject({ code: "budget_exhausted" });
+    await expect(reserveUsage(x.db, { ...x.input, operationKey: "second" }, env, 101)).rejects.toMatchObject({ code: "job_budget_exhausted" });
     await settleUsage(x.db, id, { costMicroUsd: 10_000, inputTokens: 100, outputTokens: 100, cachedInputTokens: 20, reasoningTokens: 50 }, 102);
     await reserveUsage(x.db, { ...x.input, operationKey: "second" }, env, 102);
     const [usage] = await x.db.select().from(researchUsage).where(eq(researchUsage.reservationId, id));
@@ -44,8 +44,8 @@ describe("research budget reservations", () => {
   it("enforces input and output totals including unknown attempts", async () => {
     const x = await setup();
     await reserveUsage(x.db, { ...x.input, costMicroUsd: 1, inputTokens: 500_000, outputTokens: 50_000 }, env, 100);
-    await expect(reserveUsage(x.db, { ...x.input, operationKey: "another", costMicroUsd: 1, inputTokens: 1, outputTokens: 0 }, env, 100)).rejects.toMatchObject({ code: "budget_exhausted" });
-    await expect(reserveUsage(x.db, { ...x.input, operationKey: "output", costMicroUsd: 1, inputTokens: 0, outputTokens: 1 }, env, 100)).rejects.toMatchObject({ code: "budget_exhausted" });
+    await expect(reserveUsage(x.db, { ...x.input, operationKey: "another", costMicroUsd: 1, inputTokens: 1, outputTokens: 0 }, env, 100)).rejects.toMatchObject({ code: "job_budget_exhausted" });
+    await expect(reserveUsage(x.db, { ...x.input, operationKey: "output", costMicroUsd: 1, inputTokens: 0, outputTokens: 1 }, env, 100)).rejects.toMatchObject({ code: "job_budget_exhausted" });
   });
 
   it("keeps crawl and Meta monthly balances separate and does not borrow from next month before it starts", async () => {

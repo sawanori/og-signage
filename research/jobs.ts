@@ -9,9 +9,11 @@ import { researchWrite, type ResearchDb } from "./db/client";
 import { researchControls, researchJobs, researchPages, researchProfiles, researchSubjects, researchUsage, researchNow, type ResearchJob, type ResearchProgress } from "./db/schema";
 import { assertCurrentResearchJob, cancelUnstartedUsage, finishCrawlRequest, markUsageStarted, markUsageUnknown, recordCrawlRequest, reserveUsage, ResearchBudgetError, settleUsage, setResearchControl } from "./budget";
 import { researchHash } from "./intake";
-import { isInResearchScope, pagePriority } from "./url-policy";
+import { isInResearchScope, pagePriority, UrlPolicyError } from "./url-policy";
 
 const LEASE_SECONDS = 120;
+/** A registered URL refused for these reasons is not crawled again until the URL changes or 30 days pass. */
+const PERMANENT_URL_REFUSALS = ["crawl_site_disallowed", "unsafe_url"];
 const crawlStateSchema = z.object({ url: z.string(), id: z.string(), reservationId: z.string(), startedAt: z.number(), cursor: z.string().nullable(), done: z.boolean(), status: z.string(), total: z.number().default(0), cancelled: z.boolean().default(false) });
 const progressSchema = z.object({ crawls: z.array(crawlStateSchema).default([]), reasons: z.array(z.string()).default([]), skipped: z.array(z.object({ url: z.string(), reason: z.string() })).default([]), nextUrlIndex: z.number().int().min(0).max(2).optional(), crawlCompletedAt: z.number().optional(), crawlSuccessful: z.boolean().optional(), contentHash: z.string().optional(), manualRetryToken: z.string().optional() });
 export type ResearchJobProgress = z.infer<typeof progressSchema>;
@@ -110,10 +112,12 @@ async function failResearchJob(db: ResearchDb, job: ResearchJob, error: unknown,
   const attempts = job.attempts + 1;
   const configuration = error instanceof ProviderError && (error.code.includes("configuration") || error.code.includes("credentials"));
   const budget = error instanceof ResearchBudgetError && error.code === "budget_exhausted";
+  // The per-job allowance never refills, so waiting for next month cannot help.
+  const jobBudget = error instanceof ResearchBudgetError && error.code === "job_budget_exhausted";
   const paused = error instanceof ResearchBudgetError && error.code === "paused";
   const configBlocked = configuration || (error instanceof ResearchBudgetError && error.code === "configuration_required");
   const retryable = !(error instanceof ProviderError) || error.retryable;
-  const status = paused ? "queued" : budget ? "budget_exhausted" : configBlocked ? "configuration_required" : retryable && attempts < 3 ? "retry" : "failed";
+  const status = paused ? "queued" : budget ? "budget_exhausted" : configBlocked ? "configuration_required" : retryable && !jobBudget && attempts < 3 ? "retry" : "failed";
   if (configuration) await setResearchControl(db, `provider:${job.phase === "extract" ? "meta" : "crawl"}`, { blocked: true, reason: code }, now);
   await db.update(researchJobs).set({ status, attempts: paused || budget || configBlocked ? job.attempts : attempts, lastErrorCode: code, leaseToken: null, leaseExpiresAt: null, nextRunAt: budget ? nextMonth(now) : now + Math.max(60 * 2 ** job.attempts, error instanceof ProviderError ? error.retryAfterSeconds ?? 0 : 0), updatedAt: now }).where(and(eq(researchJobs.jobId, job.jobId), eq(researchJobs.leaseToken, job.leaseToken ?? ""), eq(researchJobs.status, "running")));
 }
@@ -142,9 +146,12 @@ export async function runResearchTick(db: ResearchDb, env: ResearchEnv, options:
             reservationStarted = true;
           } });
         } catch (error) {
-          if (!(error instanceof ProviderError) || error.code !== "crawl_site_disallowed" || !latestReservation || !reservationStarted) throw error;
+          const siteRefused = error instanceof ProviderError && error.code === "crawl_site_disallowed" && latestReservation && reservationStarted;
+          // The URL check runs before any reservation, so a refused URL costs nothing.
+          const urlRefused = error instanceof UrlPolicyError && !latestReservation;
+          if (!siteRefused && !urlRefused) throw error;
           // An explicit site-policy refusal has no remote job ID; retain its unknown cost.
-          await markUsageUnknown(db, latestReservation, readNow());
+          if (siteRefused) await markUsageUnknown(db, latestReservation!, readNow());
           progress.skipped.push({ url: job.urls[index].url, reason: error.code });
           if (!progress.reasons.includes(error.code)) progress.reasons.push(error.code);
           progress.nextUrlIndex = index + 1;
@@ -193,7 +200,8 @@ export async function runResearchTick(db: ResearchDb, env: ResearchEnv, options:
         await checkpointResearchJob(db, job, { progress }, readNow());
       } else {
         progress.crawlCompletedAt = now;
-        progress.crawlSuccessful = progress.crawls.length === job.urls.length && progress.crawls.every((crawl) => crawl.status === "completed");
+        const refused = job.urls.filter((item) => progress.skipped.some((entry) => entry.url === item.url && PERMANENT_URL_REFUSALS.includes(entry.reason))).length;
+        progress.crawlSuccessful = progress.crawls.length + refused === job.urls.length && progress.crawls.every((crawl) => crawl.status === "completed");
         await checkpointResearchJob(db, job, { phase: "extract", progress }, readNow());
       }
     } else if (job.phase === "extract") {
@@ -277,6 +285,8 @@ export async function cancelInactiveResearchCrawls(db: ResearchDb, env: Research
     } catch {
       failed++;
       await db.update(researchJobs).set({ lastErrorCode: "crawl_cancel_failed" }).where(eq(researchJobs.jobId, job.jobId));
+      // Move the failed row behind the others so repeated failures cannot starve the 25-row batch.
+      await db.update(researchUsage).set({ updatedAt: now }).where(eq(researchUsage.reservationId, usage.reservationId));
     }
   }
   return { cancelled, failed };

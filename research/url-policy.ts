@@ -5,6 +5,12 @@ export class UrlPolicyError extends Error {
   constructor() { super("The URL is outside the permitted public website scope"); }
 }
 
+/** DNS service trouble says nothing about the registered URL; retry instead of skipping it. */
+export class DnsLookupError extends Error {
+  readonly code = "dns_lookup_unavailable";
+  constructor() { super("Public DNS lookup is temporarily unavailable"); }
+}
+
 export type HostResolver = (hostname: string) => Promise<string[]>;
 
 export function normalizeResearchUrl(input: string): string {
@@ -52,8 +58,9 @@ export async function resolvePublicHostname(hostname: string, fetcher: typeof fe
       // Manual mode is supported by workerd; !ok below rejects redirects without following them.
       headers: { Accept: "application/dns-json" }, redirect: "manual", signal: AbortSignal.timeout(10_000),
     });
-    if (!response.ok) throw new UrlPolicyError();
+    if (!response.ok) throw new DnsLookupError();
     const data = await response.json() as { Status?: number; Answer?: { type: number; data: string }[] };
+    if (data.Status === 2) throw new DnsLookupError(); // SERVFAIL
     if (data.Status !== 0) throw new UrlPolicyError();
     return (data.Answer ?? []).filter((answer) => answer.type === 1 || answer.type === 28).map((answer) => answer.data);
   }));

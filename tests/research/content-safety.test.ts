@@ -24,9 +24,14 @@ describe("public website collection boundary", () => {
       expect(init?.redirect).toBe("manual");
       return new Response(null, { status: 302, headers: { Location: "http://127.0.0.1/" } });
     });
-    await expect(resolvePublicHostname("company.example", fetcher)).rejects.toMatchObject({ code: "unsafe_url" });
+    await expect(resolvePublicHostname("company.example", fetcher)).rejects.toMatchObject({ code: "dns_lookup_unavailable" });
     expect(fetcher).toHaveBeenCalledTimes(2); // A and AAAA only; the destination is never requested.
     expect(fetcher.mock.calls.every(([url]) => new URL(String(url)).origin === "https://cloudflare-dns.com")).toBe(true);
+  });
+  it("rejects a nonexistent domain as policy but keeps DNS server failures retryable", async () => {
+    const answer = (status: number) => vi.fn<typeof fetch>(async () => Response.json({ Status: status }));
+    await expect(resolvePublicHostname("typo-domain.example", answer(3))).rejects.toMatchObject({ code: "unsafe_url" });
+    await expect(resolvePublicHostname("company.example", answer(2))).rejects.toMatchObject({ code: "dns_lookup_unavailable" });
   });
 });
 

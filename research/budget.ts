@@ -9,7 +9,7 @@ export const RESEARCH_JOB_INPUT_TOKENS = 500_000;
 export const RESEARCH_JOB_OUTPUT_TOKENS = 50_000;
 export const RESEARCH_PRICE_VERSION = "2026-10-01";
 export class ResearchBudgetError extends Error {
-  constructor(readonly code: "paused" | "budget_exhausted" | "configuration_required" | "stale_job" | "call_already_started" | "reservation_expired") { super(code); }
+  constructor(readonly code: "paused" | "budget_exhausted" | "job_budget_exhausted" | "configuration_required" | "stale_job" | "call_already_started" | "reservation_expired") { super(code); }
 }
 export type ReserveResearchUsage = {
   jobId: string; leaseToken: string; operationKey: string; provider: "meta" | "crawl";
@@ -49,7 +49,7 @@ export async function reserveUsage(db: ResearchDb, input: ReserveResearchUsage, 
         input: sql<number>`coalesce(sum(case when ${researchUsage.status} = 'cancelled' then 0 when ${researchUsage.status} = 'settled' then ${researchUsage.inputTokens} else ${researchUsage.inputTokenLimit} end), 0)`,
         output: sql<number>`coalesce(sum(case when ${researchUsage.status} = 'cancelled' then 0 when ${researchUsage.status} = 'settled' then ${researchUsage.outputTokens} else ${researchUsage.outputTokenLimit} end), 0)`,
       }).from(researchUsage).where(and(eq(researchUsage.jobId, input.jobId), eq(researchUsage.provider, "meta")));
-      if (Number(jobUsage.cost) + input.costMicroUsd > RESEARCH_JOB_AI_MICROUSD || Number(jobUsage.input) + input.inputTokens > RESEARCH_JOB_INPUT_TOKENS || Number(jobUsage.output) + input.outputTokens > RESEARCH_JOB_OUTPUT_TOKENS) throw new ResearchBudgetError("budget_exhausted");
+      if (Number(jobUsage.cost) + input.costMicroUsd > RESEARCH_JOB_AI_MICROUSD || Number(jobUsage.input) + input.inputTokens > RESEARCH_JOB_INPUT_TOKENS || Number(jobUsage.output) + input.outputTokens > RESEARCH_JOB_OUTPUT_TOKENS) throw new ResearchBudgetError("job_budget_exhausted");
     }
     const reservationId = existing?.reservationId ?? crypto.randomUUID();
     const values = { reservationId, jobId: input.jobId, operationKey: input.operationKey, provider: input.provider, month: researchMonth(now), status: "reserved" as const, reservedMicrousd: input.costMicroUsd, chargedMicrousd: input.costMicroUsd, inputTokenLimit: input.inputTokens, outputTokenLimit: input.outputTokens, priceVersion: RESEARCH_PRICE_VERSION, leaseTokenAtStart: input.leaseToken, createdAt: now, updatedAt: now };
