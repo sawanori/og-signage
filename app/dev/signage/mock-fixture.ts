@@ -104,6 +104,8 @@ const mockSpotlights: SignageSpotlight[] = [
     quote: "デザインの力で、事業の可能性を広げる",
     bio: "プロダクト・ブランド・組織のデザイン支援を通じて、企業の成長を伴走します。",
     tags: ["UI/UX", "プロダクト開発", "デザイン組織"],
+    // ホームページの QR（任意。2026-10-01 ユーザー指示。カードの右下に出す）
+    websiteUrl: "https://example.com/",
     photo: mediaRef("med_spot_photo", 21),
     logo: mediaRef("med_spot_logo", 22),
   },

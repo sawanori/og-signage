@@ -20,6 +20,8 @@ export type SpotlightFormState = {
   personNameKana: string;
   /** メールアドレス（必須。管理用でサイネージには出さない） */
   contactEmail: string;
+  /** ホームページの URL（任意。サイネージのカードに QR で出す） */
+  websiteUrl: string;
   role: string;
   quote: string;
   bio: string;
@@ -45,6 +47,7 @@ export function emptySpotlightForm(): SpotlightFormState {
     personName: "",
     personNameKana: "",
     contactEmail: "",
+    websiteUrl: "",
     role: "",
     quote: "",
     bio: "",
@@ -65,6 +68,7 @@ export function toSpotlightForm(s: SpotlightRow): SpotlightFormState {
     personName: s.personName,
     personNameKana: s.personNameKana ?? "",
     contactEmail: s.contactEmail,
+    websiteUrl: s.websiteUrl ?? "",
     role: s.role ?? "",
     quote: s.quote ?? "",
     bio: s.bio ?? "",
@@ -87,6 +91,7 @@ export function toSpotlightInput(form: SpotlightFormState) {
     personName: form.personName,
     personNameKana: blankToNull(form.personNameKana),
     contactEmail: form.contactEmail,
+    websiteUrl: blankToNull(form.websiteUrl),
     role: blankToNull(form.role),
     quote: blankToNull(form.quote),
     bio: blankToNull(form.bio),
@@ -230,17 +235,15 @@ export function SpotlightForm({
             onChange={(photoMediaId, photoPreviewUrl) => patchImage({ photoMediaId, photoPreviewUrl })}
           />
         </div>
-        <div className={`${styles.field} ${styles.fieldFull}`}>
-          <MediaUploadField
-            label="会社のロゴ（任意）"
-            hint={IMAGE_HINT}
-            previewUrl={form.logoPreviewUrl}
-            selectedId={form.logoMediaId}
-            disabled={pending}
-            onBusyChange={(logo) => setUploading((u) => ({ ...u, logo }))}
-            onChange={(logoMediaId, logoPreviewUrl) => patchImage({ logoMediaId, logoPreviewUrl })}
-          />
-        </div>
+        {/* 会社のロゴはサイネージに出さないので欄を外した（2026-10-01 ユーザー指示）。登録済みのロゴは保存しても変えない */}
+        <TextField
+          id="spotlight-website"
+          label="ホームページのURL（任意。サイネージのカードの右下にQRコードで出します）"
+          value={form.websiteUrl}
+          maxLength={200}
+          full
+          onChange={(websiteUrl) => onChange({ websiteUrl })}
+        />
 
         <div className={styles.field}>
           <span className={styles.label}>サイネージに出す</span>

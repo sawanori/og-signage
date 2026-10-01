@@ -1729,16 +1729,6 @@
   letter-spacing: 0.02em;
 }
 
-/* 会社のロゴ。会社名の右上に浮かせ、切らずに収める（右端はカードの右から 19px） */
-.lSpotLogo {
-  float: right;
-  width: 100px;
-  height: calc(22px * var(--fit, 1));
-  margin: 0 6px 0 10px;
-  object-fit: contain;
-  object-position: right center;
-}
-
 .lSpotName {
   margin-top: calc(8px * var(--fit, 1));
   font-weight: 700;
@@ -1798,6 +1788,32 @@
   line-height: calc(21.4px * var(--fit, 1));
   letter-spacing: 0.04em;
   color: #4a525c;
+}
+
+/* ホームページの QR がある人は、右の文字の列の下を QR の分だけ空ける（文字が多ければ --fit で小さくして収める） */
+.lSpotText[data-has-qr="true"] {
+  padding-bottom: 92px;
+}
+
+/* ホームページの QR（カードの右下。2026-10-01 ユーザー指示）。左に小さく「ホームページ」と添える */
+.lSpotQr {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.lSpotQr > svg {
+  display: block;
+}
+
+.lSpotQrLabel {
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  color: #6b7480;
 }
 
 /* タグ。1 行に入らなければ次の行へ（切らない） */

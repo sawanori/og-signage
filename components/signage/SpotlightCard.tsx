@@ -2,7 +2,8 @@
 
 /**
  * メンバー紹介のカード（横型の右上。2026-09-26 ユーザー指示の見本どおり）。
- * 左に写真（ひとことを手書き風の文字で重ねる。「」は付けない。2026-09-27 ユーザー指示）、右に 会社名（右上にロゴ）・お名前「さん」・肩書き・紹介文・タグ。
+ * 左に写真（ひとことを手書き風の文字で重ねる。「」は付けない。2026-09-27 ユーザー指示）、右に 会社名・お名前「さん」・肩書き・紹介文・タグ。
+ * 右下にホームページの QR（任意）。会社のロゴは出さない（2026-10-01 ユーザー指示「ロゴいらないので QR を」）。
  * 1 人ずつ時刻で切り替える（spotlightIndex）。
  * 左右の矢印と下の点は出さない（2026-09-26 ユーザー指示）。
  * 文字は文字数で省略しない（2026-09-26 ユーザー指示「企業名が文字数で省略されるのはあり得ない」）。長いものは折り返し、
@@ -12,6 +13,7 @@
 import { useLayoutEffect, useRef } from "react";
 import { COPY } from "./copy";
 import type { SignageView } from "./model";
+import { isQrUrl, QrCode } from "./parts";
 import styles from "./signage.module.css";
 
 const MIN_FIT = 0.6;
@@ -46,12 +48,10 @@ function fitQuote(el: HTMLElement) {
 export function SpotlightCard({
   spotlight,
   photoUrl,
-  logoUrl,
 }: {
   spotlight: SignageView["spotlight"];
-  /** 写真・ロゴの URL（無ければ null） */
+  /** 写真の URL（無ければ null）。会社のロゴは出さない（2026-10-01 ユーザー指示「ロゴいらないので QR を」） */
   photoUrl: string | null;
-  logoUrl: string | null;
 }) {
   const textRef = useRef<HTMLDivElement>(null);
   const quoteRef = useRef<HTMLParagraphElement>(null);
@@ -82,6 +82,7 @@ export function SpotlightCard({
     );
   }
   const fade = spotlight.count > 1 ? styles.heroFade : "";
+  const websiteUrl = item.websiteUrl ?? null;
   return (
     <div className={styles.lSpot} data-testid="spotlight">
       <div key={item.id} className={`${styles.lSpotBody} ${fade}`}>
@@ -96,15 +97,15 @@ export function SpotlightCard({
             </p>
           ) : null}
         </div>
-        <div ref={textRef} className={styles.lSpotText}>
-          {/* ロゴは会社名の右上に浮かせ、長い会社名はロゴの下まで回り込んで折り返す */}
-          <div className={styles.lSpotCompany}>
-            {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- オフライン配信のため素の img
-              <img src={logoUrl} alt="" className={styles.lSpotLogo} />
-            ) : null}
-            {item.companyName}
+        {/* ホームページの QR（任意。2026-10-01 ユーザー指示）。カードの右下に置き、右の文字の列は QR の分だけ下を空ける */}
+        {isQrUrl(websiteUrl) ? (
+          <div className={styles.lSpotQr}>
+            <span className={styles.lSpotQrLabel}>{COPY.spotlightWebsite}</span>
+            <QrCode url={websiteUrl} size={72} label={COPY.spotlightWebsiteQrLabel} />
           </div>
+        ) : null}
+        <div ref={textRef} className={styles.lSpotText} data-has-qr={isQrUrl(websiteUrl) ? "true" : undefined}>
+          <div className={styles.lSpotCompany}>{item.companyName}</div>
           <div className={styles.lSpotName}>
             {item.personName}
             <span className={styles.lSpotSan}>{COPY.spotlightHonorific}</span>

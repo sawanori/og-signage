@@ -11,13 +11,12 @@ import signage from "@/components/signage/signage.module.css";
 import styles from "./spotlight-preview.module.css";
 
 export type SpotlightPreviewProps = {
-  payload: Pick<SignageSpotlight, "companyName" | "personName" | "role" | "quote" | "bio" | "tags">;
+  payload: Pick<SignageSpotlight, "companyName" | "personName" | "role" | "quote" | "bio" | "tags" | "websiteUrl">;
   photoUrl: string | null;
-  logoUrl: string | null;
 };
 
 /** 公開フォームのBlob URLと、スタッフ用画像URLのどちらでも同じ掲載枠を描く。 */
-export function SpotlightPreview({ payload, photoUrl, logoUrl }: SpotlightPreviewProps) {
+export function SpotlightPreview({ payload, photoUrl }: SpotlightPreviewProps) {
   return (
     <div className={styles.preview} aria-label="掲載イメージ">
       <ScaleBox width={516} height={319} initialWidth={288}>
@@ -25,7 +24,6 @@ export function SpotlightPreview({ payload, photoUrl, logoUrl }: SpotlightPrevie
           <SpotlightCard
             spotlight={{ item: { ...payload, id: "registration-preview", photo: null, logo: null }, index: 0, count: 1 }}
             photoUrl={photoUrl}
-            logoUrl={logoUrl}
           />
         </div>
       </ScaleBox>

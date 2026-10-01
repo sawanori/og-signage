@@ -10,11 +10,11 @@ import { countChars, SPOTLIGHT_BIO_MAX, SPOTLIGHT_QUOTE_MAX, SPOTLIGHT_TAG_MAX, 
 import { SpotlightPreview } from "./spotlight-preview";
 import styles from "./registration.module.css";
 
-type TextFields = { companyName: string; personName: string; email: string; personNameKana: string; role: string; quote: string; bio: string };
+type TextFields = { companyName: string; personName: string; email: string; personNameKana: string; role: string; quote: string; bio: string; websiteUrl: string };
 type ImageSelection = { blob: Blob; url: string };
 type Images = Record<SpotlightSubmissionImageKind, ImageSelection | null>;
 type Phase = "editing" | "sending" | "uncertain" | "accepted";
-const EMPTY_TEXT: TextFields = { companyName: "", personName: "", email: "", personNameKana: "", role: "", quote: "", bio: "" };
+const EMPTY_TEXT: TextFields = { companyName: "", personName: "", email: "", personNameKana: "", role: "", quote: "", bio: "", websiteUrl: "" };
 const EMPTY_IMAGES: Images = { photo: null, logo: null };
 const optional = (text: string) => text.trim() || null;
 
@@ -55,6 +55,7 @@ export function SpotlightRegistrationForm({ notificationFrom }: { notificationFr
     companyName: fields.companyName.trim(), personName: fields.personName.trim(),
     personNameKana: optional(fields.personNameKana), role: optional(fields.role),
     quote: optional(fields.quote), bio: optional(fields.bio), tags: tags.map((tag) => tag.trim()).filter(Boolean),
+    websiteUrl: optional(fields.websiteUrl),
   };
 
   const change = (key: keyof TextFields, value: string) => {
@@ -208,11 +209,19 @@ export function SpotlightRegistrationForm({ notificationFrom }: { notificationFr
               }} />)}
               {errors.tags ? <p className={styles.fieldError}>{errors.tags}</p> : null}
             </fieldset>
-            {imageField("logo")}
+            {/* 会社のロゴは出さず、代わりにホームページを QR で出す（2026-10-01 ユーザー指示） */}
+            <div className={styles.field}>
+              <label htmlFor="member-websiteUrl">ホームページのURL（任意）</label>
+              <p id="websiteUrl-hint" className={styles.hint}>サイネージのメンバー紹介に、QRコードで表示します。https:// から入力してください。</p>
+              <input id="member-websiteUrl" type="url" inputMode="url" autoComplete="url" placeholder="https://" value={fields.websiteUrl} disabled={locked}
+                aria-invalid={Boolean(errors.websiteUrl)} aria-describedby={`websiteUrl-hint${errors.websiteUrl ? " websiteUrl-error" : ""}`}
+                onChange={(event) => change("websiteUrl", event.target.value)} />
+              {errors.websiteUrl ? <p id="websiteUrl-error" className={styles.fieldError}>{errors.websiteUrl}</p> : null}
+            </div>
           </details>
           <div className={styles.review}>
             <button type="button" className={styles.secondaryButton} onClick={() => setShowPreview((value) => !value)}>{showPreview ? "掲載イメージを閉じる" : "掲載イメージを確認"}</button>
-            {showPreview ? <div className={styles.previewArea}><SpotlightPreview payload={textPayload} photoUrl={images.photo?.url ?? null} logoUrl={images.logo?.url ?? null} /><p className={styles.hint}>横型サイネージでの掲載イメージです。</p></div> : null}
+            {showPreview ? <div className={styles.previewArea}><SpotlightPreview payload={textPayload} photoUrl={images.photo?.url ?? null} /><p className={styles.hint}>横型サイネージでの掲載イメージです。</p></div> : null}
             <label className={styles.consent}>
               <input type="checkbox" checked={consent} disabled={locked} onChange={(event) => { if (!locked) setConsent(event.target.checked); }} aria-invalid={Boolean(errors.consent)} />
               <span>入力した紹介内容と写真を、館内および誰でも閲覧できるWebサイネージに掲載することに同意します。メールアドレスは掲載結果のお知らせに使い、掲載中は管理のために保管します。サイネージには表示しません。</span>

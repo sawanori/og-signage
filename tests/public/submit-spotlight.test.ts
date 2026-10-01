@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { submitSpotlight, type SpotlightSubmissionSnapshot } from "@/lib/client/submit-spotlight";
 
 const snapshot: SpotlightSubmissionSnapshot = {
-  data: { requestKey: "9b1dc7e1-5bdf-4cf0-91a9-f995b712a2be", companyName: "会社", personName: "名前", email: "member@example.com", personNameKana: null, role: null, quote: null, bio: null, tags: [], consent: true },
+  data: { requestKey: "9b1dc7e1-5bdf-4cf0-91a9-f995b712a2be", companyName: "会社", personName: "名前", email: "member@example.com", personNameKana: null, role: null, quote: null, bio: null, tags: [], websiteUrl: null, consent: true },
   photo: new Blob(["same bytes"], { type: "image/jpeg" }), logo: null,
 };
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });

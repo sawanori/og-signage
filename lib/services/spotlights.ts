@@ -37,6 +37,7 @@ function toColumns(data: SpotlightInput) {
     bio: data.bio,
     tags: data.tags,
     contactEmail: data.contactEmail,
+    websiteUrl: data.websiteUrl,
     photoMediaId: data.photoMediaId,
     logoMediaId: data.logoMediaId,
     enabled: data.enabled,

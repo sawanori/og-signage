@@ -291,10 +291,11 @@ describe("GET /api/device/config", () => {
         quote: "デザインの力で、事業の可能性を広げる",
         bio: "紹介文です",
         tags: ["UI/UX", "プロダクト開発"],
+        websiteUrl: null,
         photo: { mediaId: "img_photo", sha256: sha(11), size: IMAGE_BYTES.length },
         logo: { mediaId: "img_logo", sha256: sha(12), size: IMAGE_BYTES.length },
       },
-      { id: "sp_sato", companyName: "合同会社サンプル", personName: "佐藤 花", role: null, quote: null, bio: null, tags: [], photo: null, logo: null },
+      { id: "sp_sato", companyName: "合同会社サンプル", personName: "佐藤 花", role: null, quote: null, bio: null, tags: [], websiteUrl: null, photo: null, logo: null },
     ]);
     expect((await relay("/api/device/media/img_photo"))!.status).toBe(200);
     expect((await relay("/api/device/media/img_logo"))!.status).toBe(200);

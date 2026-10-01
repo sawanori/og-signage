@@ -29,6 +29,7 @@ import { uploadMedia } from "@/lib/client/upload";
 const SAVED = "保存しました。サイネージには 30 秒以内に反映されます。";
 const PERSON_LABEL = "お名前（サイネージでは「さん」を付けて出します）";
 const EMAIL_LABEL = "メールアドレス（必須。管理用で、サイネージには表示しません）";
+const WEBSITE_LABEL = "ホームページのURL（任意。サイネージのカードの右下にQRコードで出します）";
 const KANA_LABEL = "ふりがな（任意。一覧の あ行・か行… の絞り込みと名前順に使います）";
 const QUOTE_LABEL = "ひとこと（任意。サイネージでは写真の上に、手書き風の文字で出します）";
 const PHOTO_LABEL = "写真（任意。縦長の写真がきれいに出ます）";
@@ -39,6 +40,7 @@ const yamada: SpotlightRow = {
   personName: "山田 太郎",
   personNameKana: "やまだ たろう",
   contactEmail: "yamada@example.com",
+  websiteUrl: "https://example.com/yamada",
   role: "デザイナー",
   quote: "毎日が実験です",
   bio: "映像と Web を作っています",
@@ -259,6 +261,9 @@ describe("SpotlightsView の追加・編集・削除", () => {
     fireEvent.change(screen.getByLabelText(QUOTE_LABEL), { target: { value: "毎日が実験です" } });
     fireEvent.change(screen.getByLabelText("タグ 1"), { target: { value: " 映像 " } });
     fireEvent.change(screen.getByLabelText("タグ 3"), { target: { value: "Web" } });
+    fireEvent.change(screen.getByLabelText(WEBSITE_LABEL), { target: { value: "https://example.com/" } });
+    // 会社のロゴの欄は無い（サイネージに出さない。2026-10-01 ユーザー指示）
+    expect(screen.queryByText("会社のロゴ（任意）")).toBeNull();
     fireEvent.click(screen.getByRole("switch", { name: "サイネージに出す" }));
     fireEvent.click(saveButton());
 
@@ -268,6 +273,7 @@ describe("SpotlightsView の追加・編集・削除", () => {
       personName: "山田 太郎",
       personNameKana: "やまだ たろう",
       contactEmail: "yamada@example.com",
+      websiteUrl: "https://example.com/",
       role: null,
       quote: "毎日が実験です",
       bio: null,
@@ -358,6 +364,7 @@ describe("SpotlightsView の追加・編集・削除", () => {
         personName: "山田 太郎",
         personNameKana: null,
         contactEmail: "yamada@example.com",
+        websiteUrl: "https://example.com/yamada",
         role: null,
         quote: "毎日が実験です",
         bio: "映像と Web を作っています",

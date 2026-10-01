@@ -33,6 +33,23 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("本人登録フォーム", () => {
+  it("ホームページの URL（任意）を送り、http/https 以外は送らずに知らせる。会社のロゴの欄は無い（2026-10-01 ユーザー指示）", async () => {
+    render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
+    expect(screen.queryByLabelText("会社のロゴ（任意）")).toBeNull();
+    const website = screen.getByLabelText("ホームページのURL（任意）") as HTMLInputElement;
+    expect(website.type).toBe("url");
+    expect(screen.getByText("サイネージのメンバー紹介に、QRコードで表示します。https:// から入力してください。")).toBeTruthy();
+    input();
+    fireEvent.change(website, { target: { value: "example.com" } });
+    send();
+    expect(await screen.findByText("URL は http:// か https:// で始まるものを入力してください")).toBeTruthy();
+    expect(submit).not.toHaveBeenCalled();
+    fireEvent.change(website, { target: { value: " https://example.com/ " } });
+    send();
+    expect(await screen.findByRole("heading", { name: "送信しました" })).toBeTruthy();
+    expect(submit.mock.calls[0][0].data).toMatchObject({ websiteUrl: "https://example.com/" });
+  });
+
   it("必須3項目と同意だけで正規化済み内容を送り、完了後は結果メールを案内する", async () => {
     render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
     expect(screen.getByText(/ログイン不要のWebサイネージ/)).toBeTruthy();

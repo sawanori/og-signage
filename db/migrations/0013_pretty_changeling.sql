@@ -1,0 +1,1 @@
+ALTER TABLE `member_spotlights` ADD `website_url` text;

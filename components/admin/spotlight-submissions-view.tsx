@@ -123,6 +123,7 @@ export function SpotlightSubmissionsView({ submissions }: { submissions: Spotlig
               ["ひとこと", selected.payload.quote],
               ["紹介文", selected.payload.bio],
               ["タグ", selected.payload.tags.join("・")],
+              ["ホームページ（サイネージにQRコードで出します）", selected.payload.websiteUrl ?? ""],
               ["掲載先への同意日時", dateTime.format(selected.consentedAt * 1000)],
             ].map(([label, value]) => (
               <div key={label} className={styles.field}>
@@ -130,25 +131,21 @@ export function SpotlightSubmissionsView({ submissions }: { submissions: Spotlig
                 <dd style={{ fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{value || "未入力"}</dd>
               </div>
             ))}
-            {([
-              ["本人写真", selected.photoUrl],
-              ["会社ロゴ", selected.logoUrl],
-            ] as const).map(([label, url]) => (
-              <div key={label} className={styles.field}>
-                <dt className={styles.label}>{label}</dt>
-                <dd>
-                  {url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={url} alt={label} style={{ width: "100%", maxWidth: 300, height: 180, objectFit: "contain", objectPosition: "left" }} />
-                  ) : <span className={styles.hint}>未登録</span>}
-                </dd>
-              </div>
-            ))}
+            {/* 会社のロゴはサイネージに出さないので、確認にも出さない（2026-10-01 ユーザー指示） */}
+            <div className={styles.field}>
+              <dt className={styles.label}>本人写真</dt>
+              <dd>
+                {selected.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={selected.photoUrl} alt="本人写真" style={{ width: "100%", maxWidth: 300, height: 180, objectFit: "contain", objectPosition: "left" }} />
+                ) : <span className={styles.hint}>未登録</span>}
+              </dd>
+            </div>
           </dl>
           <div style={{ marginTop: 24 }}>
             <h3 className={styles.panelTitle}>掲載イメージ</h3>
             <div style={{ marginTop: 12 }}>
-              <SpotlightPreview payload={selected.payload} photoUrl={selected.photoUrl} logoUrl={selected.logoUrl} />
+              <SpotlightPreview payload={selected.payload} photoUrl={selected.photoUrl} />
             </div>
           </div>
           <div className={styles.rowActions} style={{ marginTop: 24 }}>

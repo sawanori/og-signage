@@ -170,7 +170,7 @@ describe("メンバー紹介の申請テーブル", () => {
       // 既存の値は変えず、0012 で足したメールアドレスには届かない仮のアドレスが入る
       expect(await previous.db.select().from(memberSpotlights)).toEqual([{
         id: "preserved", companyName: "以前の所属", personName: "以前の名前", personNameKana: "なまえ", role: null, quote: null, bio: null,
-        tags: ["既存"], contactEmail: "unregistered@example.invalid", photoMediaId: null, logoMediaId: null, enabled: false, revision: 3, createdAt: 100, updatedAt: 100,
+        tags: ["既存"], contactEmail: "unregistered@example.invalid", websiteUrl: null, photoMediaId: null, logoMediaId: null, enabled: false, revision: 3, createdAt: 100, updatedAt: 100,
       }]);
       await previous.db.insert(memberSpotlightSubmissions).values(submission("new"));
       expect(await previous.db.select().from(memberSpotlightSubmissions)).toHaveLength(1);

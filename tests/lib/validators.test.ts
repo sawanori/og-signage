@@ -44,7 +44,7 @@ describe("メンバー本人登録の入力契約", () => {
   it("必須3項目と同意だけで申請でき、任意の空欄を正規化する", () => {
     expect(spotlightSubmissionInputSchema.parse(input)).toEqual({
       ...input, companyName: "株式会社サンプル", personName: "山田 陸",
-      personNameKana: null, role: null, quote: null, bio: null, tags: [],
+      personNameKana: null, role: null, quote: null, bio: null, tags: [], websiteUrl: null,
     });
     expect(spotlightSubmissionInputSchema.parse({ ...input, role: "  " }).role).toBeNull();
   });
@@ -113,6 +113,18 @@ describe("メンバー本人登録の入力契約", () => {
     const parsed = spotlightInputSchema.parse({ companyName: "所属", personName: "名前", contactEmail: "member@example.com", enabled: false, photoMediaId: "photo" });
     expect(parsed.enabled).toBe(false);
     expect(parsed.photoMediaId).toBe("photo");
+  });
+
+  it("ホームページの URL は任意で、http/https の 200 文字まで。空欄は null（本人申請・管理入力の両方）", () => {
+    expect(spotlightSubmissionInputSchema.parse({ ...input, websiteUrl: " https://example.com/ " }).websiteUrl).toBe("https://example.com/");
+    expect(spotlightSubmissionInputSchema.parse({ ...input, websiteUrl: "  " }).websiteUrl).toBeNull();
+    for (const bad of ["example.com", "javascript:alert(1)", "ftp://example.com/"]) {
+      expect(messages(spotlightSubmissionInputSchema.safeParse({ ...input, websiteUrl: bad }))).toContain("URL は http:// か https:// で始まるものを入力してください");
+    }
+    const long = `https://example.com/${"a".repeat(181)}`;
+    expect(long.length).toBe(201);
+    expect(messages(spotlightSubmissionInputSchema.safeParse({ ...input, websiteUrl: long }))).toContain("ホームページの URL は 200 文字以内で入力してください");
+    expect(spotlightInputSchema.parse({ companyName: "所属", personName: "名前", contactEmail: "member@example.com", enabled: true, websiteUrl: "https://example.com/" }).websiteUrl).toBe("https://example.com/");
   });
 
   it("管理入力のメールアドレスは必須で形式を検証し、届かない仮のアドレスも受け付ける", () => {

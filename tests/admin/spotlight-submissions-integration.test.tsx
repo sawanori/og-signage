@@ -32,7 +32,7 @@ let db: Db;
 let close: () => void;
 const id = "submission-integration";
 const bytes = new Uint8Array([255, 216, 255, 224, 1, 2, 3]);
-const payload = { companyName: "紹介会社", personName: "山田 太郎", personNameKana: "やまだ たろう", role: "デザイナー", quote: "毎日が実験です", bio: "映像とWebを作っています", tags: ["映像"] };
+const payload = { companyName: "紹介会社", personName: "山田 太郎", personNameKana: "やまだ たろう", role: "デザイナー", quote: "毎日が実験です", bio: "映像とWebを作っています", tags: ["映像"], websiteUrl: null };
 
 beforeEach(async () => {
   vi.clearAllMocks();

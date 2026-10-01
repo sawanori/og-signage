@@ -91,6 +91,8 @@ export const signageSpotlightSchema = z.object({
   quote: z.string().nullable(),
   bio: z.string().nullable(),
   tags: z.array(z.string().min(1)),
+  /** ホームページの URL（任意。カードに QR で出す。2026-10-01 追加。古い config には無いので optional） */
+  websiteUrl: z.string().nullable().optional(),
   photo: mediaRefSchema.nullable(),
   logo: mediaRefSchema.nullable(),
 });

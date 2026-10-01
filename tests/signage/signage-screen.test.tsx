@@ -423,7 +423,7 @@ describe("メンバー紹介（横型の右上。2026-09-26 ユーザー指示�
   const first = NOW - ((NOW + SPOTLIGHT_OFFSET_SECONDS) % (2 * SPOTLIGHT_SLIDE_SECONDS));
   const config = { ...makeConfig(), spotlights: [yamada, sato] };
 
-  it("会社名・お名前「さん」・肩書き・紹介文・タグ・写真・ロゴを、省略せずに出す。左右の矢印と下の点は出さない", () => {
+  it("会社名・お名前「さん」・肩書き・紹介文・タグ・写真を、省略せずに出す。ロゴ・左右の矢印・下の点は出さない", () => {
     renderScreen({ config, now: first, align: false }, "landscape");
     const card = screen.getByTestId("spotlight");
     // ひとことは写真の上に重ねる（2026-09-27 ユーザー指示）ので、写真の欄が先。「」は付けない（同日ユーザー指示）
@@ -433,10 +433,9 @@ describe("メンバー紹介（横型の右上。2026-09-26 ユーザー指示�
     );
     const quote = screen.getByText("デザインの力で、事業の可能性を広げる");
     expect(quote.parentElement?.querySelector("img")?.getAttribute("src")).toBe(`/media/${photo.sha256}`);
-    expect([...card.querySelectorAll("img")].map((img) => img.getAttribute("src"))).toEqual([
-      `/media/${photo.sha256}`,
-      `/media/${logo.sha256}`,
-    ]);
+    // 会社のロゴは config にあっても出さない（2026-10-01 ユーザー指示「ロゴいらないので QR を」）
+    expect([...card.querySelectorAll("img")].map((img) => img.getAttribute("src"))).toEqual([`/media/${photo.sha256}`]);
+    // ホームページの URL が無い人には QR を出さない
     expect(card.querySelectorAll("svg")).toHaveLength(0);
     expect(screen.queryByTestId("spotlight-dots")).toBeNull();
   });
@@ -452,6 +451,20 @@ describe("メンバー紹介（横型の右上。2026-09-26 ユーザー指示�
     renderScreen({ config: makeConfig() }, "landscape");
     expect(screen.getByTestId("spotlight").textContent).toBe("メンバー紹介は準備中です");
     expect(screen.queryByTestId("spotlight-dots")).toBeNull();
+  });
+
+  it("ホームページの URL がある人は、カードの右下に QR と「ホームページ」を出す。http/https 以外は出さない（2026-10-01 ユーザー指示）", () => {
+    const withSite = { ...config, spotlights: [{ ...yamada, websiteUrl: "https://example.com/" }, sato] };
+    renderScreen({ config: withSite, now: first, align: false }, "landscape");
+    const card = screen.getByTestId("spotlight");
+    expect(within(card).getByRole("img", { name: "ホームページの QR コード" })).toBeTruthy();
+    expect(within(card).getByText("ホームページ")).toBeTruthy();
+    cleanup();
+
+    const unsafe = { ...config, spotlights: [{ ...yamada, websiteUrl: "javascript:alert(1)" }, sato] };
+    renderScreen({ config: unsafe, now: first, align: false }, "landscape");
+    expect(within(screen.getByTestId("spotlight")).queryByRole("img", { name: "ホームページの QR コード" })).toBeNull();
+    expect(within(screen.getByTestId("spotlight")).queryByText("ホームページ")).toBeNull();
   });
 
   it("縦型には出さない（縦型のメンバー情報はそのまま）", () => {

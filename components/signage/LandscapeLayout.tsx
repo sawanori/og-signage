@@ -70,7 +70,6 @@ export function LandscapeLayout({ config, view, resolveMediaUrl }: Props) {
       <SpotlightCard
         spotlight={view.spotlight}
         photoUrl={view.spotlight?.item.photo ? resolveMediaUrl(view.spotlight.item.photo) : null}
-        logoUrl={view.spotlight?.item.logo ? resolveMediaUrl(view.spotlight.item.logo) : null}
       />
 
       {/* 今日のイベント */}

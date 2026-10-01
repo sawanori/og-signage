@@ -40,6 +40,7 @@ const submission: SpotlightSubmissionDetail = {
     quote: "毎日が実験です",
     bio: "映像とWebを作っています",
     tags: ["映像", "Web"],
+    websiteUrl: "https://example.com/nonturn",
   },
 };
 const another: SpotlightSubmissionDetail = {
@@ -79,8 +80,10 @@ describe("確認待ちの審査", () => {
     expect(detail.getByText("メールアドレス（結果の通知先。サイネージには表示しません）")).toBeTruthy();
     expect(detail.getByText("member@example.com")).toBeTruthy();
     expect(detail.getByRole("img", { name: "本人写真" }).getAttribute("src")).toBe(submission.photoUrl);
-    expect(detail.getByRole("img", { name: "会社ロゴ" }).getAttribute("src")).toBe(submission.logoUrl);
-    expect(preview).toHaveBeenLastCalledWith({ payload: submission.payload, photoUrl: submission.photoUrl, logoUrl: submission.logoUrl });
+    // 会社のロゴはサイネージに出さないので確認にも出さない。ホームページは QR で出すので確認に出す（2026-10-01 ユーザー指示）
+    expect(detail.queryByRole("img", { name: "会社ロゴ" })).toBeNull();
+    expect(detail.getByText("ホームページ（サイネージにQRコードで出します）")).toBeTruthy();
+    expect(preview).toHaveBeenLastCalledWith({ payload: submission.payload, photoUrl: submission.photoUrl });
     expect(JSON.stringify(preview.mock.calls)).not.toContain("member@example.com");
   });
 

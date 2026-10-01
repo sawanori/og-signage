@@ -142,6 +142,12 @@ export const SPOTLIGHT_BIO_MAX = 60;
 /** ふりがなに使える字（全角・半角をそろえてから確かめるので、半角カナと全角の空白も通る）。ひらがな・カタカナ・ー・・・空白 */
 const KANA_READING = /^[ぁ-ゖァ-ヺー・ ]+$/;
 
+/** ホームページの URL（任意。サイネージのカードに QR で出す。長いと QR の点が細かくなり読み取りにくいので 200 文字まで） */
+const spotlightWebsiteUrl = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() === "" ? null : typeof v === "string" ? v.trim() : v),
+  httpUrlSchema.max(200, "ホームページの URL は 200 文字以内で入力してください").nullable().default(null),
+);
+
 const spotlightFields = z.object({
   companyName: requiredText("会社名", 30),
   personName: requiredText("お名前", 20),
@@ -158,6 +164,8 @@ const spotlightFields = z.object({
     .array(requiredText("タグ", SPOTLIGHT_TAG_MAX))
     .max(SPOTLIGHT_TAGS_MAX, `タグは${SPOTLIGHT_TAGS_MAX}つまでです`)
     .default([]),
+  /** ホームページの URL（任意。2026-10-01 ユーザー指示。サイネージのカードに QR で出す） */
+  websiteUrl: spotlightWebsiteUrl,
   photoMediaId: optionalId,
   logoMediaId: optionalId,
   enabled: z.boolean(),

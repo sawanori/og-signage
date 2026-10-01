@@ -321,6 +321,8 @@ export const memberSpotlights = sqliteTable("member_spotlights", {
    * 本人登録で承認した人は申請のアドレスを引き継ぐ。それより前からいる人は届かない仮のアドレス
    */
   contactEmail: text("contact_email").notNull().default(SPOTLIGHT_PLACEHOLDER_EMAIL),
+  /** ホームページの URL（任意。http/https のみ。サイネージのカードに QR で出す。2026-10-01 ユーザー指示） */
+  websiteUrl: text("website_url"),
   photoMediaId: text("photo_media_id").references(() => media.id, { onDelete: "restrict" }),
   logoMediaId: text("logo_media_id").references(() => media.id, { onDelete: "restrict" }),
   enabled: bool("enabled").notNull().default(true),

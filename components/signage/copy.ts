@@ -14,6 +14,9 @@ export const COPY = {
   // メンバー紹介の欄（2026-09-26 ユーザー指示。横型の右の列の一番上）。添え書きは 2026-10-01 ユーザー指示で「注目のメンバー」から変更
   spotlight: { en: "MEMBER SPOTLIGHT", ja: "OGの入居企業のみなさん" },
   spotlightHonorific: "さん",
+  /** メンバー紹介のカードの右下に出すホームページの QR（2026-10-01 ユーザー指示） */
+  spotlightWebsite: "ホームページ",
+  spotlightWebsiteQrLabel: "ホームページの QR コード",
   noSpotlight: "メンバー紹介は準備中です",
   // お知らせの欄の見出し。en は目立つ見出し（横型は黒い帯）、ja は添え書き（2026-09-25 ユーザー指示で
   // 「HOUSE NEWS / お知らせ」から「重要連絡：全メンバーへのお知らせ」に）

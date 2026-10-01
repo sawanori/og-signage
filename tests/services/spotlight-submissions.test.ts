@@ -172,7 +172,7 @@ describe("申請画像の回収", () => {
   });
 
   it("期限切れの走査と回収はそれぞれ50件までで後続へ繰り越す", async () => {
-    const payload = { companyName: "所属", personName: "名前", personNameKana: null, role: null, quote: null, bio: null, tags: [] };
+    const payload = { companyName: "所属", personName: "名前", personNameKana: null, role: null, quote: null, bio: null, tags: [], websiteUrl: null };
     await db.insert(memberSpotlightSubmissions).values(Array.from({ length: 51 }, (_, i) => ({ id: `receiving-${i}`, requestKey: `receiving-${i}`, requestFingerprint: "a", payload, consentedAt: 100, consentVersion: 1, createdAt: 100, updatedAt: 100 })));
     expect(await cleanupSpotlightSubmissions(db, bucket, 100 + DAY)).toEqual({ expired: 50, completed: 50, failed: 0 });
     expect(await cleanupSpotlightSubmissions(db, bucket, 100 + DAY)).toEqual({ expired: 1, completed: 1, failed: 0 });
