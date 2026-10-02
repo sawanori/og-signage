@@ -154,7 +154,8 @@ export function SpotlightForm({
     if (alive.current) onChange(patch);
   };
   // 名刺の読み取り。結果が届いた時点の入力を見て、空いている欄だけを埋める（編集中の値と既存の値は変えない）
-  const cardInput = useRef<HTMLInputElement>(null);
+  const cardCamera = useRef<HTMLInputElement>(null);
+  const cardFile = useRef<HTMLInputElement>(null);
   const formRef = useRef(form);
   useEffect(() => {
     formRef.current = form;
@@ -186,16 +187,27 @@ export function SpotlightForm({
     <section className={styles.panel} aria-label={title}>
       <h2 className={styles.panelTitle}>{title}</h2>
       <div className={styles.formGrid}>
-        <div className={`${styles.field} ${styles.fieldFull}`}>
-          <p className={styles.label}>名刺から入力（任意）</p>
-          <div>
-            <button type="button" className={styles.secondaryButton} disabled={pending || card.busy} onClick={() => cardInput.current?.click()}>
-              {card.busy ? "名刺を読み取っています…" : "名刺の画像を選ぶ"}
+        {/* 本人登録と同じく、スマホではすぐ背面カメラが開く「カメラで撮影」と、画像を選ぶボタンを分ける（2026-10-02 ユーザー指示） */}
+        <div className={`${styles.field} ${styles.fieldFull}`} role="group" aria-labelledby="spotlight-card-title">
+          <p className={styles.label} id="spotlight-card-title">
+            名刺から入力（任意）
+          </p>
+          <div className={styles.imageActions}>
+            <button type="button" className={styles.secondaryButton} disabled={pending || card.busy} onClick={() => cardCamera.current?.click()}>
+              カメラで撮影
+            </button>
+            <button type="button" className={styles.secondaryButton} disabled={pending || card.busy} onClick={() => cardFile.current?.click()}>
+              画像を選ぶ
             </button>
           </div>
           <p className={styles.hint}>
-            空いている欄（会社名・お名前・ふりがな・肩書き・メールアドレス・ホームページの URL 1）に入れます。画像は読み取りのため Google の AI（Gemini）へ送りますが、保存しません。
+            空いている欄（会社名・お名前・ふりがな・肩書き・メールアドレス・ホームページの URL 1）に入れます。明るい場所で、名刺全体が写るように撮ってください。
           </p>
+          {card.busy ? (
+            <p className={styles.hint} role="status">
+              名刺を読み取っています…
+            </p>
+          ) : null}
           {card.message ? (
             <p className={styles.hint} role="status">
               {card.message}
@@ -206,18 +218,27 @@ export function SpotlightForm({
               {card.error}
             </p>
           ) : null}
-          <input
-            ref={cardInput}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            hidden
-            aria-label="名刺の画像"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              e.target.value = "";
-              if (file) void readCard(file);
-            }}
-          />
+          {(
+            [
+              { ref: cardCamera, label: "名刺をカメラで撮影", capture: "environment" as const },
+              { ref: cardFile, label: "名刺の画像を選ぶ", capture: undefined },
+            ] as const
+          ).map(({ ref, label, capture }) => (
+            <input
+              key={label}
+              ref={ref}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              capture={capture}
+              hidden
+              aria-label={label}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file) void readCard(file);
+              }}
+            />
+          ))}
         </div>
         <TextField
           id="spotlight-company"

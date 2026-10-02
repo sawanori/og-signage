@@ -215,7 +215,7 @@ export function SpotlightRegistrationForm({ notificationFrom }: { notificationFr
           {/* スマホではすぐ背面カメラが開く「カメラで撮影」と、撮影済みの写真や届いた画像を選ぶ「画像を選ぶ」を分ける（2026-10-02 ユーザー指示） */}
           <div className={styles.cardField} role="group" aria-labelledby="card-title" aria-describedby="card-hint">
             <p id="card-title" className={styles.cardTitle}>名刺から入力（任意）</p>
-            <p id="card-hint" className={styles.hint}>名刺を撮影すると、会社名・お名前・メールアドレスなどの空いている欄に自動で入力します。明るい場所で、名刺全体が写るように撮ってください。画像は読み取りのためにGoogleのAI（Gemini）へ送りますが、保存はしません。</p>
+            <p id="card-hint" className={styles.hint}>名刺を撮影すると、会社名・お名前・メールアドレスなどの空いている欄に自動で入力します。明るい場所で、名刺全体が写るように撮ってください。</p>
             <div className={styles.cardButtons}>
               <input id="member-card-camera" className={styles.cardInput} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" disabled={locked || card.busy}
                 onChange={(event) => { void readCard(event.currentTarget.files?.[0]); event.currentTarget.value = ""; }} />

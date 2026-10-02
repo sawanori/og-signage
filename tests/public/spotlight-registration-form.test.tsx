@@ -182,6 +182,7 @@ describe("本人登録フォーム", () => {
     expect(camera.getAttribute("capture")).toBe("environment");
     expect(screen.getByLabelText("画像を選ぶ").hasAttribute("capture")).toBe(false);
     expect(screen.getByRole("group", { name: "名刺から入力（任意）" })).toBeTruthy();
+    expect(screen.queryByText(/Gemini/)).toBeNull();
     fireEvent.change(camera, { target: { files: [cardFile()] } });
     expect(await screen.findByText(/名刺から「会社名・所属」/)).toBeTruthy();
     expect(scan).toHaveBeenCalledTimes(1);
