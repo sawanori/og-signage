@@ -39,4 +39,9 @@ describe("loadShell のベルの知らせ", () => {
     }
     expect((await loadShell(db, staff, 200)).alerts).toEqual([]);
   });
+
+  it("企業データを見られるアカウント（COMPANY_RESEARCH_VIEWER_EMAILS）だけ、メニューに出す印を付ける", async () => {
+    expect((await loadShell(db, staff, 200)).user.canViewCompanyResearch).toBe(false);
+    expect((await loadShell(db, { ...staff, email: "viewer@example.com" }, 200)).user.canViewCompanyResearch).toBe(true);
+  });
 });

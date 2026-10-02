@@ -3,6 +3,8 @@
  * 部品に渡す形は components/admin/dashboard-types.ts（/dev/dashboard の固定データと同じ形）。
  */
 import type { Db } from "@/db/index";
+import { env } from "cloudflare:workers";
+import { canViewCompanyResearch } from "@/lib/company-research-viewer";
 import type { AuthUser } from "@/lib/auth";
 import { listDevices, type DeviceSummary } from "@/lib/services/devices";
 import { listEvents } from "@/lib/services/events";
@@ -28,7 +30,7 @@ function displayName(user: AuthUser): string {
 export async function loadShell(db: Db, user: AuthUser, now: number): Promise<ShellData> {
   const [devices, pendingSubmissions] = await Promise.all([listDevices(db, now), countPendingSpotlightSubmissions(db, user)]);
   return {
-    user: { name: displayName(user), role: user.role, avatarUrl: null },
+    user: { name: displayName(user), role: user.role, avatarUrl: null, canViewCompanyResearch: canViewCompanyResearch(user.email, env.COMPANY_RESEARCH_VIEWER_EMAILS) },
     alerts: [
       // メンバー本人からの登録申請（2026-10-01）。スタッフが確認するまでサイネージに出ない
       ...(pendingSubmissions > 0

@@ -18,6 +18,8 @@ export type ShellUser = {
   role: Role;
   /** 顔写真。無ければ頭文字を出す */
   avatarUrl: string | null;
+  /** 「企業データ」を見られるアカウントか（lib/company-research-viewer.ts。2026-10-02） */
+  canViewCompanyResearch?: boolean;
 };
 
 /** ベルに出す知らせ（端末の不調、メンバー紹介の確認待ちなど）。href があれば押すとその画面へ移る */

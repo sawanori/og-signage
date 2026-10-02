@@ -1,0 +1,122 @@
+/* 企業データ（company-research-view.tsx）。色は .shell（admin-shell.tsx）のカスタムプロパティを使う */
+.entry {
+  border-bottom: 1px solid var(--line);
+}
+
+.entrySummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 2px;
+  cursor: pointer;
+}
+
+.entryName {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.person {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-mute);
+}
+
+.status {
+  flex-shrink: 0;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.done { color: #2f6b4a; background: #e6f2ea; }
+.working { color: #6b5a1f; background: #f6efd9; }
+.failed { color: #a3392f; background: #f9e5e2; }
+.waiting { color: var(--ink-mute); background: #eef0f3; }
+
+.entryBody {
+  padding: 0 2px 18px;
+}
+
+.summary {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--ink);
+}
+
+.block {
+  margin-top: 14px;
+}
+
+.blockTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.claims,
+.reasons {
+  margin-top: 6px;
+  padding-left: 1.2em;
+  list-style: disc;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--ink);
+}
+
+.reasons {
+  font-size: 12px;
+  color: var(--ink-mute);
+}
+
+.kind {
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--ink-mute);
+  background: #f1f3f5;
+}
+
+.source {
+  margin-left: 8px;
+  font-size: 12px;
+  color: #3563a8;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+}
+
+.service {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.serviceName {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.serviceText {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--ink);
+}
+
+.error {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #a3392f;
+}

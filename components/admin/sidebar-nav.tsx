@@ -3,7 +3,7 @@
 /**
  * サイドバーの項目。Administrator 専用の画面（計画 6 節の権限表）は Staff には出さない。
  */
-import { BookOpen, Bell, CalendarDays, House, Palette, Sparkles, SquarePlay, type LucideIcon } from "lucide-react";
+import { BookOpen, Bell, Building2, CalendarDays, House, Palette, Sparkles, SquarePlay, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Role } from "@/lib/auth";
@@ -11,7 +11,8 @@ import styles from "./admin.module.css";
 import { HomeFillIcon } from "./icons";
 
 /** alsoCurrentFor: href 以外で選択中にするパス（その下の階層も含む） */
-type NavItem = { href: string; label: string; icon: LucideIcon; adminOnly?: boolean; alsoCurrentFor?: readonly string[] };
+/** companyResearchOnly: 「企業データ」を見られるアカウント（COMPANY_RESEARCH_VIEWER_EMAILS）にだけ出す */
+type NavItem = { href: string; label: string; icon: LucideIcon; adminOnly?: boolean; companyResearchOnly?: boolean; alsoCurrentFor?: readonly string[] };
 
 export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/admin", label: "ダッシュボード", icon: House },
@@ -22,11 +23,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/admin/notices", label: "お知らせ", icon: Bell },
   // サイネージの「MEMBER SPOTLIGHT」の欄（2026-09-26 ユーザー指示）。Staff も使う
   { href: "/admin/spotlights", label: "メンバー紹介", icon: Sparkles },
+  // メンバーのホームページから集めた企業データ（非公開。2026-10-02 ユーザー指示で snp.inc.info のアカウントだけ）
+  { href: "/admin/company-research", label: "企業データ", icon: Building2, companyResearchOnly: true },
   { href: "/admin/guide", label: "利用ガイド", icon: BookOpen },
 ];
 
-export function visibleNavItems(role: Role): NavItem[] {
-  return NAV_ITEMS.filter((item) => !item.adminOnly || role === "administrator");
+export function visibleNavItems(role: Role, canViewCompanyResearch = false): NavItem[] {
+  return NAV_ITEMS.filter((item) => (!item.adminOnly || role === "administrator") && (!item.companyResearchOnly || canViewCompanyResearch));
 }
 
 function isCurrent({ href, alsoCurrentFor = [] }: NavItem, path: string): boolean {
@@ -34,12 +37,12 @@ function isCurrent({ href, alsoCurrentFor = [] }: NavItem, path: string): boolea
   return [href, ...alsoCurrentFor].some((base) => path === base || path.startsWith(`${base}/`));
 }
 
-export function SidebarNav({ role, currentPath }: { role: Role; currentPath?: string }) {
+export function SidebarNav({ role, canViewCompanyResearch = false, currentPath }: { role: Role; canViewCompanyResearch?: boolean; currentPath?: string }) {
   const pathname = usePathname();
   const path = currentPath ?? pathname;
   return (
     <nav className={styles.nav} aria-label="メニュー">
-      {visibleNavItems(role).map((item) => {
+      {visibleNavItems(role, canViewCompanyResearch).map((item) => {
         const { href, label, icon: Icon } = item;
         const current = isCurrent(item, path);
         return (

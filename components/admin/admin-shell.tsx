@@ -33,7 +33,7 @@ export function AdminShell({
             <p className={styles.brandSub}>{ADMIN_PRODUCT}</p>
           </div>
         </div>
-        <SidebarNav role={shell.user.role} currentPath={currentPath} />
+        <SidebarNav role={shell.user.role} canViewCompanyResearch={shell.user.canViewCompanyResearch} currentPath={currentPath} />
         <p className={styles.sideFooter}>{ADMIN_BRAND}</p>
       </aside>
 

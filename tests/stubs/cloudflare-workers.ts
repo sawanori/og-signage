@@ -9,4 +9,5 @@ export const env = {
   GEMINI_API_KEY: undefined as string | undefined,
   RESEND_API_KEY: undefined as string | undefined,
   SPOTLIGHT_NOTIFICATION_FROM: "サイネージ管理 <noreply@non-turn.com>",
+  COMPANY_RESEARCH_VIEWER_EMAILS: "viewer@example.com" as string | undefined,
 };

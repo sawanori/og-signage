@@ -34,4 +34,11 @@ describe("SidebarNav", () => {
     expect(currentLabels("/admin")).toEqual(["ダッシュボード"]);
     expect(currentLabels("/admin/notices")).toEqual(["お知らせ"]);
   });
+
+  it("企業データは許可したアカウントのメニューにだけ出す（2026-10-02 ユーザー指示）", () => {
+    expect(visibleNavItems("administrator").map((i) => i.label)).not.toContain("企業データ");
+    expect(visibleNavItems("staff", true).map((i) => i.href)).toContain("/admin/company-research");
+    const html = renderToStaticMarkup(<SidebarNav role="administrator" canViewCompanyResearch currentPath="/admin/company-research" />);
+    expect(html).toContain("企業データ");
+  });
 });

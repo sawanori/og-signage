@@ -20,6 +20,8 @@ declare module "cloudflare:workers" {
     GEMINI_API_KEY?: string;
     RESEND_API_KEY?: string;
     SPOTLIGHT_NOTIFICATION_FROM: string;
+    /** 管理画面の「企業データ」を見られるアカウントのメールアドレス（カンマ区切り）。未設定なら誰も見られない */
+    COMPANY_RESEARCH_VIEWER_EMAILS?: string;
     COMPANY_RESEARCH?: import("../worker/company-research-dispatch").CompanyResearchServiceBinding;
   };
 }

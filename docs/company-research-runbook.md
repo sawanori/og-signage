@@ -22,7 +22,7 @@
 | 分析Worker `og-company-research` | 分析DB `og-company-research`、R2 `og-company-research-private` | Main DB、既存`MEDIA_BUCKET`、公開config生成処理 |
 | 運用CLI | 分析DBの専用資格情報 | 公開ブラウザ向けの分析API |
 
-分析Workerは `workers_dev:false`、`preview_urls:false`、`routes:[]`。入口はService Binding経由の `POST /internal/sources`だけで、分析結果のGETは存在しない。R2のr2.devと独自公開ドメインも配備時に無効であることを確認する。設定ファイルだけを根拠に、実環境の公開停止が検証済みとは扱わない。
+分析Workerは `workers_dev:false`、`preview_urls:false`、`routes:[]`。入口はService Binding経由の `POST /internal/sources`（受付）と `GET /internal/profiles`（読み取り）だけ。読み取りは2026-10-02のユーザー指示で追加し、メインの管理画面 `/admin/company-research` だけが呼ぶ。その画面は `COMPANY_RESEARCH_VIEWER_EMAILS`（wrangler.jsonc の vars）に入れたアカウント以外には404を返し、メニューにも出さない。受付（handleIntake）には今も読み取りの入口が無い。R2のr2.devと独自公開ドメインも配備時に無効であることを確認する。設定ファイルだけを根拠に、実環境の公開停止が検証済みとは扱わない。
 
 分析Workerに設定する変数名は次のとおり。値をコマンド引数、ソース、コミット、通常ログへ書かない。
 
