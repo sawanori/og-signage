@@ -85,7 +85,8 @@ export async function extractProfile(input: {
     response = await (input.fetcher ?? fetch)("https://api.meta.ai/v1/chat/completions", {
       method: "POST", headers: { Authorization: `Bearer ${input.apiKey}`, "Content-Type": "application/json" },
       // Never forward the API token to a redirect destination; non-2xx responses are rejected below.
-      body, redirect: "manual", signal: AbortSignal.timeout(40_000),
+      // ページの多いサイトは応答に40秒以上かかる（2026-10-02 本番で3回とも40秒で打ち切り）。処理中の印（jobs.ts の LEASE_SECONDS）より短くする
+      body, redirect: "manual", signal: AbortSignal.timeout(150_000),
     });
   } catch { throw new ProviderError("provider_network_unknown", true); }
   if (!response.ok) throw providerHttpError(response);

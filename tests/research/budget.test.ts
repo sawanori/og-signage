@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { buildCompanyResearchEvent } from "../../lib/company-research-contract";
 import { acceptResearchEvent } from "../../research/intake";
-import { claimResearchJob } from "../../research/jobs";
+import { claimResearchJob, LEASE_SECONDS } from "../../research/jobs";
 import { cancelUnstartedUsage, markUsageStarted, markUsageUnknown, reserveUsage, settleUsage, setResearchControl } from "../../research/budget";
 import { researchControls, researchJobs, researchUsage } from "../../research/db/schema";
 import type { ResearchEnv } from "../../research/env";
@@ -76,7 +76,7 @@ describe("research budget reservations", () => {
 
   it("refuses a deleted subject and expired lease before any reservation", async () => {
     const x = await setup();
-    await expect(reserveUsage(x.db, x.input, env, 221)).rejects.toMatchObject({ code: "stale_job" });
+    await expect(reserveUsage(x.db, x.input, env, 101 + LEASE_SECONDS)).rejects.toMatchObject({ code: "stale_job" });
     await acceptResearchEvent(x.db, await buildCompanyResearchEvent({ sourceId: "member", sourceRevision: 1, eventType: "delete", urls: [] }), 101);
     await expect(reserveUsage(x.db, x.input, env, 102)).rejects.toMatchObject({ code: "stale_job" });
     expect(await x.db.select().from(researchUsage)).toHaveLength(0);

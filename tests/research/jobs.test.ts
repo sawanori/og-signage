@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { buildCompanyResearchEvent } from "../../lib/company-research-contract";
 import { acceptResearchEvent } from "../../research/intake";
-import { claimResearchJob, checkpointResearchJob, finishResearchJob, runResearchTick, cancelInactiveResearchCrawls, type ResearchProviders } from "../../research/jobs";
+import { claimResearchJob, checkpointResearchJob, finishResearchJob, runResearchTick, cancelInactiveResearchCrawls, LEASE_SECONDS, type ResearchProviders } from "../../research/jobs";
 import { researchJobs, researchPages, researchProfiles, researchSubjects, researchUsage } from "../../research/db/schema";
 import { ProviderError, startCrawl } from "../../research/crawler";
 import { DnsLookupError, UrlPolicyError } from "../../research/url-policy";
@@ -45,10 +45,11 @@ describe("durable research execution", () => {
       const first = await claimResearchJob(x.db, x.env, 100);
       expect(first).not.toBeNull();
       expect(await claimResearchJob(second.db, x.env, 101)).toBeNull();
-      const recovered = await claimResearchJob(second.db, x.env, 221);
+      expect(await claimResearchJob(second.db, x.env, 99 + LEASE_SECONDS)).toBeNull();
+      const recovered = await claimResearchJob(second.db, x.env, 101 + LEASE_SECONDS);
       expect(recovered?.leaseToken).not.toBe(first?.leaseToken);
       expect(recovered?.attempts).toBe(1);
-      await expect(checkpointResearchJob(x.db, first!, { progress: {} }, 222)).rejects.toMatchObject({ code: "stale_job" });
+      await expect(checkpointResearchJob(x.db, first!, { progress: {} }, 102 + LEASE_SECONDS)).rejects.toMatchObject({ code: "stale_job" });
     } finally { second.close(); }
   });
 
@@ -271,7 +272,7 @@ describe("durable research execution", () => {
 
   it("rechecks actual time after provider validation before making a paid request", async () => {
     const x = await setup(); let now = 100; let requests = 0;
-    x.api.startCrawl = vi.fn(async (args) => { now = 221; await args.beforePaidCall({ provider: "crawl", inputTokens: 0, outputTokens: 0, costMicroUsd: 30_000, browserSeconds: 1200 }); requests++; return { id: "expired" }; });
+    x.api.startCrawl = vi.fn(async (args) => { now = 101 + LEASE_SECONDS; await args.beforePaidCall({ provider: "crawl", inputTokens: 0, outputTokens: 0, costMicroUsd: 30_000, browserSeconds: 1200 }); requests++; return { id: "expired" }; });
     await runResearchTick(x.db, x.env, { clock: () => now, providers: x.api });
     expect(requests).toBe(0);
     expect(await x.db.select().from(researchUsage)).toHaveLength(0);

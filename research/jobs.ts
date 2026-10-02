@@ -11,7 +11,8 @@ import { assertCurrentResearchJob, cancelUnstartedUsage, finishCrawlRequest, mar
 import { researchHash } from "./intake";
 import { isInResearchScope, pagePriority, UrlPolicyError } from "./url-policy";
 
-const LEASE_SECONDS = 120;
+/** 処理中の印の期限。AI の応答待ち（最大150秒。research/meta.ts）より長くし、待っている間に別の処理が同じジョブを始めないようにする */
+export const LEASE_SECONDS = 300;
 /** A registered URL refused for these reasons is not crawled again until the URL changes or 30 days pass. */
 const PERMANENT_URL_REFUSALS = ["crawl_site_disallowed", "unsafe_url"];
 const crawlStateSchema = z.object({ url: z.string(), id: z.string(), reservationId: z.string(), startedAt: z.number(), cursor: z.string().nullable(), done: z.boolean(), status: z.string(), total: z.number().default(0), cancelled: z.boolean().default(false) });
