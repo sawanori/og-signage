@@ -9,9 +9,12 @@ import type { ReactNode } from "react";
 import styles from "./admin.module.css";
 import type { ShellData } from "./dashboard-types";
 import { NotificationBell } from "./notification-bell";
-import { SidebarNav } from "./sidebar-nav";
+import { SidebarNav, type RestrictedNavItem } from "./sidebar-nav";
 import { UserMenu } from "./user-menu";
 import { ADMIN_BRAND, ADMIN_PRODUCT } from "./brand";
+
+/** 「企業データ」を見られるアカウントにだけ渡す。このファイルはサーバーでだけ動くので、ほかのアカウントのブラウザには届かない */
+const COMPANY_RESEARCH_NAV: RestrictedNavItem = { href: "/admin/company-research", label: "企業データ", icon: "building" };
 
 export function AdminShell({
   shell,
@@ -33,7 +36,7 @@ export function AdminShell({
             <p className={styles.brandSub}>{ADMIN_PRODUCT}</p>
           </div>
         </div>
-        <SidebarNav role={shell.user.role} canViewCompanyResearch={shell.user.canViewCompanyResearch} currentPath={currentPath} />
+        <SidebarNav role={shell.user.role} restrictedItems={shell.user.canViewCompanyResearch ? [COMPANY_RESEARCH_NAV] : []} currentPath={currentPath} />
         <p className={styles.sideFooter}>{ADMIN_BRAND}</p>
       </aside>
 

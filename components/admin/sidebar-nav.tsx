@@ -11,8 +11,13 @@ import styles from "./admin.module.css";
 import { HomeFillIcon } from "./icons";
 
 /** alsoCurrentFor: href 以外で選択中にするパス（その下の階層も含む） */
-/** companyResearchOnly: 「企業データ」を見られるアカウント（COMPANY_RESEARCH_VIEWER_EMAILS）にだけ出す */
-type NavItem = { href: string; label: string; icon: LucideIcon; adminOnly?: boolean; companyResearchOnly?: boolean; alsoCurrentFor?: readonly string[] };
+type NavItem = { href: string; label: string; icon: LucideIcon; adminOnly?: boolean; alsoCurrentFor?: readonly string[] };
+/**
+ * 一部のアカウントにだけ出す項目。名前と行き先はサーバー側（admin-shell.tsx）で決めて、出すアカウントにだけ渡す。
+ * このファイルは全員のブラウザへ配られるので、ここには書かない（「企業データ」は 2026-10-02 ユーザー指示で入口も見せない）。
+ */
+export type RestrictedNavItem = { href: string; label: string; icon: "building" };
+const RESTRICTED_ICONS: Record<RestrictedNavItem["icon"], LucideIcon> = { building: Building2 };
 
 export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/admin", label: "ダッシュボード", icon: House },
@@ -23,13 +28,15 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/admin/notices", label: "お知らせ", icon: Bell },
   // サイネージの「MEMBER SPOTLIGHT」の欄（2026-09-26 ユーザー指示）。Staff も使う
   { href: "/admin/spotlights", label: "メンバー紹介", icon: Sparkles },
-  // メンバーのホームページから集めた企業データ（非公開。2026-10-02 ユーザー指示で snp.inc.info のアカウントだけ）
-  { href: "/admin/company-research", label: "企業データ", icon: Building2, companyResearchOnly: true },
   { href: "/admin/guide", label: "利用ガイド", icon: BookOpen },
 ];
 
-export function visibleNavItems(role: Role, canViewCompanyResearch = false): NavItem[] {
-  return NAV_ITEMS.filter((item) => (!item.adminOnly || role === "administrator") && (!item.companyResearchOnly || canViewCompanyResearch));
+export function visibleNavItems(role: Role, restricted: readonly RestrictedNavItem[] = []): NavItem[] {
+  const items = NAV_ITEMS.filter((item) => !item.adminOnly || role === "administrator");
+  // 利用ガイドの前に入れる
+  const guide = items.findIndex((item) => item.href === "/admin/guide");
+  const extra = restricted.map((item) => ({ href: item.href, label: item.label, icon: RESTRICTED_ICONS[item.icon] }));
+  return guide < 0 ? [...items, ...extra] : [...items.slice(0, guide), ...extra, ...items.slice(guide)];
 }
 
 function isCurrent({ href, alsoCurrentFor = [] }: NavItem, path: string): boolean {
@@ -37,12 +44,12 @@ function isCurrent({ href, alsoCurrentFor = [] }: NavItem, path: string): boolea
   return [href, ...alsoCurrentFor].some((base) => path === base || path.startsWith(`${base}/`));
 }
 
-export function SidebarNav({ role, canViewCompanyResearch = false, currentPath }: { role: Role; canViewCompanyResearch?: boolean; currentPath?: string }) {
+export function SidebarNav({ role, restrictedItems = [], currentPath }: { role: Role; restrictedItems?: readonly RestrictedNavItem[]; currentPath?: string }) {
   const pathname = usePathname();
   const path = currentPath ?? pathname;
   return (
     <nav className={styles.nav} aria-label="メニュー">
-      {visibleNavItems(role, canViewCompanyResearch).map((item) => {
+      {visibleNavItems(role, restrictedItems).map((item) => {
         const { href, label, icon: Icon } = item;
         const current = isCurrent(item, path);
         return (
