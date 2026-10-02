@@ -5,16 +5,15 @@ export type BusinessCardScan = { kind: "ok"; card: BusinessCardResult } | { kind
 
 const NETWORK_ERROR = "名刺を読み取れませんでした。通信状況を確認して、もう一度お試しください。";
 
-/** 名刺の写真を写真と同じ方法で縮めてから送る（長辺1280px・約400KB。文字は読み取れる大きさ） */
-export async function scanBusinessCard(file: Blob): Promise<BusinessCardScan> {
-  let image: Blob;
+/** 名刺の表（必須）と裏（任意）を写真と同じ方法で縮めてから1回で送る（長辺1280px・約400KB。文字は読み取れる大きさ） */
+export async function scanBusinessCard(front: Blob, back: Blob | null = null): Promise<BusinessCardScan> {
+  const body = new FormData();
   try {
-    image = (await prepareSpotlightImage(file, "photo")).blob;
+    body.append("card", (await prepareSpotlightImage(front, "photo")).blob, "card");
+    if (back) body.append("back", (await prepareSpotlightImage(back, "photo")).blob, "back");
   } catch (error) {
     return { kind: "error", message: error instanceof Error ? error.message : "画像を処理できませんでした。" };
   }
-  const body = new FormData();
-  body.append("card", image, "card");
   let response: Response;
   try {
     // 通信が止まっても読み取り中のまま送信できなくならないよう、上限を決めて諦める（サーバー側の読み取りは20秒まで）

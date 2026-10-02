@@ -167,40 +167,68 @@ describe("本人登録フォーム", () => {
     for (const label of ["紹介文（任意）", WEBSITE_LABEL, WEBSITE_2_LABEL, "タグ 1"]) expect(screen.getByLabelText(label)).toBeTruthy();
   });
 
-  it("名刺から空いている欄だけを埋め、入力済みの欄は変えない", async () => {
+  const readButton = () => screen.getByRole("button", { name: "名刺を読み取る" }) as HTMLButtonElement;
+
+  it("名刺の表を選んで「名刺を読み取る」を押すと、空いている欄だけを埋め、入力済みの欄は変えない", async () => {
     scan.mockResolvedValueOnce(scanned);
     render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
     fireEvent.change(screen.getByLabelText("お名前"), { target: { value: "手入力 花子" } });
-    fireEvent.change(screen.getByLabelText("画像を選ぶ"), { target: { files: [cardFile()] } });
+    expect(readButton().disabled).toBe(true);
+    const front = cardFile();
+    fireEvent.change(screen.getByLabelText("名刺の表の画像を選ぶ"), { target: { files: [front] } });
+    expect(screen.getByAltText("選択した名刺の表")).toBeTruthy();
+    expect(scan).not.toHaveBeenCalled();
+    fireEvent.click(readButton());
     expect(await screen.findByText("名刺から「会社名・所属」「肩書き」「メールアドレス」「ホームページのURL 1」を入力しました。内容が正しいか確認してください。")).toBeTruthy();
+    expect(scan).toHaveBeenCalledWith(front, null);
     expect((screen.getByLabelText("会社名・所属") as HTMLInputElement).value).toBe("株式会社名刺");
     expect((screen.getByLabelText("お名前") as HTMLInputElement).value).toBe("手入力 花子");
     expect((screen.getByLabelText("メールアドレス") as HTMLInputElement).value).toBe("card@example.com");
     expect((screen.getByLabelText("ふりがな（任意）") as HTMLInputElement).value).toBe("");
     expect((screen.getByLabelText(WEBSITE_LABEL) as HTMLInputElement).value).toBe("https://card.example/");
+    // 読み取りが終わったら選んだ画像は手放す
+    expect(screen.queryByAltText("選択した名刺の表")).toBeNull();
+    expect(URL.revokeObjectURL).toHaveBeenCalled();
   });
 
-  it("「カメラで撮影」はスマホの背面カメラを直接開き、撮った写真も同じように読み取る。「画像を選ぶ」はカメラを強制しない", async () => {
+  it("表と裏を両方選ぶと1回でまとめて読み取る。裏だけでは読み取れない", async () => {
     scan.mockResolvedValueOnce(scanned);
     render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
-    const camera = screen.getByLabelText("カメラで撮影") as HTMLInputElement;
-    expect(camera.type).toBe("file");
-    expect(camera.getAttribute("capture")).toBe("environment");
-    expect(screen.getByLabelText("画像を選ぶ").hasAttribute("capture")).toBe(false);
-    expect(screen.getByRole("group", { name: "名刺から入力（任意）" })).toBeTruthy();
-    expect(screen.queryByText(/Gemini/)).toBeNull();
-    fireEvent.change(camera, { target: { files: [cardFile()] } });
+    const back = cardFile();
+    fireEvent.change(screen.getByLabelText("名刺の裏をカメラで撮影"), { target: { files: [back] } });
+    expect(screen.getByAltText("選択した名刺の裏")).toBeTruthy();
+    expect(readButton().disabled).toBe(true);
+    const front = cardFile();
+    fireEvent.change(screen.getByLabelText("名刺の表をカメラで撮影"), { target: { files: [front] } });
+    fireEvent.click(readButton());
     expect(await screen.findByText(/名刺から「会社名・所属」/)).toBeTruthy();
     expect(scan).toHaveBeenCalledTimes(1);
-    expect((screen.getByLabelText("会社名・所属") as HTMLInputElement).value).toBe("株式会社名刺");
+    expect(scan).toHaveBeenCalledWith(front, back);
   });
 
-  it("名刺の読み取り中は送信を止め、読み取れなかったときは理由を出して入力を変えない", async () => {
+  it("「カメラで撮影」はスマホの背面カメラを直接開き、「画像を選ぶ」はカメラを強制しない。選び直しもできる", () => {
+    render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
+    for (const side of ["表", "裏"]) {
+      const camera = screen.getByLabelText(`名刺の${side}をカメラで撮影`) as HTMLInputElement;
+      expect(camera.type).toBe("file");
+      expect(camera.getAttribute("capture")).toBe("environment");
+      expect(screen.getByLabelText(`名刺の${side}の画像を選ぶ`).hasAttribute("capture")).toBe(false);
+    }
+    expect(screen.getByRole("group", { name: "名刺から入力（任意）" })).toBeTruthy();
+    expect(screen.queryByText(/Gemini/)).toBeNull();
+    fireEvent.change(screen.getByLabelText("名刺の表の画像を選ぶ"), { target: { files: [cardFile()] } });
+    fireEvent.click(screen.getByRole("button", { name: "表を取り消す" }));
+    expect(screen.queryByAltText("選択した名刺の表")).toBeNull();
+    expect(readButton().disabled).toBe(true);
+  });
+
+  it("名刺の読み取り中は送信を止め、読み取れなかったときは理由を出して入力を変えず、選んだ画像も残す", async () => {
     let resolve!: (value: BusinessCardScan) => void;
     scan.mockReturnValueOnce(new Promise((done) => { resolve = done; }));
     render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
     input();
-    fireEvent.change(screen.getByLabelText("画像を選ぶ"), { target: { files: [cardFile()] } });
+    fireEvent.change(screen.getByLabelText("名刺の表の画像を選ぶ"), { target: { files: [cardFile()] } });
+    fireEvent.click(readButton());
     expect(await screen.findByText("名刺を読み取っています…")).toBeTruthy();
     expect((screen.getByRole("button", { name: "紹介を送信" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.submit(screen.getByRole("button", { name: "紹介を送信" }).closest("form")!);
@@ -208,6 +236,7 @@ describe("本人登録フォーム", () => {
     await act(async () => resolve({ kind: "error", message: "名刺を読み取れませんでした。" }));
     expect(screen.getByRole("alert").textContent).toBe("名刺を読み取れませんでした。");
     expect((screen.getByLabelText("会社名・所属") as HTMLInputElement).value).toBe(" 株式会社サンプル ");
+    expect(screen.getByAltText("選択した名刺の表")).toBeTruthy();
     expect((screen.getByRole("button", { name: "紹介を送信" }) as HTMLButtonElement).disabled).toBe(false);
   });
 

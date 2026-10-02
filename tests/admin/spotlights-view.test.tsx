@@ -113,8 +113,11 @@ function holdCard(): (result: BusinessCardScan) => void {
   return (result) => finish(result);
 }
 const cardReading: BusinessCardScan = { kind: "ok", card: { companyName: "名刺の会社", personName: "名刺 太郎", personNameKana: "めいし たろう", role: "部長", email: "card@example.com", websiteUrl: "https://card.example/" } };
-const chooseCard = (label = "名刺の画像を選ぶ") =>
+/** 名刺の面を選んで「名刺を読み取る」を押す（表は必須、裏は任意） */
+const chooseCard = (label = "名刺の表の画像を選ぶ", read = true) => {
   fireEvent.change(screen.getByLabelText(label), { target: { files: [new File(["card"], "card.jpg", { type: "image/jpeg" })] } });
+  if (read) fireEvent.click(screen.getByRole("button", { name: "名刺を読み取る" }));
+};
 
 const choosePhoto = () =>
   fireEvent.change(screen.getByLabelText(PHOTO_LABEL), {
@@ -123,6 +126,8 @@ const choosePhoto = () =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // 名刺の画像の確認用プレビュー（jsdom には無い）
+  vi.stubGlobal("URL", class extends URL { static createObjectURL = vi.fn(() => `blob:test-${Math.random()}`); static revokeObjectURL = vi.fn(); });
   actions.createSpotlightAction.mockResolvedValue({ data: { ...yamada, id: "spt_new" } });
   actions.updateSpotlightAction.mockResolvedValue({ data: yamada });
   actions.deleteSpotlightAction.mockResolvedValue({ data: null });
@@ -130,6 +135,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("SpotlightsView の一覧", () => {
@@ -461,7 +467,9 @@ describe("SpotlightsView の追加・編集・削除", () => {
     chooseCard();
     expect(saveButton().disabled).toBe(true);
     expect(screen.getByText("名刺を読み取っています…")).toBeTruthy();
-    for (const name of ["カメラで撮影", "画像を選ぶ"]) expect((screen.getByRole("button", { name }) as HTMLButtonElement).disabled).toBe(true);
+    for (const name of ["名刺を読み取る", "表を取り消す", "カメラで撮影", "画像を選ぶ"]) {
+      for (const button of screen.getAllByRole("button", { name })) expect((button as HTMLButtonElement).disabled).toBe(true);
+    }
 
     await act(async () => finishCard(cardReading));
     expect(screen.getByText("名刺から「ふりがな」「肩書き」「メールアドレス」「ホームページの URL 1」を入力しました。内容を確認してから保存してください。")).toBeTruthy();
@@ -477,16 +485,23 @@ describe("SpotlightsView の追加・編集・削除", () => {
     });
   });
 
-  it("「カメラで撮影」は背面カメラを直接開く入力につながり、撮った写真も同じように読み取る", async () => {
+  it("表と裏を「カメラで撮影」で撮り、1回でまとめて読み取る。カメラ側だけ背面カメラを直接開く", async () => {
     vi.mocked(scanBusinessCard).mockResolvedValueOnce(cardReading);
     render(<SpotlightsView spotlights={[]} />);
     fireEvent.click(screen.getByRole("button", { name: "メンバーを追加" }));
-    expect(screen.getByLabelText("名刺をカメラで撮影").getAttribute("capture")).toBe("environment");
-    expect(screen.getByLabelText("名刺の画像を選ぶ").hasAttribute("capture")).toBe(false);
+    for (const side of ["表", "裏"]) {
+      expect(screen.getByLabelText(`名刺の${side}をカメラで撮影`).getAttribute("capture")).toBe("environment");
+      expect(screen.getByLabelText(`名刺の${side}の画像を選ぶ`).hasAttribute("capture")).toBe(false);
+    }
     expect(screen.queryByText(/Gemini/)).toBeNull();
-    chooseCard("名刺をカメラで撮影");
+    expect((screen.getByRole("button", { name: "名刺を読み取る" }) as HTMLButtonElement).disabled).toBe(true);
+    chooseCard("名刺の裏をカメラで撮影", false);
+    expect((screen.getByRole("button", { name: "名刺を読み取る" }) as HTMLButtonElement).disabled).toBe(true);
+    chooseCard("名刺の表をカメラで撮影");
     expect(await screen.findByText(/名刺から「会社名」「お名前」/)).toBeTruthy();
+    expect(vi.mocked(scanBusinessCard)).toHaveBeenCalledWith(expect.any(File), expect.any(File));
     expect((screen.getByLabelText("会社名") as HTMLInputElement).value).toBe("名刺の会社");
+    expect(screen.queryByAltText("選択した名刺の表")).toBeNull();
   });
 
   it("名刺の読み取り中に別の人の編集へ切り替えても、その結果は切り替えた先の人に入らない", async () => {

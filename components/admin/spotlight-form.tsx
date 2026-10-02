@@ -7,7 +7,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { fillEmptyFields, type BusinessCardField } from "@/lib/business-card";
-import { scanBusinessCard } from "@/lib/client/scan-business-card";
+import { useBusinessCardReader, type BusinessCardSide, type PickedCardImage } from "@/lib/client/use-business-card-reader";
 import type { SpotlightRow } from "@/lib/services/spotlights";
 import { SPOTLIGHT_BIO_MAX, SPOTLIGHT_PLACEHOLDER_EMAIL, SPOTLIGHT_QUOTE_MAX, SPOTLIGHT_TAG_MAX, SPOTLIGHT_TAGS_MAX, countChars } from "@/lib/validators";
 import { MediaUploadField, mediaThumbnailUrl } from "./media-upload-field";
@@ -139,7 +139,21 @@ export function SpotlightForm({
   // 写真とロゴは同時にアップロードできるので、片方が終わっても保存できないよう欄ごとに持つ
   const [uploading, setUploading] = useState({ photo: false, logo: false });
   // 名刺の読み取り中も保存しない（保存した後に読み取り結果が入ると、画面と保存した内容がずれる）
-  const [card, setCard] = useState<{ busy: boolean; message: string | null; error: string | null }>({ busy: false, message: null, error: null });
+  // 名刺の読み取り（表は必須、裏は任意）。結果が届いた時点の入力を見て、空いている欄だけを埋める（編集中の値と既存の値は変えない）
+  const formRef = useRef(form);
+  useEffect(() => {
+    formRef.current = form;
+  }, [form]);
+  const card = useBusinessCardReader((result) => {
+    // 移行時に入れた仮のメールアドレスは、空欄と同じように名刺の値で埋める
+    const { patch, filled } = fillEmptyFields(formRef.current, result, CARD_FIELDS, (key, value) =>
+      value.trim() === "" || (key === "contactEmail" && value === SPOTLIGHT_PLACEHOLDER_EMAIL),
+    );
+    if (filled.length) onChange(patch);
+    return filled.length
+      ? `名刺から「${filled.map((key) => CARD_LABELS[key]).join("」「")}」を入力しました。内容を確認してから保存してください。`
+      : "名刺から新しく入力できる項目はありませんでした（入力済みの欄はそのままです）。";
+  });
   const busy = pending || uploading.photo || uploading.logo || card.busy;
   // 閉じたり別の人の編集に切り替えたりしたあと（呼び出し元が key で作り直す）に届いたアップロードの結果は、
   // 今開いている人の入力に入れない
@@ -153,34 +167,6 @@ export function SpotlightForm({
   const patchImage = (patch: Partial<SpotlightFormState>) => {
     if (alive.current) onChange(patch);
   };
-  // 名刺の読み取り。結果が届いた時点の入力を見て、空いている欄だけを埋める（編集中の値と既存の値は変えない）
-  const cardCamera = useRef<HTMLInputElement>(null);
-  const cardFile = useRef<HTMLInputElement>(null);
-  const formRef = useRef(form);
-  useEffect(() => {
-    formRef.current = form;
-  }, [form]);
-  const readCard = async (file: File) => {
-    setCard({ busy: true, message: null, error: null });
-    const result = await scanBusinessCard(file);
-    if (!alive.current) return;
-    if (result.kind === "error") {
-      setCard({ busy: false, message: null, error: result.message });
-      return;
-    }
-    // 移行時に入れた仮のメールアドレスは、空欄と同じように名刺の値で埋める
-    const { patch, filled } = fillEmptyFields(formRef.current, result.card, CARD_FIELDS, (key, value) =>
-      value.trim() === "" || (key === "contactEmail" && value === SPOTLIGHT_PLACEHOLDER_EMAIL),
-    );
-    if (filled.length) onChange(patch);
-    setCard({
-      busy: false,
-      error: null,
-      message: filled.length
-        ? `名刺から「${filled.map((key) => CARD_LABELS[key]).join("」「")}」を入力しました。内容を確認してから保存してください。`
-        : "名刺から新しく入力できる項目はありませんでした（入力済みの欄はそのままです）。",
-    });
-  };
   const title = form.id ? "メンバー紹介を編集" : "メンバーを追加";
 
   return (
@@ -192,17 +178,24 @@ export function SpotlightForm({
           <p className={styles.label} id="spotlight-card-title">
             名刺から入力（任意）
           </p>
+          <p className={styles.hint}>
+            表を撮影し、裏にも情報があれば裏も撮影してから「名刺を読み取る」を押してください。空いている欄（会社名・お名前・ふりがな・肩書き・メールアドレス・ホームページの URL 1）に入れます。明るい場所で、名刺全体が写るように撮ってください。
+          </p>
+          {(["front", "back"] as const).map((side) => (
+            <CardSidePicker
+              key={side}
+              side={side}
+              image={card.picked[side]}
+              disabled={pending || card.busy}
+              onPick={(file) => card.pick(side, file)}
+              onClear={() => card.clear(side)}
+            />
+          ))}
           <div className={styles.imageActions}>
-            <button type="button" className={styles.secondaryButton} disabled={pending || card.busy} onClick={() => cardCamera.current?.click()}>
-              カメラで撮影
-            </button>
-            <button type="button" className={styles.secondaryButton} disabled={pending || card.busy} onClick={() => cardFile.current?.click()}>
-              画像を選ぶ
+            <button type="button" className={styles.secondaryButton} disabled={pending || card.busy || !card.picked.front} onClick={() => void card.read()}>
+              名刺を読み取る
             </button>
           </div>
-          <p className={styles.hint}>
-            空いている欄（会社名・お名前・ふりがな・肩書き・メールアドレス・ホームページの URL 1）に入れます。明るい場所で、名刺全体が写るように撮ってください。
-          </p>
           {card.busy ? (
             <p className={styles.hint} role="status">
               名刺を読み取っています…
@@ -218,27 +211,6 @@ export function SpotlightForm({
               {card.error}
             </p>
           ) : null}
-          {(
-            [
-              { ref: cardCamera, label: "名刺をカメラで撮影", capture: "environment" as const },
-              { ref: cardFile, label: "名刺の画像を選ぶ", capture: undefined },
-            ] as const
-          ).map(({ ref, label, capture }) => (
-            <input
-              key={label}
-              ref={ref}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              capture={capture}
-              hidden
-              aria-label={label}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                e.target.value = "";
-                if (file) void readCard(file);
-              }}
-            />
-          ))}
         </div>
         <TextField
           id="spotlight-company"
@@ -384,6 +356,69 @@ export function SpotlightForm({
         </button>
       </div>
     </section>
+  );
+}
+
+/** 名刺の片面。スマホではすぐ背面カメラが開く「カメラで撮影」と、撮影済みの画像を選ぶ「画像を選ぶ」 */
+function CardSidePicker({
+  side,
+  image,
+  disabled,
+  onPick,
+  onClear,
+}: {
+  side: BusinessCardSide;
+  image: PickedCardImage | null;
+  disabled: boolean;
+  onPick: (file: File | undefined) => void;
+  onClear: () => void;
+}) {
+  const camera = useRef<HTMLInputElement>(null);
+  const library = useRef<HTMLInputElement>(null);
+  const name = side === "front" ? "表" : "裏";
+  return (
+    <div className={styles.cardSide}>
+      <p className={styles.cardSideLabel}>{side === "front" ? "表" : "裏（任意）"}</p>
+      {image ? (
+        <div className={styles.imageActions}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- 読み取り前のローカルBlob */}
+          <img className={styles.cardThumb} src={image.url} alt={`選択した名刺の${name}`} />
+          <button type="button" className={styles.textButton} disabled={disabled} onClick={onClear}>
+            {name}を取り消す
+          </button>
+        </div>
+      ) : (
+        <div className={styles.imageActions}>
+          <button type="button" className={styles.secondaryButton} disabled={disabled} onClick={() => camera.current?.click()}>
+            カメラで撮影
+          </button>
+          <button type="button" className={styles.secondaryButton} disabled={disabled} onClick={() => library.current?.click()}>
+            画像を選ぶ
+          </button>
+        </div>
+      )}
+      {(
+        [
+          { ref: camera, label: `名刺の${name}をカメラで撮影`, capture: "environment" as const },
+          { ref: library, label: `名刺の${name}の画像を選ぶ`, capture: undefined },
+        ] as const
+      ).map(({ ref, label, capture }) => (
+        <input
+          key={label}
+          ref={ref}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          capture={capture}
+          hidden
+          aria-label={label}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            onPick(file);
+          }}
+        />
+      ))}
+    </div>
   );
 }
 

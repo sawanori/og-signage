@@ -9,8 +9,11 @@ import { z } from "zod";
 import { spotlightTextSchema } from "./validators";
 
 export const BUSINESS_CARD_MODEL = "gemini-3.8-flash";
-/** 画面側で長辺1280px・約400KBに縮めてから送る。縮めた後の上限（prepareSpotlightImage と同じ 2MB）に余白を足す */
-export const BUSINESS_CARD_MAX_BODY_BYTES = 2 * 1024 * 1024 + 64 * 1024;
+/** 名刺の表と裏（裏は任意。2026-10-02 ユーザー指示）。両面を1回で読み、AI に見比べてまとめさせる */
+export const BUSINESS_CARD_SIDES = ["card", "back"] as const;
+export type BusinessCardImage = { bytes: Uint8Array; mimeType: string };
+/** 画面側で長辺1280px・約400KBに縮めてから送る。縮めた後の上限（prepareSpotlightImage と同じ 1枚 2MB）× 2面に余白を足す */
+export const BUSINESS_CARD_MAX_BODY_BYTES = 2 * 2 * 1024 * 1024 + 64 * 1024;
 export const BUSINESS_CARD_RETRY_AFTER_SECONDS = 60;
 
 export const BUSINESS_CARD_FIELDS = ["companyName", "personName", "personNameKana", "role", "email", "websiteUrl"] as const;
@@ -30,6 +33,7 @@ const INSTRUCTION = [
   "role: 役職・肩書き。役職があれば役職、なければ部署名。",
   "email: メールアドレス。",
   "websiteUrl: 会社のホームページの URL。書かれているとおりに写します。SNS の URL は含めません。",
+  "画像が2枚あるときは、同じ名刺の表と裏です。両面を見比べて1人分にまとめます。同じ項目が日本語と英語の両方に書かれていれば日本語の表記を使います。",
 ].join("\n");
 
 const RESPONSE_SCHEMA = {
@@ -86,7 +90,8 @@ export function normalizeBusinessCard(raw: Partial<Record<BusinessCardField, str
 }
 
 /** 名刺の画像を1回だけ読み取る。失敗しても再試行しない（利用者が選び直せばよい） */
-export async function readBusinessCard(input: { apiKey: string; bytes: Uint8Array; mimeType: string; fetcher?: typeof fetch }): Promise<BusinessCardResult> {
+export async function readBusinessCard(input: { apiKey: string; images: BusinessCardImage[]; fetcher?: typeof fetch }): Promise<BusinessCardResult> {
+  if (input.images.length < 1 || input.images.length > 2) throw new BusinessCardError(400, "invalid_input", "名刺の画像を選んでください");
   let response: Response;
   try {
     response = await (input.fetcher ?? fetch)(`https://generativelanguage.googleapis.com/v1beta/models/${BUSINESS_CARD_MODEL}:generateContent`, {
@@ -98,8 +103,8 @@ export async function readBusinessCard(input: { apiKey: string; bytes: Uint8Arra
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: INSTRUCTION }] },
         contents: [{ role: "user", parts: [
-          { inlineData: { mimeType: input.mimeType, data: toBase64(input.bytes) } },
-          { text: "この名刺を読み取ってください。" },
+          ...input.images.map((image) => ({ inlineData: { mimeType: image.mimeType, data: toBase64(image.bytes) } })),
+          { text: input.images.length === 2 ? "1枚目が名刺の表、2枚目が裏です。両面を読み取ってください。" : "この名刺を読み取ってください。" },
         ] }],
         generationConfig: {
           responseMimeType: "application/json",

@@ -65,3 +65,9 @@
 .cardInput { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; opacity: 0; }
 .cardInput:focus-visible + label { outline: 3px solid #8cad9b; outline-offset: 3px; }
 .cardInput:disabled + label { opacity: 0.5; cursor: default; }
+.cardSide { margin-top: 14px; }
+.cardSideLabel { margin: 0; font-size: 13px; font-weight: 700; color: #455e4f; }
+.cardSide .cardButtons { margin-top: 8px; }
+.cardSide .selectedImage img { width: 112px; height: 68px; object-fit: cover; }
+.cardRead { margin-top: 16px; }
+.cardRead:disabled { opacity: 0.5; cursor: default; }

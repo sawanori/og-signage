@@ -1,10 +1,10 @@
 /**
- * POST /api/business-card — 名刺の画像を読み取り、入力欄に入れる文字を返す（本人登録と管理画面の両方から使う）。
+ * POST /api/business-card — 名刺の画像（表は必須、裏は任意）を読み取り、入力欄に入れる文字を返す（本人登録と管理画面の両方から使う）。
  * 本人登録はログイン不要なので、Origin の確認と IP ごとの回数制限で外からの連打による課金を防ぐ。
  * 画像は読み取りに使うだけで、保存もログ出力もしない。
  */
 import { env } from "cloudflare:workers";
-import { BUSINESS_CARD_MAX_BODY_BYTES, BUSINESS_CARD_RETRY_AFTER_SECONDS, BusinessCardError, readBusinessCard } from "@/lib/business-card";
+import { BUSINESS_CARD_MAX_BODY_BYTES, BUSINESS_CARD_RETRY_AFTER_SECONDS, BUSINESS_CARD_SIDES, BusinessCardError, readBusinessCard, type BusinessCardImage } from "@/lib/business-card";
 import { checkCsrf } from "@/lib/csrf";
 import { SNIFF_BYTES, sniffMime } from "@/lib/file-sniff";
 import { readLimitedFormData } from "@/lib/read-limited-form";
@@ -23,13 +23,20 @@ export async function POST(request: Request): Promise<Response> {
     }
     if (!env.GEMINI_API_KEY) throw new BusinessCardError(503, "reader_not_configured", "名刺の読み取りは現在使えません。お手数ですが手で入力してください");
     const form = await readLimitedFormData(request, BUSINESS_CARD_MAX_BODY_BYTES, { tooLarge: () => TOO_LARGE, invalid: () => INVALID });
+    // 表（card）は必ず、裏（back）は任意。ほかの項目や同じ項目の重複は断る
     const keys = [...form.keys()];
-    const card = form.get("card");
-    if (keys.length !== 1 || keys[0] !== "card" || card === null || typeof card === "string") throw INVALID;
-    const bytes = new Uint8Array(await card.arrayBuffer());
-    const mimeType = sniffMime(bytes.subarray(0, SNIFF_BYTES));
-    if (!mimeType || mimeType === "video/mp4") throw INVALID;
-    const result = await readBusinessCard({ apiKey: env.GEMINI_API_KEY, bytes, mimeType });
+    if (!keys.includes("card") || keys.some((key) => !(BUSINESS_CARD_SIDES as readonly string[]).includes(key)) || new Set(keys).size !== keys.length) throw INVALID;
+    const images: BusinessCardImage[] = [];
+    for (const side of BUSINESS_CARD_SIDES) {
+      const file = form.get(side);
+      if (file === null) continue;
+      if (typeof file === "string") throw INVALID;
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const mimeType = sniffMime(bytes.subarray(0, SNIFF_BYTES));
+      if (!mimeType || mimeType === "video/mp4") throw INVALID;
+      images.push({ bytes, mimeType });
+    }
+    const result = await readBusinessCard({ apiKey: env.GEMINI_API_KEY, images });
     return Response.json({ data: result }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     const known = error instanceof BusinessCardError ? error : new BusinessCardError(502, "reader_unavailable", "名刺を読み取れませんでした。時間をおいてもう一度お試しください");

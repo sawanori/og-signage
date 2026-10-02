@@ -7,12 +7,13 @@ const BASE = "https://signage.example.com";
 const jpeg = new Uint8Array([255, 216, 255, 224, 1, 2, 3]);
 const reading = { companyName: "株式会社サンプル映像", personName: "山本 花子", personNameKana: null, role: null, email: "hanako@sample.example", websiteUrl: null };
 
-function cardForm(bytes: Uint8Array = jpeg, extra?: [string, string]) {
+function cardForm(bytes: Uint8Array = jpeg, extra?: [string, string | Blob]) {
   const body = new FormData();
   body.append("card", new Blob([bytes as BlobPart], { type: "image/jpeg" }), "card");
-  if (extra) body.append(...extra);
+  if (extra) body.append(extra[0], extra[1]);
   return body;
 }
+const backImage = () => new Blob([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]) as BlobPart], { type: "image/png" });
 function request(body: BodyInit = cardForm(), headers: Record<string, string> = {}) {
   return new Request(`${BASE}/api/business-card`, { method: "POST", headers: { origin: BASE, "cf-connecting-ip": "192.0.2.1", ...headers }, body });
 }
@@ -34,6 +35,15 @@ describe("POST /api/business-card", () => {
     expect(await response.json()).toEqual({ data: reading });
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(String(fetch.mock.calls[0][0])).toContain("generativelanguage.googleapis.com");
+  });
+
+  it("裏（back）があれば表と一緒に1回で読み取る", async () => {
+    const fetch = gemini();
+    const response = await POST(request(cardForm(jpeg, ["back", backImage()])));
+    expect(response.status).toBe(200);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const parts = JSON.parse(String(fetch.mock.calls[0][1]?.body)).contents[0].parts;
+    expect(parts.filter((part: { inlineData?: unknown }) => part.inlineData)).toHaveLength(2);
   });
 
   it("別のサイトからの送信は読み取らない", async () => {
@@ -61,6 +71,8 @@ describe("POST /api/business-card", () => {
   it.each([
     ["画像以外", cardForm(new TextEncoder().encode("not an image"))],
     ["余分な項目", cardForm(jpeg, ["data", "{}"])],
+    ["裏だけ（表なし）", (() => { const body = new FormData(); body.append("back", backImage()); return body; })()],
+    ["裏が画像でない", cardForm(jpeg, ["back", new Blob(["not an image"])])],
     ["multipart でない本文", JSON.stringify({ card: "x" })],
   ])("%s は 400 にして Gemini を呼ばない", async (_name, body) => {
     const fetch = gemini();

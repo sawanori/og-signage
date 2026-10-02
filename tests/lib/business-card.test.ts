@@ -11,7 +11,7 @@ const geminiReply = (content: unknown, finishReason = "STOP") => Response.json({
 describe("名刺の読み取り（Gemini）", () => {
   it("有料枠のモデルへ画像とJSONの形を指定して1回だけ送り、読み取った値を返す", async () => {
     const fetcher = vi.fn<typeof fetch>(async () => geminiReply(card));
-    expect(await readBusinessCard({ apiKey: "test-key", bytes: jpeg, mimeType: "image/jpeg", fetcher })).toEqual(card);
+    expect(await readBusinessCard({ apiKey: "test-key", images: [{ bytes: jpeg, mimeType: "image/jpeg" }], fetcher })).toEqual(card);
     expect(fetcher).toHaveBeenCalledTimes(1);
     const [url, init] = fetcher.mock.calls[0];
     expect(url).toBe(`https://generativelanguage.googleapis.com/v1beta/models/${BUSINESS_CARD_MODEL}:generateContent`);
@@ -21,6 +21,25 @@ describe("名刺の読み取り（Gemini）", () => {
     expect(body.contents[0].parts[0]).toEqual({ inlineData: { mimeType: "image/jpeg", data: btoa(String.fromCharCode(...jpeg)) } });
     expect(body.generationConfig).toMatchObject({ responseMimeType: "application/json", thinkingConfig: { thinkingLevel: "low" } });
     expect(body.generationConfig.responseJsonSchema.required).toEqual(["companyName", "personName", "personNameKana", "role", "email", "websiteUrl"]);
+  });
+
+  it("表と裏の2枚を1回で送り、両面を見比べて日本語を優先するよう指示する", async () => {
+    const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+    const fetcher = vi.fn<typeof fetch>(async () => geminiReply(card));
+    expect(await readBusinessCard({ apiKey: "k", images: [{ bytes: jpeg, mimeType: "image/jpeg" }, { bytes: png, mimeType: "image/png" }], fetcher })).toEqual(card);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    const body = JSON.parse(String(fetcher.mock.calls[0][1]?.body));
+    const parts = body.contents[0].parts;
+    expect(parts.map((part: { inlineData?: { mimeType: string } }) => part.inlineData?.mimeType)).toEqual(["image/jpeg", "image/png", undefined]);
+    expect(parts[2].text).toBe("1枚目が名刺の表、2枚目が裏です。両面を読み取ってください。");
+    expect(body.systemInstruction.parts[0].text).toContain("日本語の表記を使います");
+  });
+
+  it("画像が0枚・3枚以上なら送らない", async () => {
+    const fetcher = vi.fn<typeof fetch>();
+    await expect(readBusinessCard({ apiKey: "k", images: [], fetcher })).rejects.toMatchObject({ status: 400 });
+    await expect(readBusinessCard({ apiKey: "k", images: [{ bytes: jpeg, mimeType: "image/jpeg" }, { bytes: jpeg, mimeType: "image/jpeg" }, { bytes: jpeg, mimeType: "image/jpeg" }], fetcher })).rejects.toMatchObject({ status: 400 });
+    expect(fetcher).not.toHaveBeenCalled();
   });
 
   it("フォームの規則に合わない値は切り詰めずに捨て、https:// のない URL には付ける", () => {
@@ -37,14 +56,14 @@ describe("名刺の読み取り（Gemini）", () => {
 
   it("名刺でない・読めない画像（全項目が空）は撮り直しを案内する", async () => {
     const empty = Object.fromEntries(Object.keys(card).map((key) => [key, null]));
-    await expect(readBusinessCard({ apiKey: "k", bytes: jpeg, mimeType: "image/jpeg", fetcher: async () => geminiReply(empty) })).rejects.toMatchObject({ status: 422, code: "unreadable" });
+    await expect(readBusinessCard({ apiKey: "k", images: [{ bytes: jpeg, mimeType: "image/jpeg" }], fetcher: async () => geminiReply(empty) })).rejects.toMatchObject({ status: 422, code: "unreadable" });
     // 値はあってもフォームの規則にすべて合わなければ同じ扱い
-    await expect(readBusinessCard({ apiKey: "k", bytes: jpeg, mimeType: "image/jpeg", fetcher: async () => geminiReply({ ...empty, email: "not-an-email" }) })).rejects.toMatchObject({ status: 422 });
+    await expect(readBusinessCard({ apiKey: "k", images: [{ bytes: jpeg, mimeType: "image/jpeg" }], fetcher: async () => geminiReply({ ...empty, email: "not-an-email" }) })).rejects.toMatchObject({ status: 422 });
   });
 
   it("思考の部分（thought: true）が返っても本文だけを読む", async () => {
     const fetcher = async () => Response.json({ candidates: [{ finishReason: "STOP", content: { parts: [{ text: "名刺を確認します", thought: true }, { text: JSON.stringify(card) }] } }] });
-    expect(await readBusinessCard({ apiKey: "k", bytes: jpeg, mimeType: "image/jpeg", fetcher })).toEqual(card);
+    expect(await readBusinessCard({ apiKey: "k", images: [{ bytes: jpeg, mimeType: "image/jpeg" }], fetcher })).toEqual(card);
   });
 
   it.each([
@@ -55,11 +74,11 @@ describe("名刺の読み取り（Gemini）", () => {
     ["応答本文を読み切れない（時間切れなど）", () => new Response("{\"candidates\":", { headers: { "content-type": "application/json" } }), 502, "reader_unavailable"],
     ["候補なし（入力のブロック）", () => Response.json({ promptFeedback: { blockReason: "OTHER" } }), 422, "unreadable"],
   ])("%s は利用者向けの文言で失敗にする", async (_name, reply, status, code) => {
-    await expect(readBusinessCard({ apiKey: "k", bytes: jpeg, mimeType: "image/jpeg", fetcher: async () => reply() })).rejects.toMatchObject({ status, code });
+    await expect(readBusinessCard({ apiKey: "k", images: [{ bytes: jpeg, mimeType: "image/jpeg" }], fetcher: async () => reply() })).rejects.toMatchObject({ status, code });
   });
 
   it("通信できないときは読み取れなかった扱いにする", async () => {
-    await expect(readBusinessCard({ apiKey: "k", bytes: jpeg, mimeType: "image/jpeg", fetcher: async () => { throw new TypeError("network"); } }))
+    await expect(readBusinessCard({ apiKey: "k", images: [{ bytes: jpeg, mimeType: "image/jpeg" }], fetcher: async () => { throw new TypeError("network"); } }))
       .rejects.toMatchObject({ status: 502, code: "reader_unavailable" });
   });
 });

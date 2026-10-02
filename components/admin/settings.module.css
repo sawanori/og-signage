@@ -689,3 +689,23 @@
     display: none;
   }
 }
+
+/* 名刺から入力（spotlight-form.tsx。表は必須、裏は任意。2026-10-02） */
+.cardSide {
+  margin-top: 10px;
+}
+
+.cardSideLabel {
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-mute);
+}
+
+.cardThumb {
+  width: 112px;
+  height: 68px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
