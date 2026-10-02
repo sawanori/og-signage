@@ -36,7 +36,6 @@ export function SpotlightRegistrationForm({ notificationFrom }: { notificationFr
   const [showPreview, setShowPreview] = useState(false);
   const [retryAfterSeconds, setRetryAfterSeconds] = useState(0);
   const [card, setCard] = useState<{ busy: boolean; message: string | null; error: string | null }>({ busy: false, message: null, error: null });
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const fieldsRef = useRef(fields);
   const snapshot = useRef<SpotlightSubmissionSnapshot | null>(null);
   const unresolved = useRef(false);
@@ -102,11 +101,9 @@ export function SpotlightRegistrationForm({ notificationFrom }: { notificationFr
     const result = await scanBusinessCard(file);
     if (!active.current) return;
     if (result.kind === "error") { setCard({ busy: false, message: null, error: result.message }); return; }
-    const { patch, filled } = fillEmptyFields(fieldsRef.current, result.card, CARD_FIELDS);
+    const { filled } = fillEmptyFields(fieldsRef.current, result.card, CARD_FIELDS);
     setFields((current) => ({ ...current, ...fillEmptyFields(current, result.card, CARD_FIELDS).patch }));
     setErrors((current) => ({ ...current, ...Object.fromEntries(filled.map((key) => [key, ""])) }));
-    // URL は「詳しい情報」の中にあるので、入れたときは開いて見えるようにする
-    if (patch.websiteUrl) setDetailsOpen(true);
     setCard({ busy: false, error: null, message: filled.length
       ? `名刺から「${filled.map((key) => FIELD_LABELS[key]).join("」「")}」を入力しました。内容が正しいか確認してください。`
       : "名刺から新しく入力できる項目はありませんでした。入力済みの欄はそのままにしています。" });
@@ -242,8 +239,8 @@ export function SpotlightRegistrationForm({ notificationFrom }: { notificationFr
           <TextField name="role" label="肩書き（任意）" value={fields.role} max={30} disabled={locked} error={errors.role} onChange={change} />
           <TextField name="quote" label="ひとこと（任意）" value={fields.quote} max={SPOTLIGHT_QUOTE_MAX} multiline disabled={locked} error={errors.quote} onChange={change} />
           {imageField("photo")}
-          <details className={styles.details} open={detailsOpen} onToggle={(event) => setDetailsOpen(event.currentTarget.open)}>
-            <summary>詳しい情報を追加する（任意）</summary>
+          {/* 紹介文・タグはサイネージに、URL は QR と企業データに使うので、折りたたまずに最初から見せる（2026-10-02 ユーザー指示） */}
+          <div className={styles.moreFields}>
             <TextField name="bio" label="紹介文（任意）" value={fields.bio} max={SPOTLIGHT_BIO_MAX} multiline disabled={locked} error={errors.bio} onChange={change} />
             <fieldset className={styles.tags} disabled={locked}>
               <legend>タグ（任意・{SPOTLIGHT_TAGS_MAX}つまで）</legend>
@@ -269,7 +266,7 @@ export function SpotlightRegistrationForm({ notificationFrom }: { notificationFr
                 onChange={(event) => change("websiteUrl2", event.target.value)} />
               {errors.websiteUrl2 ? <p id="websiteUrl2-error" className={styles.fieldError}>{errors.websiteUrl2}</p> : null}
             </div>
-          </details>
+          </div>
           <div className={styles.review}>
             <button type="button" className={styles.secondaryButton} onClick={() => setShowPreview((value) => !value)}>{showPreview ? "掲載イメージを閉じる" : "掲載イメージを確認"}</button>
             {showPreview ? <div className={styles.previewArea}><SpotlightPreview payload={textPayload} photoUrl={images.photo?.url ?? null} /><p className={styles.hint}>横型サイネージでの掲載イメージです。</p></div> : null}

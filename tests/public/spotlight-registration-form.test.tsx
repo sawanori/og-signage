@@ -160,7 +160,14 @@ describe("本人登録フォーム", () => {
     unmount();
   });
 
-  it("名刺から空いている欄だけを埋め、入力済みの欄は変えず、URLを入れたら詳しい情報を開く", async () => {
+  it("紹介文・タグ・ホームページの欄は折りたたまず、最初から見える（2026-10-02 ユーザー指示）", () => {
+    const { container } = render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
+    expect(container.querySelector("details")).toBeNull();
+    expect(screen.queryByText("詳しい情報を追加する（任意）")).toBeNull();
+    for (const label of ["紹介文（任意）", WEBSITE_LABEL, WEBSITE_2_LABEL, "タグ 1"]) expect(screen.getByLabelText(label)).toBeTruthy();
+  });
+
+  it("名刺から空いている欄だけを埋め、入力済みの欄は変えない", async () => {
     scan.mockResolvedValueOnce(scanned);
     render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
     fireEvent.change(screen.getByLabelText("お名前"), { target: { value: "手入力 花子" } });
@@ -171,7 +178,6 @@ describe("本人登録フォーム", () => {
     expect((screen.getByLabelText("メールアドレス") as HTMLInputElement).value).toBe("card@example.com");
     expect((screen.getByLabelText("ふりがな（任意）") as HTMLInputElement).value).toBe("");
     expect((screen.getByLabelText(WEBSITE_LABEL) as HTMLInputElement).value).toBe("https://card.example/");
-    expect((screen.getByText("詳しい情報を追加する（任意）").closest("details") as HTMLDetailsElement).open).toBe(true);
   });
 
   it("「カメラで撮影」はスマホの背面カメラを直接開き、撮った写真も同じように読み取る。「画像を選ぶ」はカメラを強制しない", async () => {
