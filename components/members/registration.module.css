@@ -71,3 +71,4 @@
 .cardSide .selectedImage img { width: 112px; height: 68px; object-fit: cover; }
 .cardRead { margin-top: 16px; }
 .cardRead:disabled { opacity: 0.5; cursor: default; }
+.termsLink { color: #355845; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }

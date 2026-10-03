@@ -136,7 +136,7 @@ describe("本人登録フォーム", () => {
     render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
     send();
     expect(submit).not.toHaveBeenCalled();
-    expect(await screen.findByText("掲載先を確認して同意してください")).toBeTruthy();
+    expect(await screen.findByText("登録規約を確認して同意してください")).toBeTruthy();
     input();
     fireEvent.change(screen.getByLabelText("ふりがな（任意）"), { target: { value: "山田" } });
     send();
@@ -158,6 +158,17 @@ describe("本人登録フォーム", () => {
     fireEvent.click(screen.getByRole("button", { name: "写真を取り消す" }));
     expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
     unmount();
+  });
+
+  it("同意の欄と名刺の欄から、登録規約を別のタブで開ける（2026-10-03 ユーザー指示）", () => {
+    render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
+    const links = screen.getAllByRole("link", { name: /登録規約/ }) as HTMLAnchorElement[];
+    expect(links).toHaveLength(2);
+    for (const link of links) {
+      expect(link.getAttribute("href")).toBe("/members/terms");
+      expect(link.target).toBe("_blank");
+    }
+    expect(screen.getByRole("checkbox").closest("label")?.textContent).toContain("登録規約（個人情報の取扱いを含む）を読み、同意します。");
   });
 
   it("紹介文・タグ・ホームページの欄は折りたたまず、最初から見える（2026-10-02 ユーザー指示）", () => {

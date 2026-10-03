@@ -83,7 +83,7 @@ describe("本人申請の受付", () => {
 
   it("メールは専用列だけに保存し、受付では送信せず公開テーブルに入れない", async () => {
     expect(await submitSpotlightSubmission(db, bucket, input(), {})).toEqual({ accepted: true });
-    expect(await db.select().from(memberSpotlightSubmissions)).toMatchObject([{ status: "pending", revision: 0, consentVersion: 3, contactEmail: "member@example.com", notificationStatus: null }]);
+    expect(await db.select().from(memberSpotlightSubmissions)).toMatchObject([{ status: "pending", revision: 0, consentVersion: 4, contactEmail: "member@example.com", notificationStatus: null }]);
     expect(await db.select().from(memberSpotlights)).toHaveLength(0);
     expect(await db.select().from(media)).toHaveLength(0);
     expect(JSON.stringify((await db.select().from(memberSpotlightSubmissions))[0].payload)).not.toContain("member@example.com");
@@ -331,7 +331,7 @@ describe("スタッフによる申請の審査", () => {
   it("一覧はpendingだけ、Staff専用画像URLを持つDTOで古い順に返す", async () => {
     const row = await pending();
     const details = await listSpotlightSubmissions(db, staff);
-    expect(details).toEqual([{ id: row.id, companyName: "所属", personName: "名前", submittedAt: 100, revision: 0, payload: row.payload, consentedAt: 100, consentVersion: 3, contactEmail: "member@example.com", photoUrl: `/api/spotlight-submissions/${row.id}/images/photo`, logoUrl: `/api/spotlight-submissions/${row.id}/images/logo` }]);
+    expect(details).toEqual([{ id: row.id, companyName: "所属", personName: "名前", submittedAt: 100, revision: 0, payload: row.payload, consentedAt: 100, consentVersion: 4, contactEmail: "member@example.com", photoUrl: `/api/spotlight-submissions/${row.id}/images/photo`, logoUrl: `/api/spotlight-submissions/${row.id}/images/logo` }]);
     const image = await getSpotlightSubmissionImage(db, bucket, staff, row.id, "photo");
     expect(image.file.mimeType).toBe("image/jpeg");
     expect(new Uint8Array(await image.object.arrayBuffer())).toEqual(jpeg.bytes);

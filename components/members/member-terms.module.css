@@ -1,0 +1,9 @@
+/* メンバー紹介の登録規約（member-terms.tsx）。土台の色・余白は registration.module.css */
+.terms section + section { margin-top: 22px; }
+.terms h2 { margin: 0 0 6px; font-size: 15px; font-weight: 700; color: #263a30; }
+.terms p, .terms li { font-size: 14px; line-height: 1.85; }
+.terms p { margin: 0; }
+.terms ol { margin: 4px 0 0; padding-left: 1.6em; list-style: decimal; }
+.terms li + li { margin-top: 4px; }
+.terms a { color: #355845; text-decoration: underline; text-underline-offset: 3px; }
+.contact { border-top: 1px solid #e5e7e1; padding-top: 18px; }

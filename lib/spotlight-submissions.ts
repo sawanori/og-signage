@@ -12,7 +12,8 @@ export const SPOTLIGHT_SUBMISSION_MIN_IMAGE_EDGE = 640;
 /** 1枚あたりこの大きさに収まるまで画質を下げ、それでも大きければ寸法を縮める（写真とロゴを合わせて1MB未満） */
 export const SPOTLIGHT_SUBMISSION_TARGET_IMAGE_BYTES = 400 * 1024;
 /** 同意文の版。3 で「掲載中は管理のためにメールアドレスを保管する」を足した（2026-10-01） */
-export const SPOTLIGHT_SUBMISSION_CONSENT_VERSION = 3;
+/** 4: 登録規約（/members/terms。個人情報の取扱いを含む）への同意（2026-10-03） */
+export const SPOTLIGHT_SUBMISSION_CONSENT_VERSION = 4;
 export const SPOTLIGHT_SUBMISSION_RETRY_AFTER_SECONDS = 60;
 export const SPOTLIGHT_SUBMISSION_CLEANUP_BATCH_SIZE = 50;
 export const SPOTLIGHT_SUBMISSION_EXPIRY_SECONDS = 24 * 60 * 60;
@@ -31,7 +32,7 @@ export const spotlightSubmissionInputSchema = z.strictObject({
     .max(254, "メールアドレスは254文字以内で入力してください")
     .email("メールアドレスの形式が正しくありません"),
   requestKey: z.uuid({ error: "送信情報が正しくありません" }),
-  consent: z.literal(true, { error: "掲載先を確認して同意してください" }),
+  consent: z.literal(true, { error: "登録規約を確認して同意してください" }),
 });
 
 export type SpotlightSubmissionInput = z.infer<typeof spotlightSubmissionInputSchema>;

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { fillEmptyFields, type BusinessCardField } from "@/lib/business-card";
 import { prepareSpotlightImage } from "@/lib/client/prepare-spotlight-image";
 import { useBusinessCardReader, type BusinessCardSide } from "@/lib/client/use-business-card-reader";
+import { MEMBER_TERMS_PATH } from "@/lib/member-terms";
 import { submitSpotlight, type SpotlightSubmissionSnapshot } from "@/lib/client/submit-spotlight";
 import { spotlightSubmissionInputSchema, type SpotlightSubmissionImageKind } from "@/lib/spotlight-submissions";
 import { countChars, SPOTLIGHT_BIO_MAX, SPOTLIGHT_QUOTE_MAX, SPOTLIGHT_TAG_MAX, SPOTLIGHT_TAGS_MAX } from "@/lib/validators";
@@ -206,7 +207,7 @@ export function SpotlightRegistrationForm({ notificationFrom }: { notificationFr
           {/* スマホではすぐ背面カメラが開く「カメラで撮影」と、撮影済みの写真や届いた画像を選ぶ「画像を選ぶ」を分ける（2026-10-02 ユーザー指示） */}
           <div className={styles.cardField} role="group" aria-labelledby="card-title" aria-describedby="card-hint">
             <p id="card-title" className={styles.cardTitle}>名刺から入力（任意）</p>
-            <p id="card-hint" className={styles.hint}>名刺の表を撮影し、裏にも情報があれば裏も撮影してから「名刺を読み取る」を押してください。空いている欄に自動で入力します。明るい場所で、名刺全体が写るように撮ってください。</p>
+            <p id="card-hint" className={styles.hint}>名刺の表を撮影し、裏にも情報があれば裏も撮影してから「名刺を読み取る」を押してください。空いている欄に自動で入力します。明るい場所で、名刺全体が写るように撮ってください。名刺の画像は読み取りにだけ使い、保存しません（<a className={styles.termsLink} href={MEMBER_TERMS_PATH} target="_blank" rel="noopener">登録規約</a>）。</p>
             {(["front", "back"] as const).map((side) => <CardSidePicker key={side} side={side} image={card.picked[side]} disabled={locked || card.busy}
               onPick={(file) => card.pick(side, file)} onClear={() => card.clear(side)} />)}
             <button type="button" className={`${styles.secondaryButton} ${styles.cardRead}`} disabled={locked || card.busy || !card.picked.front} onClick={() => { void card.read(); }}>
@@ -263,7 +264,7 @@ export function SpotlightRegistrationForm({ notificationFrom }: { notificationFr
             {showPreview ? <div className={styles.previewArea}><SpotlightPreview payload={textPayload} photoUrl={images.photo?.url ?? null} /><p className={styles.hint}>横型サイネージでの掲載イメージです。</p></div> : null}
             <label className={styles.consent}>
               <input type="checkbox" checked={consent} disabled={locked} onChange={(event) => { if (!locked) setConsent(event.target.checked); }} aria-invalid={Boolean(errors.consent)} />
-              <span>入力した紹介内容と写真を、館内および誰でも閲覧できるWebサイネージに掲載することに同意します。メールアドレスは掲載結果のお知らせに使い、掲載中は管理のために保管します。サイネージには表示しません。</span>
+              <span>入力した紹介内容と写真は、館内および誰でも閲覧できるWebサイネージに掲載されます。メールアドレスは掲載結果のお知らせに使い、掲載中は管理のために保管します。サイネージには表示しません。<a className={styles.termsLink} href={MEMBER_TERMS_PATH} target="_blank" rel="noopener">登録規約（個人情報の取扱いを含む）</a>を読み、同意します。</span>
             </label>
             {errors.consent ? <p className={styles.fieldError}>{errors.consent}</p> : null}
             {message ? <p role="alert" className={styles.message}>{message}</p> : null}
