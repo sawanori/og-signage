@@ -18,6 +18,12 @@ describe("public website collection boundary", () => {
     expect(isInResearchScope("https://evil.example/", ["https://company.example/"])).toBe(false);
     expect(isInResearchScope("https://sub.company.example/", ["https://company.example/"])).toBe(false);
     expect(isInResearchScope("https://company.example/service", ["https://company.example/"])).toBe(true);
+    // www の有無だけの違いは同じサイト（http://maxtart-inc.com/ → https://www.maxtart-inc.com/ の転送。2026-10-03）
+    expect(isInResearchScope("https://www.company.example/news", ["http://company.example/"])).toBe(true);
+    expect(isInResearchScope("https://company.example/news", ["https://www.company.example/"])).toBe(true);
+    expect(isInResearchScope("https://www2.company.example/", ["https://company.example/"])).toBe(false);
+    expect(isInResearchScope("https://wwwcompany.example/", ["https://company.example/"])).toBe(false);
+    expect(isInResearchScope("https://www.evil.example/", ["https://company.example/"])).toBe(false);
   });
   it("uses workerd-compatible manual redirect mode for DNS and rejects a redirected response", async () => {
     const fetcher = vi.fn<typeof fetch>(async (_url, init) => {

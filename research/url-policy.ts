@@ -74,12 +74,18 @@ export async function assertPublicUrl(input: string, resolve: HostResolver = res
   return canonical;
 }
 
+/**
+ * www の有無だけが違うホストは同じサイトとして扱う（2026-10-03。maxtart-inc.com は www.maxtart-inc.com へ転送され、
+ * 取れた12ページすべてを登録サイトの外として捨てていた）。それ以外のサブドメインや別ドメインへの転送は今までどおり外とする。
+ */
+const siteHost = (hostname: string) => hostname.replace(/^www\./u, "");
+
 export function isInResearchScope(input: string, startingUrls: string[]): boolean {
   try {
     const candidate = new URL(normalizeResearchUrl(input));
     return startingUrls.some((start) => {
       const initial = new URL(normalizeResearchUrl(start));
-      return candidate.hostname === initial.hostname;
+      return siteHost(candidate.hostname) === siteHost(initial.hostname);
     });
   } catch { return false; }
 }

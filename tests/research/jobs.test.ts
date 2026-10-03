@@ -93,6 +93,21 @@ describe("durable research execution", () => {
     expect((await x.db.select().from(researchUsage))[0].status).toBe("unknown");
   });
 
+  it("keeps pages when a registered bare-domain URL redirects to the www host (production maxtart-inc.com case)", async () => {
+    const x = await setup();
+    await acceptResearchEvent(x.db, await buildCompanyResearchEvent({ sourceId: "member", sourceRevision: 1, eventType: "upsert", urls: [{ slot: 1, url: "http://maxtart.example/" }] }), 100);
+    x.api.pollCrawl = vi.fn(async () => ({ id: "crawl-id", status: "completed", browserSecondsUsed: 2, total: 2, finished: 2, cursor: null, records: [
+      { url: "http://maxtart.example/", status: "completed", markdown: "美容室向けのヘアケア商品を企画・販売しています。全国のサロンに卸しています。", metadata: { url: "https://www.maxtart.example/", status: 200 } },
+      { url: "https://www.instagram.example/maxtart", status: "completed", markdown: "外部の SNS のページです。会社の情報ではありません。", metadata: { url: "https://www.instagram.example/maxtart", status: 200 } },
+    ] }));
+    for (const time of [100, 160, 220, 280]) await x.tick(time);
+    const pages = await x.db.select().from(researchPages);
+    expect(pages.map((page) => [page.canonicalUrl, page.status])).toEqual([["https://www.maxtart.example/", "ready"]]);
+    expect(x.api.extractProfile).toHaveBeenCalledTimes(1);
+    const [profile] = await x.db.select().from(researchProfiles);
+    expect(profile.payload).toHaveProperty("coverage.processed", 1);
+  });
+
   it("never accepts external final URLs or a blocked record as model input", async () => {
     const x = await setup();
     x.api.pollCrawl = vi.fn(async () => ({ id: "crawl-id", status: "completed", browserSecondsUsed: 1, total: 2, finished: 2, cursor: null, records: [{ url: "https://example.com/", status: "completed", markdown: "危険な内容ではなくとも別ドメインへ移動した本文を採用しません。", metadata: { url: "https://evil.example.org/", status: 200 } }, { url: "https://example.com/blocked", status: "disallowed", metadata: undefined, markdown: "企業サービスの詳細情報です。許可がない場合には送信しません。" }] }));
