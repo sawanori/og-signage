@@ -39,7 +39,9 @@ export async function acceptResearchEvent(db: ResearchDb, input: unknown, now = 
     const [currentJob] = subject?.currentJobId ? await tx.select().from(researchJobs).where(eq(researchJobs.jobId, subject.currentJobId)) : [];
     const sameUrls = subject?.status === "active" && subject.urlFingerprint === event.urlFingerprint;
     const inProgress = currentJob && ["queued", "running", "retry", "budget_exhausted", "configuration_required"].includes(currentJob.status);
-    const fresh = subject?.lastSuccessfulCrawlAt !== null && subject?.lastSuccessfulCrawlAt !== undefined && now - subject.lastSuccessfulCrawlAt < THIRTY_DAYS;
+    // 30日以内の結果を使い回すのは、前回の処理で企業データができていたときだけ。
+    // 失敗していたら、同じ URL のまま保存し直すだけでやり直す（2026-10-03 ユーザー指示）
+    const fresh = currentJob?.status === "succeeded" && subject?.lastSuccessfulCrawlAt !== null && subject?.lastSuccessfulCrawlAt !== undefined && now - subject.lastSuccessfulCrawlAt < THIRTY_DAYS;
     if (sameUrls && (inProgress || fresh)) {
       await tx.update(researchSubjects).set({ sourceRevision: event.sourceRevision, updatedAt: now }).where(eq(researchSubjects.sourceId, event.sourceId));
       return accepted;

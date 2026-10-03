@@ -85,6 +85,23 @@ describe("independent research database and intake", () => {
     expect((await db.select().from(researchSubjects))[0]).toMatchObject({ generation: 2, currentProfileId: null });
   });
 
+  it.each([
+    { previous: "failed", lastErrorCode: "no_eligible_pages", restarts: true },
+    { previous: "succeeded", lastErrorCode: null, restarts: false },
+  ] as const)("a same-URL save within 30 days restarts only when the previous job $previous without a profile (restarts: $restarts)", async ({ previous, lastErrorCode, restarts }) => {
+    const { db } = await database();
+    await acceptResearchEvent(db, await event(), 100);
+    const [before] = await db.select().from(researchSubjects);
+    // 巡回は終わっていた（lastSuccessfulCrawlAt あり）が、結果は previous で終わった状態
+    await db.update(researchJobs).set({ status: previous, phase: "complete", lastErrorCode }).where(eq(researchJobs.jobId, before.currentJobId!));
+    await db.update(researchSubjects).set({ lastSuccessfulCrawlAt: 150 }).where(eq(researchSubjects.sourceId, before.sourceId));
+    await acceptResearchEvent(db, await event(1), 200);
+    const [after] = await db.select().from(researchSubjects);
+    expect(after.currentJobId === before.currentJobId).toBe(!restarts);
+    expect(await db.select().from(researchJobs)).toHaveLength(restarts ? 2 : 1);
+    if (restarts) expect((await db.select().from(researchJobs).where(eq(researchJobs.jobId, after.currentJobId!)))[0]).toMatchObject({ status: "queued", phase: "crawl" });
+  });
+
   it("validates the private POST contract, body limits and fingerprints", async () => {
     const { db } = await database();
     const url = "https://private/internal/sources";
