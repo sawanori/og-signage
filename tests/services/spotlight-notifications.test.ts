@@ -71,7 +71,8 @@ describe("審査結果のメール通知", () => {
     expect(body.text).toContain(status === "approved" ? "館内とWebのサイネージに掲載しました" : "今回は掲載を見送りました");
     expect(body.text).toContain(status === "approved" ? "修正や掲載の取りやめ" : "スタッフへお問い合わせ");
     for (const part of [body.text, body.html]) {
-      expect(part).toContain("WeWork Ocean Gate のメンバー紹介にご登録いただいた方へ");
+      expect(part).toContain("WeWork Ocean Gate の館内サイネージ「メンバー紹介」（運営：NonTurn合同会社）にご登録いただいた方へ");
+      expect(part).toContain("登録規約は、登録ページの同意の欄からご確認いただけます。");
       expect(part).toContain("送信専用のアドレスのため、このメールには返信できません。");
     }
     expect(body.html).not.toMatch(/href|https?:/);
