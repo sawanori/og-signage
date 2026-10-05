@@ -8,7 +8,9 @@
     // 掲載結果メールの差出人。ブランド名（WeWork）を別ドメインから名乗るとなりすましと見られ迷惑メールに入るため変えた（2026-10-01 ユーザー指示）
     "SPOTLIGHT_NOTIFICATION_FROM": "サイネージ管理 <noreply@non-turn.com>",
     // 管理画面の「企業データ」を見られるアカウント（ログインのメールアドレス。カンマ区切り。2026-10-02 ユーザー指示）
-    "COMPANY_RESEARCH_VIEWER_EMAILS": "snp.inc.info@gmail.com"
+    "COMPANY_RESEARCH_VIEWER_EMAILS": "snp.inc.info@gmail.com",
+    // メンバー相談チャット（/chat）を使えるアカウント（ログインのメールアドレス。カンマ区切り。2026-10-05 試験運用）
+    "COMPANY_CHAT_EMAILS": "snp.inc.info@gmail.com"
   },
   "assets": {
     "directory": "dist/client",
@@ -57,6 +59,12 @@
       // メンバーが受付で続けて使えるよう1回線あたり60秒20回
       "name": "BUSINESS_CARD_RATE_LIMITER",
       "namespace_id": "4303",
+      "simple": { "limit": 20, "period": 60 }
+    },
+    {
+      // メンバー相談チャット（Gemini の従量課金）。1アカウントあたり 60 秒に 20 回まで
+      "name": "COMPANY_CHAT_RATE_LIMITER",
+      "namespace_id": "4304",
       "simple": { "limit": 20, "period": 60 }
     }
   ]

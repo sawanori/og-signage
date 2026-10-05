@@ -15,6 +15,8 @@ import { ADMIN_BRAND, ADMIN_PRODUCT } from "./brand";
 
 /** 「企業データ」を見られるアカウントにだけ渡す。このファイルはサーバーでだけ動くので、ほかのアカウントのブラウザには届かない */
 const COMPANY_RESEARCH_NAV: RestrictedNavItem = { href: "/admin/company-research", label: "企業データ", icon: "building" };
+/** メンバー相談チャット（/chat。試験運用）を使えるアカウントにだけ渡す */
+const COMPANY_CHAT_NAV: RestrictedNavItem = { href: "/chat", label: "相談チャット", icon: "chat" };
 
 export function AdminShell({
   shell,
@@ -36,7 +38,7 @@ export function AdminShell({
             <p className={styles.brandSub}>{ADMIN_PRODUCT}</p>
           </div>
         </div>
-        <SidebarNav role={shell.user.role} restrictedItems={shell.user.canViewCompanyResearch ? [COMPANY_RESEARCH_NAV] : []} currentPath={currentPath} />
+        <SidebarNav role={shell.user.role} restrictedItems={[...(shell.user.canViewCompanyResearch ? [COMPANY_RESEARCH_NAV] : []), ...(shell.user.canUseCompanyChat ? [COMPANY_CHAT_NAV] : [])]} currentPath={currentPath} />
         <p className={styles.sideFooter}>{ADMIN_BRAND}</p>
       </aside>
 

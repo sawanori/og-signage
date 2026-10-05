@@ -4,6 +4,7 @@
  */
 import type { Db } from "@/db/index";
 import { env } from "cloudflare:workers";
+import { canUseCompanyChat } from "@/lib/company-chat-access";
 import { canViewCompanyResearch } from "@/lib/company-research-viewer";
 import type { AuthUser } from "@/lib/auth";
 import { listDevices, type DeviceSummary } from "@/lib/services/devices";
@@ -30,7 +31,7 @@ function displayName(user: AuthUser): string {
 export async function loadShell(db: Db, user: AuthUser, now: number): Promise<ShellData> {
   const [devices, pendingSubmissions] = await Promise.all([listDevices(db, now), countPendingSpotlightSubmissions(db, user)]);
   return {
-    user: { name: displayName(user), role: user.role, avatarUrl: null, canViewCompanyResearch: canViewCompanyResearch(user.email, env.COMPANY_RESEARCH_VIEWER_EMAILS) },
+    user: { name: displayName(user), role: user.role, avatarUrl: null, canViewCompanyResearch: canViewCompanyResearch(user.email, env.COMPANY_RESEARCH_VIEWER_EMAILS), canUseCompanyChat: canUseCompanyChat(user.email, env.COMPANY_CHAT_EMAILS) },
     alerts: [
       // メンバー本人からの登録申請（2026-10-01）。スタッフが確認するまでサイネージに出ない
       ...(pendingSubmissions > 0

@@ -9,8 +9,8 @@ import type { ShellData } from "@/components/admin/dashboard-types";
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/admin", useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
 
-const shell = (canViewCompanyResearch: boolean): ShellData => ({
-  user: { name: "管理者", role: "administrator", avatarUrl: null, canViewCompanyResearch },
+const shell = (canViewCompanyResearch: boolean, canUseCompanyChat = false): ShellData => ({
+  user: { name: "管理者", role: "administrator", avatarUrl: null, canViewCompanyResearch, canUseCompanyChat },
   alerts: [],
 });
 
@@ -25,5 +25,14 @@ describe("管理画面の枠の企業データの入口", () => {
     const html = renderToStaticMarkup(<AdminShell shell={shell(true)} currentPath="/admin">本文</AdminShell>);
     expect(html).toContain("企業データ");
     expect(html).toContain('href="/admin/company-research"');
+  });
+  it("相談チャットの入口も、使えるアカウントにだけ出す（2026-10-05 試験運用）", () => {
+    const hidden = renderToStaticMarkup(<AdminShell shell={shell(false, false)} currentPath="/admin">本文</AdminShell>);
+    expect(hidden).not.toContain("相談チャット");
+    expect(hidden).not.toContain('href="/chat"');
+    const shown = renderToStaticMarkup(<AdminShell shell={shell(false, true)} currentPath="/admin">本文</AdminShell>);
+    expect(shown).toContain("相談チャット");
+    expect(shown).toContain('href="/chat"');
+    expect(shown).not.toContain("企業データ");
   });
 });

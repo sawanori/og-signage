@@ -3,7 +3,7 @@
 /**
  * サイドバーの項目。Administrator 専用の画面（計画 6 節の権限表）は Staff には出さない。
  */
-import { BookOpen, Bell, Building2, CalendarDays, House, Palette, Sparkles, SquarePlay, type LucideIcon } from "lucide-react";
+import { BookOpen, Bell, Building2, CalendarDays, House, MessageCircle, Palette, Sparkles, SquarePlay, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Role } from "@/lib/auth";
@@ -16,8 +16,8 @@ type NavItem = { href: string; label: string; icon: LucideIcon; adminOnly?: bool
  * 一部のアカウントにだけ出す項目。名前と行き先はサーバー側（admin-shell.tsx）で決めて、出すアカウントにだけ渡す。
  * このファイルは全員のブラウザへ配られるので、ここには書かない（「企業データ」は 2026-10-02 ユーザー指示で入口も見せない）。
  */
-export type RestrictedNavItem = { href: string; label: string; icon: "building" };
-const RESTRICTED_ICONS: Record<RestrictedNavItem["icon"], LucideIcon> = { building: Building2 };
+export type RestrictedNavItem = { href: string; label: string; icon: "building" | "chat" };
+const RESTRICTED_ICONS: Record<RestrictedNavItem["icon"], LucideIcon> = { building: Building2, chat: MessageCircle };
 
 export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/admin", label: "ダッシュボード", icon: House },

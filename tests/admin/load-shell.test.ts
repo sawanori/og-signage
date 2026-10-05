@@ -43,5 +43,8 @@ describe("loadShell のベルの知らせ", () => {
   it("企業データを見られるアカウント（COMPANY_RESEARCH_VIEWER_EMAILS）だけ、メニューに出す印を付ける", async () => {
     expect((await loadShell(db, staff, 200)).user.canViewCompanyResearch).toBe(false);
     expect((await loadShell(db, { ...staff, email: "viewer@example.com" }, 200)).user.canViewCompanyResearch).toBe(true);
+    // 相談チャット（COMPANY_CHAT_EMAILS）も同じ
+    expect((await loadShell(db, staff, 200)).user.canUseCompanyChat).toBe(false);
+    expect((await loadShell(db, { ...staff, email: "viewer@example.com" }, 200)).user.canUseCompanyChat).toBe(true);
   });
 });

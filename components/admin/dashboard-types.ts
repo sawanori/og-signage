@@ -20,6 +20,8 @@ export type ShellUser = {
   avatarUrl: string | null;
   /** 「企業データ」を見られるアカウントか（lib/company-research-viewer.ts。2026-10-02） */
   canViewCompanyResearch?: boolean;
+  /** メンバー相談チャット（/chat）を使えるアカウントか（lib/company-chat-access.ts。2026-10-05） */
+  canUseCompanyChat?: boolean;
 };
 
 /** ベルに出す知らせ（端末の不調、メンバー紹介の確認待ちなど）。href があれば押すとその画面へ移る */
