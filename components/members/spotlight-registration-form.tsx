@@ -9,7 +9,7 @@ import { useBusinessCardReader, type BusinessCardSide } from "@/lib/client/use-b
 import { MEMBER_TERMS_PATH } from "@/lib/member-terms";
 import { submitSpotlight, type SpotlightSubmissionSnapshot } from "@/lib/client/submit-spotlight";
 import { spotlightSubmissionInputSchema, type SpotlightSubmissionImageKind } from "@/lib/spotlight-submissions";
-import { countChars, SPOTLIGHT_BIO_MAX, SPOTLIGHT_QUOTE_MAX, SPOTLIGHT_TAG_MAX, SPOTLIGHT_TAGS_MAX } from "@/lib/validators";
+import { countChars, SPOTLIGHT_BIO_MAX, SPOTLIGHT_FLOORS, SPOTLIGHT_QUOTE_MAX, SPOTLIGHT_TAG_MAX, SPOTLIGHT_TAGS_MAX, type SpotlightFloor } from "@/lib/validators";
 import { SpotlightPreview } from "./spotlight-preview";
 import styles from "./registration.module.css";
 
@@ -28,6 +28,8 @@ const FIELD_LABELS: Record<keyof TextFields, string> = { companyName: "会社名
 export function SpotlightRegistrationForm({ notificationFrom }: { notificationFrom: string }) {
   const [fields, setFields] = useState(EMPTY_TEXT);
   const [tags, setTags] = useState<string[]>(Array.from({ length: SPOTLIGHT_TAGS_MAX }, () => ""));
+  // よくいる階（任意。選ばないときは null。サイネージのカードに小さなバッジで出す。2026-10-05 ユーザー指示）
+  const [floor, setFloor] = useState<SpotlightFloor | null>(null);
   const [consent, setConsent] = useState(false);
   const [images, setImages] = useState<Images>(EMPTY_IMAGES);
   const [preparing, setPreparing] = useState<SpotlightSubmissionImageKind | null>(null);
@@ -65,6 +67,7 @@ export function SpotlightRegistrationForm({ notificationFrom }: { notificationFr
     personNameKana: optional(fields.personNameKana), role: optional(fields.role),
     quote: optional(fields.quote), bio: optional(fields.bio), tags: tags.map((tag) => tag.trim()).filter(Boolean),
     websiteUrl: optional(fields.websiteUrl),
+    floor,
   };
 
   const change = (key: keyof TextFields, value: string) => {
@@ -229,6 +232,16 @@ export function SpotlightRegistrationForm({ notificationFrom }: { notificationFr
           </div>
           <TextField name="personNameKana" label="ふりがな（任意）" value={fields.personNameKana} max={40} disabled={locked} error={errors.personNameKana} onChange={change} />
           <TextField name="role" label="肩書き（任意）" value={fields.role} max={30} disabled={locked} error={errors.role} onChange={change} />
+          <div className={styles.field}>
+            <label htmlFor="member-floor">よくいる階（任意）</label>
+            <p id="floor-hint" className={styles.hint}>ふだんよくいる階を選ぶと、サイネージの紹介に小さく表示します。</p>
+            <select id="member-floor" value={floor ?? ""} disabled={locked} aria-invalid={Boolean(errors.floor)} aria-describedby={`floor-hint${errors.floor ? " floor-error" : ""}`}
+              onChange={(event) => { if (!locked) { setFloor(SPOTLIGHT_FLOORS.find((value) => value === Number(event.target.value)) ?? null); setErrors((current) => ({ ...current, floor: "" })); } }}>
+              <option value="">選択しない</option>
+              {SPOTLIGHT_FLOORS.map((value) => <option key={value} value={value}>{value}階</option>)}
+            </select>
+            {errors.floor ? <p id="floor-error" className={styles.fieldError}>{errors.floor}</p> : null}
+          </div>
           <TextField name="quote" label="ひとこと（任意）" value={fields.quote} max={SPOTLIGHT_QUOTE_MAX} multiline disabled={locked} error={errors.quote} onChange={change} />
           {imageField("photo")}
           {/* 紹介文・タグはサイネージに、URL は QR と企業データに使うので、折りたたまずに最初から見せる（2026-10-02 ユーザー指示） */}

@@ -160,6 +160,27 @@ describe("本人登録フォーム", () => {
     unmount();
   });
 
+  it("よくいる階（任意）を 7〜10階から選べ、選んだ階を掲載イメージと申請に入れる（2026-10-05 ユーザー指示）", async () => {
+    render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
+    const floor = screen.getByLabelText("よくいる階（任意）") as HTMLSelectElement;
+    expect([...floor.options].map((option) => option.textContent)).toEqual(["選択しない", "7階", "8階", "9階", "10階"]);
+    expect(floor.value).toBe("");
+    input();
+    fireEvent.change(floor, { target: { value: "8" } });
+    fireEvent.click(screen.getByRole("button", { name: "掲載イメージを確認" }));
+    expect(preview.mock.calls.at(-1)?.[0]).toMatchObject({ floor: 8 });
+    send();
+    expect(await screen.findByRole("heading", { name: "送信しました" })).toBeTruthy();
+    expect(submit.mock.calls[0][0].data).toMatchObject({ floor: 8 });
+  });
+
+  it("よくいる階を選ばなければ、階なしで申請する", async () => {
+    render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
+    input(); send();
+    expect(await screen.findByRole("heading", { name: "送信しました" })).toBeTruthy();
+    expect(submit.mock.calls[0][0].data).toMatchObject({ floor: null });
+  });
+
   it("同意の欄と名刺の欄から、登録規約を別のタブで開ける（2026-10-03 ユーザー指示）", () => {
     render(<SpotlightRegistrationForm notificationFrom={NOTIFICATION_FROM} />);
     const links = screen.getAllByRole("link", { name: /登録規約/ }) as HTMLAnchorElement[];

@@ -354,6 +354,8 @@ export const memberSpotlights = sqliteTable("member_spotlights", {
   websiteUrl: text("website_url"),
   /** 2つ目のホームページの URL（任意。管理画面で保持し、サイネージの QR には使わない）。 */
   websiteUrl2: text("website_url_2"),
+  /** よくいる階（任意。7〜10。サイネージのカードに小さなバッジで出す。2026-10-05 ユーザー指示） */
+  floor: integer("floor"),
   photoMediaId: text("photo_media_id").references(() => media.id, { onDelete: "restrict" }),
   logoMediaId: text("logo_media_id").references(() => media.id, { onDelete: "restrict" }),
   enabled: bool("enabled").notNull().default(true),

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { spotlightTextSchema } from "./validators";
+import { spotlightTextSchema, type SpotlightFloor } from "./validators";
 
 export const SPOTLIGHT_SUBMISSION_MAX_BODY_BYTES = 5 * 1024 * 1024;
 export const SPOTLIGHT_SUBMISSION_MAX_DATA_BYTES = 10 * 1024;
@@ -36,7 +36,8 @@ export const spotlightSubmissionInputSchema = z.strictObject({
 });
 
 export type SpotlightSubmissionInput = z.infer<typeof spotlightSubmissionInputSchema>;
-export type SpotlightSubmissionPayload = z.infer<typeof spotlightTextSchema>;
+/** 保存済みの申請の内容。よくいる階（2026-10-05 追加）は、それより前の申請には項目そのものが無い */
+export type SpotlightSubmissionPayload = Omit<z.infer<typeof spotlightTextSchema>, "floor"> & { floor?: SpotlightFloor | null };
 export type SpotlightSubmissionStatus = (typeof SPOTLIGHT_SUBMISSION_STATUSES)[number];
 export type SpotlightSubmissionImageKind = (typeof SPOTLIGHT_SUBMISSION_IMAGE_KINDS)[number];
 export type SpotlightSubmissionImageMimeType = (typeof SPOTLIGHT_SUBMISSION_IMAGE_MIME_TYPES)[number];

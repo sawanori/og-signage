@@ -36,6 +36,7 @@ const WEBSITE_2_LABEL = "ホームページのURL 2（任意）";
 const KANA_LABEL = "ふりがな（任意。一覧の あ行・か行… の絞り込みと名前順に使います）";
 const QUOTE_LABEL = "ひとこと（任意。サイネージでは写真の上に、手書き風の文字で出します）";
 const PHOTO_LABEL = "写真（任意。縦長の写真がきれいに出ます）";
+const FLOOR_LABEL = "よくいる階（任意。サイネージに小さなバッジで出します）";
 
 const yamada: SpotlightRow = {
   id: "spt_yamada",
@@ -49,6 +50,7 @@ const yamada: SpotlightRow = {
   quote: "毎日が実験です",
   bio: "映像と Web を作っています",
   tags: ["映像", "Web"],
+  floor: null,
   photoMediaId: "img_yamada",
   logoMediaId: null,
   enabled: true,
@@ -285,6 +287,10 @@ describe("SpotlightsView の追加・編集・削除", () => {
     fireEvent.change(screen.getByLabelText(WEBSITE_2_LABEL), { target: { value: " https://example.com/profile " } });
     // 会社のロゴの欄は無い（サイネージに出さない。2026-10-01 ユーザー指示）
     expect(screen.queryByText("会社のロゴ（任意）")).toBeNull();
+    // よくいる階（任意。7〜10階。2026-10-05 ユーザー指示）
+    const floor = screen.getByLabelText(FLOOR_LABEL) as HTMLSelectElement;
+    expect([...floor.options].map((option) => option.textContent)).toEqual(["選択しない", "7階", "8階", "9階", "10階"]);
+    fireEvent.change(floor, { target: { value: "8" } });
     fireEvent.click(screen.getByRole("switch", { name: "サイネージに出す" }));
     fireEvent.click(saveButton());
 
@@ -300,6 +306,7 @@ describe("SpotlightsView の追加・編集・削除", () => {
       quote: "毎日が実験です",
       bio: null,
       tags: ["映像", "Web"],
+      floor: 8,
       photoMediaId: null,
       logoMediaId: null,
       enabled: false,
@@ -410,6 +417,7 @@ describe("SpotlightsView の追加・編集・削除", () => {
         quote: "毎日が実験です",
         bio: "映像と Web を作っています",
         tags: ["Web"],
+        floor: null,
         photoMediaId: "img_yamada",
         logoMediaId: null,
         enabled: true,
@@ -515,6 +523,17 @@ describe("SpotlightsView の追加・編集・削除", () => {
     await act(async () => finishCard(cardReading));
     expect((screen.getByLabelText(KANA_LABEL) as HTMLInputElement).value).toBe("");
     expect(screen.queryByText(/名刺から「/)).toBeNull();
+  });
+
+  it("編集では登録済みの階が選ばれていて、「選択しない」に戻すと階を消して保存する", async () => {
+    render(<SpotlightsView spotlights={[{ ...yamada, floor: 9 }]} />);
+    fireEvent.click(screen.getByRole("button", { name: "編集" }));
+    const floor = screen.getByLabelText(FLOOR_LABEL) as HTMLSelectElement;
+    expect(floor.value).toBe("9");
+    fireEvent.change(floor, { target: { value: "" } });
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(actions.updateSpotlightAction).toHaveBeenCalledTimes(1));
+    expect(actions.updateSpotlightAction.mock.calls[0][1]).toMatchObject({ floor: null });
   });
 
   it("削除は確認してから、その人の id で削除する", async () => {

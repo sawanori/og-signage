@@ -1,0 +1,1 @@
+ALTER TABLE `member_spotlights` ADD `floor` integer;

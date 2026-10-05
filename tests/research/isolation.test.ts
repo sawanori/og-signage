@@ -69,7 +69,7 @@ async function configs() {
     expect(signageConfigSchema.parse(JSON.parse(body)).spotlights).toEqual([{
       id: spotlight.id, companyName: "掲載用会社", personName: "登録 太郎", role: null,
       quote: "手入力のひとこと", bio: "手入力の紹介文", tags: ["映像"],
-      websiteUrl: "https://first.example.com/", photo: null, logo: null,
+      websiteUrl: "https://first.example.com/", floor: null, photo: null, logo: null,
     }]);
   }
   return { publicBody, deviceBody, publicEtag: publicResponse.headers.get("etag"), deviceEtag: deviceResponse.headers.get("etag") };

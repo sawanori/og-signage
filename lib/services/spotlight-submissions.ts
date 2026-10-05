@@ -79,9 +79,10 @@ export async function submitSpotlightSubmission(
     if (!mimeType || mimeType === "video/mp4" || mimeType !== image.mimeType) throw new SpotlightSubmissionError(415, "unsupported_image", "JPEG・PNG・WebPの画像を選択してください");
     files[kind] = { r2Key: `member-submissions/${id}/${kind}`, mimeType, size: image.bytes.length, sha256: await digest(image.bytes) };
   }
-  // URL2未入力は追加前と同じJSONを使い、既存requestKeyの再送を保つ。入力・変更したURL2は照合対象に含める。
-  const { websiteUrl2, ...originalPayload } = payload;
-  const fingerprintPayload = websiteUrl2 === null ? originalPayload : payload;
+  // URL2・よくいる階が未入力なら追加前と同じJSONを使い、既存requestKeyの再送を保つ。入力した値は照合対象に含める。
+  const fingerprintPayload: Record<string, unknown> = { ...payload };
+  if (payload.websiteUrl2 === null) delete fingerprintPayload.websiteUrl2;
+  if (payload.floor === null) delete fingerprintPayload.floor;
   const fingerprint = await digest(new TextEncoder().encode(JSON.stringify({ payload: fingerprintPayload, consent, email, photo: files.photo?.sha256 ?? null, logo: files.logo?.sha256 ?? null })));
   await db.insert(memberSpotlightSubmissions).values({
     id, requestKey, requestFingerprint: fingerprint, payload, contactEmail: email, photoFile: files.photo ?? null, logoFile: files.logo ?? null,

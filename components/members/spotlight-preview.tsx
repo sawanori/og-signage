@@ -11,7 +11,7 @@ import signage from "@/components/signage/signage.module.css";
 import styles from "./spotlight-preview.module.css";
 
 export type SpotlightPreviewProps = {
-  payload: Pick<SignageSpotlight, "companyName" | "personName" | "role" | "quote" | "bio" | "tags" | "websiteUrl">;
+  payload: Pick<SignageSpotlight, "companyName" | "personName" | "role" | "quote" | "bio" | "tags" | "websiteUrl" | "floor">;
   photoUrl: string | null;
 };
 

@@ -16,6 +16,8 @@ export const COPY = {
   spotlightHonorific: "さん",
   /** メンバー紹介のカードの右下に出すホームページの QR（読み上げ用の名前） */
   spotlightWebsiteQrLabel: "ホームページの QR コード",
+  /** よくいる階のバッジ（任意。タグの並びの先頭に小さく出す。2026-10-05 ユーザー指示） */
+  spotlightFloor: (floor: number) => `${floor}階`,
   noSpotlight: "メンバー紹介は準備中です",
   // お知らせの欄の見出し。en は目立つ見出し（横型は黒い帯）、ja は添え書き（2026-09-25 ユーザー指示で
   // 「HOUSE NEWS / お知らせ」から「重要連絡：全メンバーへのお知らせ」に）

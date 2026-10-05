@@ -467,6 +467,26 @@ describe("メンバー紹介（横型の右上。2026-09-26 ユーザー指示�
     expect(within(screen.getByTestId("spotlight")).queryByText("ホームページ")).toBeNull();
   });
 
+  it("よくいる階がある人は、タグの並びの先頭に小さなバッジで出す。タグが無くても出し、階が無ければ出さない（2026-10-05 ユーザー指示）", () => {
+    renderScreen({ config: { ...config, spotlights: [{ ...yamada, floor: 8 }, sato] }, now: first, align: false }, "landscape");
+    const badge = within(screen.getByTestId("spotlight")).getByTestId("spotlight-floor");
+    expect(badge.textContent).toBe("8階");
+    // タグと同じ並びの先頭にある
+    expect(badge.parentElement?.firstElementChild).toBe(badge);
+    expect(badge.parentElement?.children.length).toBe(1 + yamada.tags.length);
+    cleanup();
+
+    renderScreen({ config: { ...config, spotlights: [{ ...yamada, tags: [], floor: 10 }, sato] }, now: first, align: false }, "landscape");
+    expect(within(screen.getByTestId("spotlight")).getByTestId("spotlight-floor").textContent).toBe("10階");
+    cleanup();
+
+    for (const floor of [null, undefined]) {
+      renderScreen({ config: { ...config, spotlights: [{ ...yamada, floor }, sato] }, now: first, align: false }, "landscape");
+      expect(within(screen.getByTestId("spotlight")).queryByTestId("spotlight-floor")).toBeNull();
+      cleanup();
+    }
+  });
+
   it("縦型には出さない（縦型のメンバー情報はそのまま）", () => {
     renderScreen({ config }, "portrait");
     expect(screen.queryByTestId("spotlight")).toBeNull();

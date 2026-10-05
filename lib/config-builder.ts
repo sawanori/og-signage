@@ -256,6 +256,7 @@ async function readConfigBody(tx: Db, deviceId: string, now: number): Promise<Om
       bio: r.bio,
       tags: r.tags,
       websiteUrl: r.websiteUrl,
+      floor: r.floor,
       photo: spotlightImage(r.photoMediaId),
       logo: spotlightImage(r.logoMediaId),
     })),

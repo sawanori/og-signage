@@ -1830,6 +1830,14 @@
   white-space: nowrap;
 }
 
+/* よくいる階（任意）。タグより控えめに、枠線だけのバッジにする（2026-10-05 ユーザー指示） */
+.lSpotTags > .lSpotFloor {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px #b5c4bb;
+  color: #55635b;
+}
+
+
 
 /* フッター（横） */
 .lFooter {

@@ -44,7 +44,7 @@ describe("メンバー本人登録の入力契約", () => {
   it("必須3項目と同意だけで申請でき、任意の空欄を正規化する", () => {
     expect(spotlightSubmissionInputSchema.parse(input)).toEqual({
       ...input, companyName: "株式会社サンプル", personName: "山田 陸",
-      personNameKana: null, role: null, quote: null, bio: null, tags: [], websiteUrl: null, websiteUrl2: null,
+      personNameKana: null, role: null, quote: null, bio: null, tags: [], websiteUrl: null, websiteUrl2: null, floor: null,
     });
     expect(spotlightSubmissionInputSchema.parse({ ...input, role: "  " }).role).toBeNull();
   });
@@ -150,6 +150,24 @@ describe("メンバー本人登録の入力契約", () => {
         const result = schemaInput.schema.safeParse({ ...schemaInput.input, websiteUrl2: bad });
         expect(result.success).toBe(false);
         if (!result.success) expect(result.error.issues[0].path).toEqual(["websiteUrl2"]);
+      }
+    }
+  });
+
+  it("よくいる階は任意で、7〜10階だけを受け付ける（2026-10-05 ユーザー指示）", () => {
+    for (const schemaInput of [
+      { schema: spotlightSubmissionInputSchema, input },
+      { schema: spotlightInputSchema, input: { companyName: "所属", personName: "名前", contactEmail: "member@example.com", enabled: true } },
+    ]) {
+      for (const empty of [undefined, null, ""]) expect(schemaInput.schema.parse({ ...schemaInput.input, floor: empty })).toMatchObject({ floor: null });
+      for (const floor of [7, 8, 9, 10]) expect(schemaInput.schema.parse({ ...schemaInput.input, floor })).toMatchObject({ floor });
+      for (const bad of [6, 11, 0, 8.5, "8", "8階", true]) {
+        const result = schemaInput.schema.safeParse({ ...schemaInput.input, floor: bad });
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.error.issues[0].path).toEqual(["floor"]);
+          expect(result.error.issues[0].message).toBe("よくいる階は 7〜10 階から選んでください");
+        }
       }
     }
   });

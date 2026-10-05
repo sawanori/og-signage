@@ -40,6 +40,7 @@ function toColumns(data: Omit<SpotlightInput, "websiteUrl2"> & { websiteUrl2?: s
     contactEmail: data.contactEmail,
     websiteUrl: data.websiteUrl,
     ...(data.websiteUrl2 === undefined ? {} : { websiteUrl2: data.websiteUrl2 }),
+    floor: data.floor,
     photoMediaId: data.photoMediaId,
     logoMediaId: data.logoMediaId,
     enabled: data.enabled,

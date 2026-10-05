@@ -27,6 +27,11 @@
   font: inherit; font-size: 16px; line-height: 1.5; color: inherit; background: #fff;
 }
 .field textarea { resize: vertical; }
+.field select {
+  display: block; width: 100%; min-height: 46px; margin-top: 8px;
+  border: 1px solid #c9d0c8; border-radius: 8px; padding: 10px 12px;
+  font: inherit; font-size: 16px; line-height: 1.5; color: inherit; background: #fff;
+}
 .field input[type="file"] { margin-top: 10px; font-size: 12px; padding: 10px 8px; overflow: hidden; }
 .field input[type="file"]::file-selector-button { border: 0; background: #edf1ec; border-radius: 5px; padding: 7px 8px; margin-right: 8px; color: #344e3f; font: inherit; }
 .page :focus-visible { outline: 3px solid #8cad9b; outline-offset: 3px; }

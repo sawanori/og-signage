@@ -171,7 +171,7 @@ describe("メンバー紹介の申請テーブル", () => {
       // 既存の値は変えず、0012 で足したメールアドレスには届かない仮のアドレスが入る
       expect(await previous.db.select().from(memberSpotlights)).toEqual([{
         id: "preserved", companyName: "以前の所属", personName: "以前の名前", personNameKana: "なまえ", role: null, quote: null, bio: null,
-        tags: ["既存"], contactEmail: "unregistered@example.invalid", websiteUrl: null, websiteUrl2: null, photoMediaId: null, logoMediaId: null, enabled: false, revision: 3, createdAt: 100, updatedAt: 100,
+        tags: ["既存"], contactEmail: "unregistered@example.invalid", websiteUrl: null, websiteUrl2: null, floor: null, photoMediaId: null, logoMediaId: null, enabled: false, revision: 3, createdAt: 100, updatedAt: 100,
       }]);
       await previous.db.insert(memberSpotlightSubmissions).values(submission("new"));
       expect(await previous.db.select().from(memberSpotlightSubmissions)).toHaveLength(1);
@@ -221,7 +221,8 @@ describe("メンバー紹介の申請テーブル", () => {
       const submissionsBefore = await previous.client.execute("SELECT * FROM member_spotlight_submissions");
       await migrate(previous.db, { migrationsFolder: "db/migrations" });
       const after = await previous.client.execute("SELECT * FROM member_spotlights");
-      expect(after.rows).toEqual(before.rows.map((row) => ({ ...row, website_url_2: null })));
+      // 後から足した列（URL 2・よくいる階）は空のまま。既存の値は変わらない
+      expect(after.rows).toEqual(before.rows.map((row) => ({ ...row, website_url_2: null, floor: null })));
       expect((await previous.client.execute("SELECT * FROM member_spotlight_submissions")).rows).toEqual(submissionsBefore.rows);
     } finally {
       previous.client.close();

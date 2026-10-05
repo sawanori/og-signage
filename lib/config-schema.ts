@@ -93,6 +93,8 @@ export const signageSpotlightSchema = z.object({
   tags: z.array(z.string().min(1)),
   /** ホームページの URL（任意。カードに QR で出す。2026-10-01 追加。古い config には無いので optional） */
   websiteUrl: z.string().nullable().optional(),
+  /** よくいる階（任意。カードに小さなバッジで出す。2026-10-05 追加。古い config には無いので optional） */
+  floor: z.number().int().nullable().optional(),
   photo: mediaRefSchema.nullable(),
   logo: mediaRefSchema.nullable(),
 });

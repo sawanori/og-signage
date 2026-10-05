@@ -138,6 +138,9 @@ export const SPOTLIGHT_TAGS_MAX = 3;
 export const SPOTLIGHT_TAG_MAX = 10;
 export const SPOTLIGHT_QUOTE_MAX = 30;
 export const SPOTLIGHT_BIO_MAX = 60;
+/** よくいる階の選択肢（任意。サイネージのカードに小さなバッジで出す。2026-10-05 ユーザー指示「7〜10階」） */
+export const SPOTLIGHT_FLOORS = [7, 8, 9, 10] as const;
+export type SpotlightFloor = (typeof SPOTLIGHT_FLOORS)[number];
 
 /** ふりがなに使える字（全角・半角をそろえてから確かめるので、半角カナと全角の空白も通る）。ひらがな・カタカナ・ー・・・空白 */
 const KANA_READING = /^[ぁ-ゖァ-ヺー・ ]+$/;
@@ -146,6 +149,12 @@ const KANA_READING = /^[ぁ-ゖァ-ヺー・ ]+$/;
 const spotlightWebsiteUrl = z.preprocess(
   (v) => (typeof v === "string" && v.trim() === "" ? null : typeof v === "string" ? v.trim() : v),
   httpUrlSchema.max(200, "ホームページの URL は 200 文字以内で入力してください").nullable(),
+);
+
+/** よくいる階（任意）。選ばないときは null。選択肢にない階は受け付けない */
+const spotlightFloor = z.preprocess(
+  (v) => (v === "" || v === undefined ? null : v),
+  z.union(SPOTLIGHT_FLOORS.map((floor) => z.literal(floor)), { error: "よくいる階は 7〜10 階から選んでください" }).nullable(),
 );
 
 const spotlightFields = z.object({
@@ -168,6 +177,8 @@ const spotlightFields = z.object({
   websiteUrl: spotlightWebsiteUrl.default(null),
   /** 2つ目の URL（任意。管理用に保存し、サイネージの QR には使わない） */
   websiteUrl2: spotlightWebsiteUrl.default(null),
+  /** よくいる階（任意。2026-10-05 ユーザー指示。サイネージのカードに小さなバッジで出す） */
+  floor: spotlightFloor.default(null),
   photoMediaId: optionalId,
   logoMediaId: optionalId,
   enabled: z.boolean(),

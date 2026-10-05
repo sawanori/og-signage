@@ -43,6 +43,20 @@ describe("本人申請の受付", () => {
     expect(await db.select().from(memberSpotlightSubmissions)).toHaveLength(1);
   });
 
+  it("よくいる階を申請から承認へ引き継ぎ、階だけの変更・削除も同じkeyなら409", async () => {
+    const data = { ...input(), floor: 9 };
+    await submitSpotlightSubmission(db, bucket, data, {});
+    const [pending] = await db.select().from(memberSpotlightSubmissions);
+    expect(pending.payload).toMatchObject({ floor: 9 });
+    await expect(submitSpotlightSubmission(db, bucket, data, {})).resolves.toEqual({ accepted: true });
+    for (const floor of [8, null]) {
+      await expect(submitSpotlightSubmission(db, bucket, { ...data, floor }, {})).rejects.toMatchObject({ status: 409 });
+    }
+    await db.insert(users).values(staff);
+    await approveSpotlightSubmission(db, bucket, staff, pending.id, 0);
+    expect((await db.select().from(memberSpotlights))[0]).toMatchObject({ floor: 9 });
+  });
+
   it("両URLを申請から承認へ引き継ぎ、2つ目だけの変更・削除も同じkeyなら409", async () => {
     const data = { ...input(), websiteUrl: "https://first.example.com/", websiteUrl2: "https://second.example.com/" };
     await submitSpotlightSubmission(db, bucket, data, {});

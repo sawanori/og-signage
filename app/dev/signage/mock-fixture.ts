@@ -111,6 +111,8 @@ const mockSpotlights: SignageSpotlight[] = [
   },
   {
     id: "spot_sato",
+    // よくいる階（任意。2026-10-05 ユーザー指示。タグの先頭に小さなバッジで出す）
+    floor: 8,
     companyName: "オーシャンゲート合同会社",
     personName: "佐藤 花",
     role: "コミュニティマネージャー",

@@ -4,6 +4,7 @@
  * メンバー紹介のカード（横型の右上。2026-09-26 ユーザー指示の見本どおり）。
  * 左に写真（ひとことを手書き風の文字で重ねる。「」は付けない。2026-09-27 ユーザー指示）、右に 会社名・お名前「さん」・肩書き・紹介文・タグ。
  * 右下にホームページの QR（任意）。会社のロゴは出さない（2026-10-01 ユーザー指示「ロゴいらないので QR を」）。
+ * よくいる階（任意）は、タグの並びの先頭に小さなバッジで出す（2026-10-05 ユーザー指示「タグやバッジくらいで目立たせず」）。
  * 1 人ずつ時刻で切り替える（spotlightIndex）。
  * 左右の矢印と下の点は出さない（2026-09-26 ユーザー指示）。
  * 文字は文字数で省略しない（2026-09-26 ユーザー指示「企業名が文字数で省略されるのはあり得ない」）。長いものは折り返し、
@@ -83,6 +84,7 @@ export function SpotlightCard({
   }
   const fade = spotlight.count > 1 ? styles.heroFade : "";
   const websiteUrl = item.websiteUrl ?? null;
+  const floor = item.floor ?? null;
   return (
     <div className={styles.lSpot} data-testid="spotlight">
       <div key={item.id} className={`${styles.lSpotBody} ${fade}`}>
@@ -111,8 +113,13 @@ export function SpotlightCard({
           </div>
           {item.role ? <div className={styles.lSpotRole}>{item.role}</div> : null}
           {item.bio ? <p className={styles.lSpotBio}>{item.bio}</p> : null}
-          {item.tags.length > 0 ? (
+          {floor !== null || item.tags.length > 0 ? (
             <div className={styles.lSpotTags}>
+              {floor !== null ? (
+                <span className={styles.lSpotFloor} data-testid="spotlight-floor">
+                  {COPY.spotlightFloor(floor)}
+                </span>
+              ) : null}
               {item.tags.map((tag, i) => (
                 <span key={i}>{tag}</span>
               ))}

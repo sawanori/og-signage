@@ -75,7 +75,7 @@ describe("確認待ちの審査", () => {
     render(<SpotlightSubmissionsView submissions={[extended]} />);
     openFirst();
     const props = preview.mock.calls.at(-1)?.[0];
-    expect(props.payload).toEqual({ companyName: "NonTurn", personName: "山田 太郎", role: "デザイナー", quote: "毎日が実験です", bio: "映像とWebを作っています", tags: ["映像", "Web"], websiteUrl: "https://example.com/nonturn" });
+    expect(props.payload).toEqual({ companyName: "NonTurn", personName: "山田 太郎", role: "デザイナー", quote: "毎日が実験です", bio: "映像とWebを作っています", tags: ["映像", "Web"], websiteUrl: "https://example.com/nonturn", floor: null });
     expect(JSON.stringify(props)).not.toContain(marker);
     expect(JSON.stringify(props)).not.toContain(submission.payload.websiteUrl2!);
   });
@@ -107,6 +107,8 @@ describe("確認待ちの審査", () => {
       bio: submission.payload.bio,
       tags: submission.payload.tags,
       websiteUrl: submission.payload.websiteUrl,
+      // よくいる階の項目が無い古い申請は、選んでいない扱い
+      floor: null,
     }, photoUrl: submission.photoUrl });
     expect(JSON.stringify(preview.mock.calls)).not.toContain(submission.payload.websiteUrl2!);
     expect(JSON.stringify(preview.mock.calls)).not.toContain("member@example.com");

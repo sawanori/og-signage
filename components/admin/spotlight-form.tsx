@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { fillEmptyFields, type BusinessCardField } from "@/lib/business-card";
 import { useBusinessCardReader, type BusinessCardSide, type PickedCardImage } from "@/lib/client/use-business-card-reader";
 import type { SpotlightRow } from "@/lib/services/spotlights";
-import { SPOTLIGHT_BIO_MAX, SPOTLIGHT_PLACEHOLDER_EMAIL, SPOTLIGHT_QUOTE_MAX, SPOTLIGHT_TAG_MAX, SPOTLIGHT_TAGS_MAX, countChars } from "@/lib/validators";
+import { SPOTLIGHT_BIO_MAX, SPOTLIGHT_FLOORS, SPOTLIGHT_PLACEHOLDER_EMAIL, SPOTLIGHT_QUOTE_MAX, SPOTLIGHT_TAG_MAX, SPOTLIGHT_TAGS_MAX, countChars, type SpotlightFloor } from "@/lib/validators";
 import { MediaUploadField, mediaThumbnailUrl } from "./media-upload-field";
 import styles from "./settings.module.css";
 
@@ -35,6 +35,8 @@ export type SpotlightFormState = {
   bio: string;
   /** タグの入力欄 3 つ分。空欄は送るときに除く */
   tags: string[];
+  /** よくいる階（任意。選ばないときは null。サイネージのカードに小さなバッジで出す） */
+  floor: SpotlightFloor | null;
   photoMediaId: string | null;
   photoPreviewUrl: string | null;
   logoMediaId: string | null;
@@ -61,6 +63,7 @@ export function emptySpotlightForm(): SpotlightFormState {
     quote: "",
     bio: "",
     tags: tagSlots([]),
+    floor: null,
     photoMediaId: null,
     photoPreviewUrl: null,
     logoMediaId: null,
@@ -83,6 +86,7 @@ export function toSpotlightForm(s: SpotlightRow): SpotlightFormState {
     quote: s.quote ?? "",
     bio: s.bio ?? "",
     tags: tagSlots(s.tags),
+    floor: toFloor(s.floor),
     photoMediaId: s.photoMediaId,
     photoPreviewUrl: s.photoMediaId ? mediaThumbnailUrl(s.photoMediaId) : null,
     logoMediaId: s.logoMediaId,
@@ -93,6 +97,9 @@ export function toSpotlightForm(s: SpotlightRow): SpotlightFormState {
 }
 
 const blankToNull = (value: string) => (value.trim() === "" ? null : value);
+/** 選択肢にある階だけを通す（DB の整数や、選択欄の文字列から） */
+const toFloor = (value: number | string | null | undefined): SpotlightFloor | null =>
+  SPOTLIGHT_FLOORS.find((floor) => floor === Number(value)) ?? null;
 
 /** Server Action に渡す形（revision は編集のときに呼び出し元が足す）。任意の文字は空欄なら null、空のタグ欄は除く */
 export function toSpotlightInput(form: SpotlightFormState) {
@@ -107,6 +114,7 @@ export function toSpotlightInput(form: SpotlightFormState) {
     quote: blankToNull(form.quote),
     bio: blankToNull(form.bio),
     tags: form.tags.map((t) => t.trim()).filter((t) => t !== ""),
+    floor: form.floor,
     photoMediaId: form.photoMediaId,
     logoMediaId: form.logoMediaId,
     enabled: form.enabled,
@@ -256,6 +264,24 @@ export function SpotlightForm({
           onChange={(personNameKana) => onChange({ personNameKana })}
         />
         <TextField id="spotlight-role" label="肩書き（任意）" value={form.role} maxLength={30} onChange={(role) => onChange({ role })} />
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="spotlight-floor">
+            よくいる階（任意。サイネージに小さなバッジで出します）
+          </label>
+          <select
+            id="spotlight-floor"
+            className={styles.select}
+            value={form.floor ?? ""}
+            onChange={(e) => onChange({ floor: toFloor(e.target.value === "" ? null : e.target.value) })}
+          >
+            <option value="">選択しない</option>
+            {SPOTLIGHT_FLOORS.map((floor) => (
+              <option key={floor} value={floor}>
+                {floor}階
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div className={styles.field}>
           <p className={styles.label} id="spotlight-tags-label">

@@ -123,6 +123,7 @@ export function SpotlightSubmissionsView({ submissions }: { submissions: Spotlig
               ["ひとこと", selected.payload.quote],
               ["紹介文", selected.payload.bio],
               ["タグ", selected.payload.tags.join("・")],
+              ["よくいる階", selected.payload.floor ? `${selected.payload.floor}階` : ""],
               ["ホームページのURL 1（サイネージにQRコードで出します）", selected.payload.websiteUrl ?? ""],
               ["ホームページのURL 2", selected.payload.websiteUrl2 ?? ""],
               ["掲載先への同意日時", dateTime.format(selected.consentedAt * 1000)],
@@ -154,6 +155,7 @@ export function SpotlightSubmissionsView({ submissions }: { submissions: Spotlig
                 bio: selected.payload.bio,
                 tags: selected.payload.tags,
                 websiteUrl: selected.payload.websiteUrl,
+                floor: selected.payload.floor ?? null,
               }} photoUrl={selected.photoUrl} />
             </div>
           </div>
