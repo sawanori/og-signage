@@ -15,7 +15,7 @@ describe("登録規約のページ", () => {
     expect(html).toContain("WWJ株式会社 は、登録された情報の取扱いに関与せず、これについて責任を負いません。");
   });
   it("利用目的・外部サービス・保存期間・ご請求の窓口と管轄を載せる", () => {
-    for (const text of ["本サイネージの運用に関連するサービスと、その派生サービス", "Google（Gemini）", "Meta", "7日以内に削除", "横浜地方裁判所", 'href="mailto:m.sawada@non-turn.com"', "2026年10月3日"]) {
+    for (const text of ["本サイネージの運用に関連するサービスと、その派生サービス", "Google（Gemini）", "Meta", "7日以内に削除", "横浜地方裁判所", 'href="mailto:n.sawada@non-turn.com"', "2026年10月3日"]) {
       expect(html).toContain(text);
     }
   });
